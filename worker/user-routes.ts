@@ -169,7 +169,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { ...page, items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
-    const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string };
+    const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[] };
     if (!body.videoUrl || !body.userId) {
         return bad(c, 'videoUrl and userId are required');
     }
@@ -182,7 +182,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         comments: 0,
         shares: 0,
         createdAt: Date.now(),
-        tags: []
+        tags: body.tags || []
     };
     const created = await PostEntity.create(c.env, newPost);
     return ok(c, created);

@@ -1,6 +1,6 @@
+// eslint-disable-next-line react-refresh/only-export-components
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '@shared/types';
-import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 interface AuthContextType {
   user: User | null;

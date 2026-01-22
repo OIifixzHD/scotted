@@ -1,10 +1,9 @@
 import React from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { FeedContainer } from '@/components/feed/FeedContainer';
 import { ThemeToggle } from '@/components/ThemeToggle';
 export function HomePage() {
   return (
-    <AppLayout container={false} className="bg-black">
+    <div className="h-full w-full bg-black">
       <div className="relative h-full w-full max-w-md mx-auto bg-black shadow-2xl overflow-hidden">
         {/* Header Overlay (Mobile) */}
         <div className="absolute top-0 left-0 right-0 z-20 p-4 flex justify-center md:hidden pointer-events-none">
@@ -20,6 +19,6 @@ export function HomePage() {
             <ThemeToggle />
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }

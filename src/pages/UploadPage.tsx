@@ -1,13 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 export function UploadPage() {
   const navigate = useNavigate();
@@ -15,12 +15,13 @@ export function UploadPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [caption, setCaption] = useState('');
+  const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // 5MB Limit for this demo due to DO storage constraints (SQLite backend handles more but let's be safe on network)
+    // 5MB Limit for this demo due to DO storage constraints
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
       return;
@@ -58,11 +59,14 @@ export function UploadPage() {
       setIsSubmitting(true);
       // Convert to Base64
       const base64Video = await convertToBase64(videoFile);
+      // Parse tags
+      const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
       await api('/api/posts', {
         method: 'POST',
         body: JSON.stringify({
           videoUrl: base64Video,
           caption,
+          tags: tagList,
           userId: user.id,
         }),
       });
@@ -76,122 +80,137 @@ export function UploadPage() {
     }
   };
   return (
-    <AppLayout container>
-      <div className="max-w-4xl mx-auto py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Form Section */}
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
-              <p className="text-muted-foreground">Share your vibe with the world.</p>
-            </div>
-            <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="video-upload" className="flex items-center gap-2">
-                    <Film className="w-4 h-4 text-primary" />
-                    Select Video
-                  </Label>
-                  {!videoFile ? (
-                    <div 
-                      className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Upload className="w-10 h-10 text-muted-foreground mb-4" />
-                      <p className="text-sm font-medium">Click to upload video</p>
-                      <p className="text-xs text-muted-foreground mt-1">MP4, WebM up to 5MB</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <Film className="w-5 h-5 text-primary shrink-0" />
-                        <span className="text-sm truncate">{videoFile.name}</span>
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={clearFile}
-                        className="hover:bg-red-500/20 hover:text-red-500"
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Form Section */}
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
+                <p className="text-muted-foreground">Share your vibe with the world.</p>
+              </div>
+              <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="video-upload" className="flex items-center gap-2">
+                      <Film className="w-4 h-4 text-primary" />
+                      Select Video
+                    </Label>
+                    {!videoFile ? (
+                      <div 
+                        className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
                       >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    id="video-upload"
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="caption" className="flex items-center gap-2">
-                    <Type className="w-4 h-4 text-primary" />
-                    Caption
-                  </Label>
-                  <Textarea
-                    id="caption"
-                    placeholder="What's on your mind? #pulse"
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    className="bg-secondary/50 border-white/10 min-h-[120px]"
-                  />
-                </div>
-                <div className="pt-4">
-                  <Button
-                    type="submit"
-                    className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600 shadow-glow transition-all duration-300"
-                    disabled={isSubmitting || !videoFile}
-                  >
-                    {isSubmitting ? (
-                      <span className="flex items-center gap-2">
-                        <Sparkles className="w-5 h-5 animate-spin" />
-                        Pulsing...
-                      </span>
+                        <Upload className="w-10 h-10 text-muted-foreground mb-4" />
+                        <p className="text-sm font-medium">Click to upload video</p>
+                        <p className="text-xs text-muted-foreground mt-1">MP4, WebM up to 5MB</p>
+                      </div>
                     ) : (
-                      <span className="flex items-center gap-2">
-                        <Upload className="w-5 h-5" />
-                        Pulse It
-                      </span>
+                      <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <Film className="w-5 h-5 text-primary shrink-0" />
+                          <span className="text-sm truncate">{videoFile.name}</span>
+                        </div>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={clearFile}
+                          className="hover:bg-red-500/20 hover:text-red-500"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
-                  </Button>
-                </div>
-              </form>
-            </Card>
-          </div>
-          {/* Preview Section */}
-          <div className="flex flex-col items-center justify-center">
-            <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-              {previewUrl ? (
-                <video
-                  src={previewUrl}
-                  className="w-full h-full object-cover"
-                  controls
-                  autoPlay
-                  muted
-                  loop
-                />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-secondary/20">
-                  <Film className="w-12 h-12 mb-4 opacity-20" />
-                  <p className="text-sm">Preview will appear here</p>
-                </div>
-              )}
-              {/* Mock Overlay for Preview */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-                <div className="space-y-2">
-                  <div className="h-4 w-24 bg-white/20 rounded animate-pulse" />
-                  <div className="h-3 w-48 bg-white/20 rounded animate-pulse" />
+                    <input 
+                      ref={fileInputRef}
+                      id="video-upload" 
+                      type="file" 
+                      accept="video/*" 
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="caption" className="flex items-center gap-2">
+                      <Type className="w-4 h-4 text-primary" />
+                      Caption
+                    </Label>
+                    <Textarea
+                      id="caption"
+                      placeholder="What's on your mind?"
+                      value={caption}
+                      onChange={(e) => setCaption(e.target.value)}
+                      className="bg-secondary/50 border-white/10 min-h-[100px]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tags" className="flex items-center gap-2">
+                      <Hash className="w-4 h-4 text-primary" />
+                      Tags
+                    </Label>
+                    <Input
+                      id="tags"
+                      placeholder="cyberpunk, neon, vibes (comma separated)"
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      className="bg-secondary/50 border-white/10"
+                    />
+                  </div>
+                  <div className="pt-4">
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600 shadow-glow transition-all duration-300"
+                      disabled={isSubmitting || !videoFile}
+                    >
+                      {isSubmitting ? (
+                        <span className="flex items-center gap-2">
+                          <Sparkles className="w-5 h-5 animate-spin" />
+                          Pulsing...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Upload className="w-5 h-5" />
+                          Pulse It
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </div>
+            {/* Preview Section */}
+            <div className="flex flex-col items-center justify-center">
+              <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                {previewUrl ? (
+                  <video 
+                    src={previewUrl} 
+                    className="w-full h-full object-cover"
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-secondary/20">
+                    <Film className="w-12 h-12 mb-4 opacity-20" />
+                    <p className="text-sm">Preview will appear here</p>
+                  </div>
+                )}
+                {/* Mock Overlay for Preview */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
+                  <div className="space-y-2">
+                    <div className="h-4 w-24 bg-white/20 rounded animate-pulse" />
+                    <div className="h-3 w-48 bg-white/20 rounded animate-pulse" />
+                  </div>
                 </div>
               </div>
+              <p className="mt-4 text-sm text-muted-foreground">Mobile Preview</p>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">Mobile Preview</p>
           </div>
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }

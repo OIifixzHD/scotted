@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { api } from '@/lib/api-client';
 import type { Chat, ChatMessage, User } from '@shared/types';
 import { cn } from '@/lib/utils';
@@ -87,7 +86,7 @@ export function MessagesPage() {
   };
   const selectedChat = chats.find(c => c.id === selectedChatId);
   return (
-    <AppLayout container={false} className="h-full">
+    <div className="h-full w-full">
       <div className="flex h-full max-w-7xl mx-auto w-full bg-black/40 backdrop-blur-xl border-x border-white/5 overflow-hidden">
         {/* Sidebar - Chat List */}
         <div className={cn(
@@ -241,7 +240,7 @@ export function MessagesPage() {
               {/* Input Area */}
               <div className="p-4 bg-black/20 backdrop-blur-md border-t border-white/5">
                 <form onSubmit={handleSendMessage} className="flex gap-2 items-end max-w-4xl mx-auto">
-                  <Input
+                  <Input 
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="Type a message..."
@@ -271,6 +270,6 @@ export function MessagesPage() {
           )}
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }

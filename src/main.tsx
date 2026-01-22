@@ -21,39 +21,13 @@ import { LoginPage } from '@/pages/LoginPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { RootLayout } from '@/components/layout/RootLayout'
 const router = createBrowserRouter([
   {
     element: <Outlet />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      {
-        path: "/",
-        element: <HomePage />,
-      },
-      {
-        path: "/discover",
-        element: <DiscoverPage />,
-      },
-      {
-        path: "/upload",
-        element: (
-          <ProtectedRoute>
-            <UploadPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/messages",
-        element: (
-          <ProtectedRoute>
-            <MessagesPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "/profile/:id",
-        element: <ProfilePage />,
-      },
+      // Public Routes (No Sidebar)
       {
         path: "/signup",
         element: <SignUpPage />,
@@ -62,6 +36,40 @@ const router = createBrowserRouter([
         path: "/login",
         element: <LoginPage />,
       },
+      // Protected/App Routes (With Sidebar & Transitions)
+      {
+        element: <RootLayout />,
+        children: [
+          {
+            path: "/",
+            element: <HomePage />,
+          },
+          {
+            path: "/discover",
+            element: <DiscoverPage />,
+          },
+          {
+            path: "/upload",
+            element: (
+              <ProtectedRoute>
+                <UploadPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "/messages",
+            element: (
+              <ProtectedRoute>
+                <MessagesPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "/profile/:id",
+            element: <ProfilePage />,
+          },
+        ]
+      }
     ]
   }
 ]);
