@@ -3,7 +3,6 @@ import { VideoCard } from './VideoCard';
 import { api } from '@/lib/api-client';
 import type { Post } from '@shared/types';
 import { Loader2 } from 'lucide-react';
-import { useIntersection } from 'react-use';
 export function FeedContainer() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);

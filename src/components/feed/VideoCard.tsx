@@ -6,6 +6,7 @@ import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -123,7 +124,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       {/* Right Sidebar Actions */}
       <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
         <div className="flex flex-col items-center gap-1">
-            <div className="relative">
+            <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
                 <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
                     <AvatarImage src={post.user?.avatar} />
                     <AvatarFallback>{post.user?.name?.substring(0, 2) ?? 'U'}</AvatarFallback>
@@ -133,7 +134,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
                         <span className="text-[10px] font-bold text-red-500">+</span>
                     </div>
                 </div>
-            </div>
+            </Link>
         </div>
         <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
           <div className={cn(
@@ -160,16 +161,20 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       {/* Bottom Info Area */}
       <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent">
         <div className="max-w-[80%] space-y-2">
-          <h3 className="text-lg font-bold text-white text-shadow hover:underline cursor-pointer">
-            @{post.user?.name ?? 'unknown'}
-          </h3>
+          <Link to={`/profile/${post.userId}`}>
+            <h3 className="text-lg font-bold text-white text-shadow hover:underline cursor-pointer inline-block">
+              @{post.user?.name ?? 'unknown'}
+            </h3>
+          </Link>
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {post.caption}
           </p>
           <div className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2">
             <Music2 className="w-3 h-3 animate-spin-slow" />
             <div className="overflow-hidden w-32">
-                <p className="animate-marquee whitespace-nowrap">Original Sound - {post.user?.name} • Pulse Original Audio</p>
+                <p className="animate-marquee whitespace-nowrap">
+                  Original Sound - {post.user?.name ?? 'Unknown User'} • Pulse Original Audio
+                </p>
             </div>
           </div>
         </div>

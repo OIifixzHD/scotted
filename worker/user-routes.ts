@@ -14,6 +14,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/users/:id', async (c) => {
     const id = c.req.param('id');
+    // Ensure seeds exist in case of direct navigation to profile
+    await UserEntity.ensureSeed(c.env);
     const user = new UserEntity(c.env, id);
     if (!await user.exists()) return notFound(c, 'User not found');
     return ok(c, await user.getState());
@@ -98,6 +100,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // CHATS
   app.get('/api/chats', async (c) => {
     await ChatBoardEntity.ensureSeed(c.env);
+    // Also ensure users exist so the messaging page works correctly with the hardcoded user
+    await UserEntity.ensureSeed(c.env);
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
     const page = await ChatBoardEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
