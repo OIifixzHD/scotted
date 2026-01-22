@@ -6,7 +6,8 @@ import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
   RouterProvider,
-  Outlet
+  Outlet,
+  Navigate
 } from "react-router-dom";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
@@ -16,7 +17,17 @@ import { DiscoverPage } from '@/pages/DiscoverPage'
 import { UploadPage } from '@/pages/UploadPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { MessagesPage } from '@/pages/MessagesPage'
+import { SignUpPage } from '@/pages/SignUpPage'
+import { LoginPage } from '@/pages/LoginPage'
 import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider, useAuth } from '@/context/AuthContext'
+// Protected Route Wrapper
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null; // Or a loading spinner
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
 const router = createBrowserRouter([
   {
     element: <Outlet />,
@@ -32,15 +43,31 @@ const router = createBrowserRouter([
       },
       {
         path: "/upload",
-        element: <UploadPage />,
+        element: (
+          <ProtectedRoute>
+            <UploadPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "/messages",
-        element: <MessagesPage />,
+        element: (
+          <ProtectedRoute>
+            <MessagesPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "/profile/:id",
         element: <ProfilePage />,
+      },
+      {
+        path: "/signup",
+        element: <SignUpPage />,
+      },
+      {
+        path: "/login",
+        element: <LoginPage />,
       },
     ]
   }
@@ -48,8 +75,10 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <RouterProvider router={router} />
-      <Toaster richColors closeButton theme="dark" />
+      <AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster richColors closeButton theme="dark" />
+      </AuthProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

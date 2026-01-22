@@ -6,6 +6,7 @@ export interface ApiResponse<T = unknown> {
 export interface User {
   id: string;
   name: string;
+  password?: string; // Added for auth
   avatar?: string;
   bio?: string;
   followers?: number;
@@ -14,7 +15,7 @@ export interface User {
 export interface Post {
   id: string;
   userId: string;
-  videoUrl: string;
+  videoUrl: string; // Can be a URL or a Base64 Data URI
   caption: string;
   likes: number;
   comments: number;

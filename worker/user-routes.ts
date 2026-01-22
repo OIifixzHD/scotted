@@ -2,37 +2,90 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
+import type { User } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
-  // USERS
+  // --- AUTHENTICATION ---
+  app.post('/api/auth/signup', async (c) => {
+    const { username, password, bio } = await c.req.json() as { username?: string; password?: string; bio?: string };
+    if (!username?.trim() || !password?.trim()) {
+      return bad(c, 'Username and password are required');
+    }
+    const existing = await UserEntity.findByUsername(c.env, username.trim());
+    if (existing) {
+      return bad(c, 'Username already taken');
+    }
+    const newUser: User = {
+      id: crypto.randomUUID(),
+      name: username.trim(),
+      password: password.trim(), // In a real app, hash this!
+      bio: bio?.trim() || 'New to Pulse',
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
+      followers: 0,
+      following: 0
+    };
+    const created = await UserEntity.create(c.env, newUser);
+    // Don't return password
+    const { password: _, ...safeUser } = created;
+    return ok(c, safeUser);
+  });
+  app.post('/api/auth/login', async (c) => {
+    const { username, password } = await c.req.json() as { username?: string; password?: string };
+    if (!username?.trim() || !password?.trim()) {
+      return bad(c, 'Username and password are required');
+    }
+    const user = await UserEntity.findByUsername(c.env, username.trim());
+    // Simple password check (plain text for this phase as per constraints, ideally hashed)
+    // Also allow login for seed users who might not have passwords set in the seed data (optional fallback)
+    if (!user || (user.password && user.password !== password)) {
+      // If it's a seed user without a password, we might allow it for demo purposes, 
+      // but let's enforce security if a password exists.
+      // For seed users (u1, u2, etc) they don't have passwords in seedData.
+      // Let's assume seed users can be logged in with ANY password for now to unblock testing,
+      // OR we require them to have passwords. 
+      // Better: If user has NO password (seed), allow. If user HAS password, check it.
+      if (user && user.password && user.password !== password) {
+         return bad(c, 'Invalid credentials');
+      }
+      if (!user) {
+        return bad(c, 'User not found');
+      }
+    }
+    const { password: _, ...safeUser } = user;
+    return ok(c, safeUser);
+  });
+  // --- USERS ---
   app.get('/api/users', async (c) => {
     await UserEntity.ensureSeed(c.env);
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
     const page = await UserEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    return ok(c, page);
+    // Strip passwords
+    const safeItems = page.items.map(u => {
+      const { password, ...rest } = u;
+      return rest;
+    });
+    return ok(c, { ...page, items: safeItems });
   });
   app.get('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    // Ensure seeds exist in case of direct navigation to profile
     await UserEntity.ensureSeed(c.env);
     const user = new UserEntity(c.env, id);
     if (!await user.exists()) return notFound(c, 'User not found');
-    return ok(c, await user.getState());
-  });
-  app.post('/api/users', async (c) => {
-    const { name } = (await c.req.json()) as { name?: string };
-    if (!name?.trim()) return bad(c, 'name required');
-    return ok(c, await UserEntity.create(c.env, { id: crypto.randomUUID(), name: name.trim() }));
+    const data = await user.getState();
+    const { password, ...safeUser } = data;
+    return ok(c, safeUser);
   });
   app.post('/api/users/:id/follow', async (c) => {
     const id = c.req.param('id');
+    const { currentUserId } = await c.req.json() as { currentUserId?: string };
+    if (!currentUserId) return bad(c, 'currentUserId required');
     const targetUser = new UserEntity(c.env, id);
     if (!await targetUser.exists()) return notFound(c, 'User not found');
     // Increment followers on target
     await targetUser.mutate(s => ({ ...s, followers: (s.followers || 0) + 1 }));
-    // Increment following on current user (hardcoded 'u1' for demo)
-    const currentUser = new UserEntity(c.env, 'u1');
+    // Increment following on current user
+    const currentUser = new UserEntity(c.env, currentUserId);
     if (await currentUser.exists()) {
         await currentUser.mutate(s => ({ ...s, following: (s.following || 0) + 1 }));
     }
@@ -40,35 +93,36 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');
-    // In a real app, we would use an index. For this demo, we list all and filter.
-    // Ensure seeds exist first
     await PostEntity.ensureSeed(c.env);
-    const page = await PostEntity.list(c.env, null, 100); // Fetch up to 100 posts to filter
+    const page = await PostEntity.list(c.env, null, 100); 
     const userPosts = page.items.filter(p => p.userId === userId);
-    // Hydrate with user data (though we know the user)
     const userEntity = new UserEntity(c.env, userId);
     const userData = await userEntity.getState();
-    const hydrated = userPosts.map(p => ({ ...p, user: userData }));
+    const { password, ...safeUser } = userData;
+    const hydrated = userPosts.map(p => ({ ...p, user: safeUser }));
     return ok(c, { items: hydrated, next: null });
   });
-  // FEED / POSTS
+  // --- FEED / POSTS ---
   app.get('/api/feed', async (c) => {
     await PostEntity.ensureSeed(c.env);
-    await UserEntity.ensureSeed(c.env); // Ensure users exist for hydration
+    await UserEntity.ensureSeed(c.env);
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
-    const page = await PostEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : 10);
-    // Hydrate posts with user data
+    // Fetch more posts to ensure we have enough valid ones
+    const page = await PostEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : 20);
     const hydratedPosts = await Promise.all(page.items.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
             if (await userEntity.exists()) {
                 const userData = await userEntity.getState();
-                return { ...post, user: userData };
+                const { password, ...safeUser } = userData;
+                return { ...post, user: safeUser };
             }
         }
         return post;
     }));
+    // Sort by newest first
+    hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
     return ok(c, { ...page, items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
@@ -76,6 +130,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!body.videoUrl || !body.userId) {
         return bad(c, 'videoUrl and userId are required');
     }
+    // SQLite DOs can handle large values, so we can store the base64 string directly.
+    // In a production app, we'd use R2, but for this demo/template constraint, this works.
     const newPost = {
         id: crypto.randomUUID(),
         userId: body.userId,
@@ -97,10 +153,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const updated = await post.mutate(s => ({ ...s, likes: s.likes + 1 }));
     return ok(c, updated);
   });
-  // CHATS
+  // --- CHATS ---
   app.get('/api/chats', async (c) => {
     await ChatBoardEntity.ensureSeed(c.env);
-    // Also ensure users exist so the messaging page works correctly with the hardcoded user
     await UserEntity.ensureSeed(c.env);
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
@@ -113,7 +168,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const created = await ChatBoardEntity.create(c.env, { id: crypto.randomUUID(), title: title.trim(), messages: [] });
     return ok(c, { id: created.id, title: created.title });
   });
-  // MESSAGES
   app.get('/api/chats/:chatId/messages', async (c) => {
     const chat = new ChatBoardEntity(c.env, c.req.param('chatId'));
     if (!await chat.exists()) return notFound(c, 'chat not found');

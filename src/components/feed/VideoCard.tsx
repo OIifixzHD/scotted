@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -19,6 +19,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   // Initialize liked state from local storage
   useEffect(() => {
     const storedLike = localStorage.getItem(`liked_post_${post.id}`);
@@ -29,36 +31,43 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   }, [post.id, post.likes]);
   // Handle Play/Pause based on active state
   useEffect(() => {
+    if (!videoRef.current || hasError) return;
     if (isActive) {
-      const playPromise = videoRef.current?.play();
+      const playPromise = videoRef.current.play();
       if (playPromise !== undefined) {
         playPromise
-          .then(() => setIsPlaying(true))
+          .then(() => {
+            setIsPlaying(true);
+            // If playing but muted, show hint briefly
+            if (isMuted) {
+                setShowUnmuteHint(true);
+                setTimeout(() => setShowUnmuteHint(false), 3000);
+            }
+          })
           .catch((error) => {
             console.warn("Autoplay prevented:", error);
             setIsPlaying(false);
+            // Browser prevented autoplay (usually due to sound). 
+            // We are already muted, so this might be a power saving mode or other restriction.
           });
       }
     } else {
-      videoRef.current?.pause();
+      videoRef.current.pause();
       setIsPlaying(false);
+      if (videoRef.current) videoRef.current.currentTime = 0; // Reset for next view
     }
-  }, [isActive]);
+  }, [isActive, hasError, isMuted]);
   const handleLike = async () => {
-    if (isLiked) return; // Prevent double liking for this demo (or implement unlike)
-    // Optimistic Update
+    if (isLiked) return; 
     setIsLiked(true);
     setLikeCount(prev => prev + 1);
     setShowHeartAnimation(true);
     setTimeout(() => setShowHeartAnimation(false), 800);
-    // Persist locally
     localStorage.setItem(`liked_post_${post.id}`, 'true');
-    // API Call
     try {
       await api(`/api/posts/${post.id}/like`, { method: 'POST' });
     } catch (error) {
       console.error('Failed to like post:', error);
-      // Revert on error
       setIsLiked(false);
       setLikeCount(prev => prev - 1);
       localStorage.removeItem(`liked_post_${post.id}`);
@@ -73,7 +82,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
     }
   };
   const togglePlay = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !hasError) {
       if (isPlaying) {
         videoRef.current.pause();
         setIsPlaying(false);
@@ -83,30 +92,56 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       }
     }
   };
+  const handleError = () => {
+    console.error(`Video failed to load: ${post.videoUrl}`);
+    setHasError(true);
+    setIsPlaying(false);
+  };
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl">
       {/* Video Player */}
-      <div 
-        className="absolute inset-0 cursor-pointer"
+      <div
+        className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
       >
-        <video
-          ref={videoRef}
-          src={post.videoUrl}
-          className="w-full h-full object-cover"
-          loop
-          muted={isMuted}
-          playsInline
-        />
+        {!hasError ? (
+            <video
+              ref={videoRef}
+              src={post.videoUrl}
+              className="w-full h-full object-cover"
+              loop
+              muted={isMuted}
+              playsInline
+              onError={handleError}
+            />
+        ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900">
+                <AlertCircle className="w-12 h-12 mb-2 opacity-50" />
+                <p className="text-sm">Video unavailable</p>
+            </div>
+        )}
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80 pointer-events-none" />
         {/* Play/Pause Indicator */}
-        {!isPlaying && (
+        {!isPlaying && !hasError && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20">
                 <Play className="w-16 h-16 text-white/80 fill-white/80" />
             </div>
         )}
+        {/* Unmute Hint */}
+        <AnimatePresence>
+            {showUnmuteHint && isPlaying && isMuted && (
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full pointer-events-none"
+                >
+                    <p className="text-white text-sm font-medium">Tap to unmute</p>
+                </motion.div>
+            )}
+        </AnimatePresence>
         {/* Big Heart Animation */}
         <AnimatePresence>
           {showHeartAnimation && (
@@ -180,7 +215,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         </div>
       </div>
       {/* Mute Toggle */}
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >

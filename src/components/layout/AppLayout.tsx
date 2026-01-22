@@ -18,7 +18,7 @@ export function AppLayout({ children, container = false, className, contentClass
           <SidebarTrigger className="bg-black/50 backdrop-blur-md text-white border border-white/10" />
         </div>
         <main className={cn(
-          "flex-1 h-full overflow-hidden", 
+          "flex-1 h-full overflow-hidden",
           container ? "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12" : "",
           contentClassName
         )}>
