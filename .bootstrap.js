@@ -79,7 +79,8 @@ function updateWranglerJsonc() {
 function runSetupCommands() {
     const commands = [
     "bun add react-intersection-observer@^9.8.0",
-    "bun add react-masonry-css@^1.0.16"
+    "bun add react-masonry-css@^1.0.16",
+    "bun add react-dropzone@^14.2.3"
 ];
     
     if (commands.length === 0) {
