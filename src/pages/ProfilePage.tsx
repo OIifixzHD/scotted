@@ -9,6 +9,7 @@ import type { User, Post } from '@shared/types';
 import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
+import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, logout } = useAuth();
@@ -17,6 +18,7 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -41,7 +43,7 @@ export function ProfilePage() {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, currentUser]); // Re-fetch if currentUser changes (e.g. after edit)
   const handleFollow = async () => {
     if (!id || !user) return;
     // Toggle state
@@ -121,19 +123,23 @@ export function ProfilePage() {
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         {user.name}
-                        <span className="text-blue-400 text-base">✓</span>
+                        <span className="text-blue-400 text-base">���</span>
                       </h1>
                       <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
                     </div>
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button variant="outline" className="border-white/10 text-white hover:bg-white/5 gap-2">
+                          <Button 
+                            variant="outline" 
+                            className="border-white/10 text-white hover:bg-white/5 gap-2"
+                            onClick={() => setIsEditDialogOpen(true)}
+                          >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button
-                            variant="destructive"
+                          <Button 
+                            variant="destructive" 
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -143,7 +149,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button
+                          <Button 
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                           >
@@ -199,14 +205,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger
-                value="videos"
+              <TabsTrigger 
+                value="videos" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger
-                value="liked"
+              <TabsTrigger 
+                value="liked" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
@@ -223,6 +229,14 @@ export function ProfilePage() {
           </Tabs>
         </div>
       </div>
+      {/* Edit Profile Dialog */}
+      {currentUser && (
+        <EditProfileDialog 
+          open={isEditDialogOpen} 
+          onOpenChange={setIsEditDialogOpen} 
+          currentUser={currentUser} 
+        />
+      )}
     </div>
   );
 }

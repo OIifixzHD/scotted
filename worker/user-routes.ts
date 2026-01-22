@@ -119,6 +119,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { password, ...safeUser } = data;
     return ok(c, safeUser);
   });
+  // NEW: Update User Profile
+  app.put('/api/users/:id', async (c) => {
+    const id = c.req.param('id');
+    const { name, bio, avatar } = await c.req.json() as { name?: string; bio?: string; avatar?: string };
+    if (!name?.trim()) {
+      return bad(c, 'Name is required');
+    }
+    const userEntity = new UserEntity(c.env, id);
+    if (!await userEntity.exists()) {
+      return notFound(c, 'User not found');
+    }
+    const updated = await userEntity.mutate(s => ({
+      ...s,
+      name: name.trim(),
+      bio: bio?.trim(),
+      avatar: avatar || s.avatar // Keep existing if not provided
+    }));
+    const { password, ...safeUser } = updated;
+    return ok(c, safeUser);
+  });
   app.post('/api/users/:id/follow', async (c) => {
     const id = c.req.param('id');
     const { currentUserId } = await c.req.json() as { currentUserId?: string };
