@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { VideoCard } from './VideoCard';
+import { FeedSkeleton } from './FeedSkeleton';
 import { api } from '@/lib/api-client';
 import type { Post } from '@shared/types';
-import { Loader2 } from 'lucide-react';
 export function FeedContainer() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,8 +52,8 @@ export function FeedContainer() {
   }, [posts]);
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="h-full w-full bg-black py-4 md:py-8">
+         <FeedSkeleton />
       </div>
     );
   }
@@ -65,18 +65,18 @@ export function FeedContainer() {
     );
   }
   return (
-    <div 
+    <div
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black"
     >
       {posts.map((post) => (
-        <div 
-            key={post.id} 
+        <div
+            key={post.id}
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
-          <VideoCard 
-            post={post} 
+          <VideoCard
+            post={post}
             isActive={activeVideoId === post.id}
             isMuted={isMuted}
             toggleMute={() => setIsMuted(!isMuted)}

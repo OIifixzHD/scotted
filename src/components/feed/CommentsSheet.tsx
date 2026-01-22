@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -28,12 +28,7 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
   const [submitting, setSubmitting] = useState(false);
   const [text, setText] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (open && postId) {
-      fetchComments();
-    }
-  }, [open, postId]);
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api<Comment[]>(`/api/posts/${postId}/comments`);
@@ -45,7 +40,12 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId]);
+  useEffect(() => {
+    if (open && postId) {
+      fetchComments();
+    }
+  }, [open, postId, fetchComments]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!text.trim() || !user) return;

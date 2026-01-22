@@ -104,11 +104,13 @@ export function ProfilePage() {
             <div className="h-48 md:h-64 w-full rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 overflow-hidden relative">
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+              {/* Animated Pulse Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-teal-500/20 animate-pulse pointer-events-none"></div>
             </div>
             {/* Profile Info */}
             <div className="px-4 md:px-8 pb-4">
               <div className="relative -mt-16 mb-4 flex flex-col md:flex-row md:items-end gap-4 md:gap-8">
-                <Avatar className="w-32 h-32 border-4 border-background shadow-2xl">
+                <Avatar className="w-32 h-32 border-4 border-background shadow-2xl animate-neon-pulse">
                   <AvatarImage src={user.avatar} className="object-cover" />
                   <AvatarFallback className="text-2xl bg-purple-900 text-white">
                     {user.name.substring(0, 2).toUpperCase()}
@@ -119,7 +121,7 @@ export function ProfilePage() {
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         {user.name}
-                        <span className="text-blue-400 text-base">��</span>
+                        <span className="text-blue-400 text-base">✓</span>
                       </h1>
                       <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
                     </div>
@@ -130,8 +132,8 @@ export function ProfilePage() {
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -141,7 +143,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button 
+                          <Button
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                           >
@@ -197,14 +199,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger 
-                value="videos" 
+              <TabsTrigger
+                value="videos"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger 
-                value="liked" 
+              <TabsTrigger
+                value="liked"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
