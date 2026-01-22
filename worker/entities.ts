@@ -3,7 +3,7 @@
  */
 import { IndexedEntity, Index } from "./core-utils";
 import type { Env } from "./core-utils";
-import type { User, Chat, ChatMessage, Post } from "@shared/types";
+import type { User, Chat, ChatMessage, Post, Comment } from "@shared/types";
 import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/mock-data";
 // USER ENTITY
 export class UserEntity extends IndexedEntity<User> {
@@ -29,8 +29,8 @@ export class UserEntity extends IndexedEntity<User> {
     // For demo scale, we fetch a large batch and filter in memory
     const { items: users } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return users.filter(u => 
-      u.name.toLowerCase().includes(lowerQuery) || 
+    return users.filter(u =>
+      u.name.toLowerCase().includes(lowerQuery) ||
       (u.bio && u.bio.toLowerCase().includes(lowerQuery))
     );
   }
@@ -47,7 +47,8 @@ export class PostEntity extends IndexedEntity<Post> {
     likes: 0,
     comments: 0,
     shares: 0,
-    createdAt: 0
+    createdAt: 0,
+    commentsList: []
   };
   static seedData = MOCK_POSTS;
   /**
@@ -57,10 +58,36 @@ export class PostEntity extends IndexedEntity<Post> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return posts.filter(p => 
+    return posts.filter(p =>
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );
+  }
+  /**
+   * Add a comment to the post
+   */
+  async addComment(userId: string, text: string, userSnapshot: User): Promise<Comment> {
+    const newComment: Comment = {
+      id: crypto.randomUUID(),
+      postId: this.id,
+      userId,
+      text,
+      createdAt: Date.now(),
+      user: userSnapshot
+    };
+    await this.mutate(state => ({
+      ...state,
+      comments: (state.comments || 0) + 1,
+      commentsList: [...(state.commentsList || []), newComment]
+    }));
+    return newComment;
+  }
+  /**
+   * Get all comments for this post
+   */
+  async getComments(): Promise<Comment[]> {
+    const state = await this.getState();
+    return state.commentsList || [];
   }
 }
 // CHAT BOARD ENTITY

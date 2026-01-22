@@ -12,6 +12,14 @@ export interface User {
   followers?: number;
   following?: number;
 }
+export interface Comment {
+  id: string;
+  postId: string;
+  userId: string;
+  text: string;
+  createdAt: number;
+  user?: User; // Snapshot of user data for display
+}
 export interface Post {
   id: string;
   userId: string;
@@ -23,6 +31,7 @@ export interface Post {
   user?: User; // Hydrated user data
   tags?: string[];
   createdAt: number;
+  commentsList?: Comment[]; // List of comments
 }
 export interface Chat {
   id: string;

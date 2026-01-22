@@ -182,7 +182,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         comments: 0,
         shares: 0,
         createdAt: Date.now(),
-        tags: body.tags || []
+        tags: body.tags || [],
+        commentsList: []
     };
     const created = await PostEntity.create(c.env, newPost);
     return ok(c, created);
@@ -193,6 +194,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await post.exists()) return notFound(c, 'Post not found');
     const updated = await post.mutate(s => ({ ...s, likes: s.likes + 1 }));
     return ok(c, updated);
+  });
+  // --- COMMENTS ---
+  app.get('/api/posts/:id/comments', async (c) => {
+    const id = c.req.param('id');
+    const post = new PostEntity(c.env, id);
+    if (!await post.exists()) return notFound(c, 'Post not found');
+    const comments = await post.getComments();
+    return ok(c, comments);
+  });
+  app.post('/api/posts/:id/comments', async (c) => {
+    const id = c.req.param('id');
+    const { userId, text } = await c.req.json() as { userId?: string; text?: string };
+    if (!userId || !text?.trim()) return bad(c, 'userId and text required');
+    const post = new PostEntity(c.env, id);
+    if (!await post.exists()) return notFound(c, 'Post not found');
+    // Get user details for snapshot
+    const userEntity = new UserEntity(c.env, userId);
+    if (!await userEntity.exists()) return bad(c, 'User not found');
+    const userData = await userEntity.getState();
+    const { password, ...safeUser } = userData;
+    const comment = await post.addComment(userId, text.trim(), safeUser);
+    return ok(c, comment);
   });
   // --- CHATS ---
   app.get('/api/chats', async (c) => {

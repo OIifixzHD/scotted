@@ -8,6 +8,7 @@ import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { ShareDialog } from './ShareDialog';
+import { CommentsSheet } from './CommentsSheet';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -19,12 +20,14 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
+  const [commentCount, setCommentCount] = useState(post.comments);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   // New state for Phase 9
   const [progress, setProgress] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   // Initialize liked state from local storage
   useEffect(() => {
     const storedLike = localStorage.getItem(`liked_post_${post.id}`);
@@ -32,7 +35,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       setIsLiked(true);
     }
     setLikeCount(post.likes);
-  }, [post.id, post.likes]);
+    setCommentCount(post.comments);
+  }, [post.id, post.likes, post.comments]);
   // Handle Play/Pause based on active state
   useEffect(() => {
     if (!videoRef.current || hasError) return;
@@ -113,7 +117,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl">
       {/* Video Player */}
-      <div
+      <div 
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -201,11 +205,14 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button className="flex flex-col items-center gap-1 group">
+        <button 
+          onClick={() => setIsCommentsOpen(true)}
+          className="flex flex-col items-center gap-1 group"
+        >
           <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
             <MessageCircle className="w-7 h-7 fill-white/10" />
           </div>
-          <span className="text-xs font-medium text-white text-shadow">{post.comments}</span>
+          <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
         <button 
           onClick={() => setIsShareOpen(true)}
@@ -239,7 +246,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         </div>
       </div>
       {/* Mute Toggle */}
-      <button
+      <button 
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
@@ -250,6 +257,13 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         open={isShareOpen} 
         onOpenChange={setIsShareOpen} 
         postId={post.id} 
+      />
+      {/* Comments Sheet */}
+      <CommentsSheet
+        postId={post.id}
+        open={isCommentsOpen}
+        onOpenChange={setIsCommentsOpen}
+        onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
     </div>
   );
