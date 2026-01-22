@@ -77,7 +77,10 @@ function updateWranglerJsonc() {
 }
 
 function runSetupCommands() {
-    const commands = [];
+    const commands = [
+    "bun add react-intersection-observer@^9.8.0",
+    "bun add react-masonry-css@^1.0.16"
+];
     
     if (commands.length === 0) {
         console.log('⊘ No setup commands to run');
