@@ -18,6 +18,7 @@ import { ProfilePage } from '@/pages/ProfilePage'
 import { MessagesPage } from '@/pages/MessagesPage'
 import { SignUpPage } from '@/pages/SignUpPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -69,6 +70,11 @@ const router = createBrowserRouter([
             element: <ProfilePage />,
           },
         ]
+      },
+      // 404 Catch-all
+      {
+        path: "*",
+        element: <NotFoundPage />
       }
     ]
   }

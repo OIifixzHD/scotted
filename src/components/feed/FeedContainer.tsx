@@ -3,6 +3,9 @@ import { VideoCard } from './VideoCard';
 import { FeedSkeleton } from './FeedSkeleton';
 import { api } from '@/lib/api-client';
 import type { Post } from '@shared/types';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { Film, Plus } from 'lucide-react';
 export function FeedContainer() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +64,27 @@ export function FeedContainer() {
     return (
       <div className="flex h-full items-center justify-center bg-background text-red-500">
         <p>Error: {error}</p>
+      </div>
+    );
+  }
+  if (posts.length === 0) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-black p-6 text-center space-y-6">
+        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center animate-pulse">
+          <Film className="w-10 h-10 text-muted-foreground" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-white">No Pulses Yet</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">
+            The feed is quiet. Be the first to start the trend and share your vibe!
+          </p>
+        </div>
+        <Button asChild className="bg-primary hover:bg-primary/90 shadow-glow">
+          <Link to="/upload">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Pulse
+          </Link>
+        </Button>
       </div>
     );
   }

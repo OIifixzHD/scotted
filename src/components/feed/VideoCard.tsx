@@ -52,6 +52,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
             }
           })
           .catch((error) => {
+            // Auto-play was prevented
             console.warn("Autoplay prevented:", error);
             setIsPlaying(false);
           });
@@ -259,9 +260,9 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         postId={post.id} 
       />
       {/* Comments Sheet */}
-      <CommentsSheet
-        postId={post.id}
-        open={isCommentsOpen}
+      <CommentsSheet 
+        postId={post.id} 
+        open={isCommentsOpen} 
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
