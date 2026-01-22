@@ -23,6 +23,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!name?.trim()) return bad(c, 'name required');
     return ok(c, await UserEntity.create(c.env, { id: crypto.randomUUID(), name: name.trim() }));
   });
+  app.get('/api/users/:id/posts', async (c) => {
+    const userId = c.req.param('id');
+    // In a real app, we would use an index. For this demo, we list all and filter.
+    // Ensure seeds exist first
+    await PostEntity.ensureSeed(c.env);
+    const page = await PostEntity.list(c.env, null, 100); // Fetch up to 100 posts to filter
+    const userPosts = page.items.filter(p => p.userId === userId);
+    // Hydrate with user data (though we know the user)
+    const userEntity = new UserEntity(c.env, userId);
+    const userData = await userEntity.getState();
+    const hydrated = userPosts.map(p => ({ ...p, user: userData }));
+    return ok(c, { items: hydrated, next: null });
+  });
   // FEED / POSTS
   app.get('/api/feed', async (c) => {
     await PostEntity.ensureSeed(c.env);
@@ -42,6 +55,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return post;
     }));
     return ok(c, { ...page, items: hydratedPosts });
+  });
+  app.post('/api/posts', async (c) => {
+    const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string };
+    if (!body.videoUrl || !body.userId) {
+        return bad(c, 'videoUrl and userId are required');
+    }
+    const newPost = {
+        id: crypto.randomUUID(),
+        userId: body.userId,
+        videoUrl: body.videoUrl,
+        caption: body.caption || '',
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        createdAt: Date.now(),
+        tags: []
+    };
+    const created = await PostEntity.create(c.env, newPost);
+    return ok(c, created);
   });
   // CHATS
   app.get('/api/chats', async (c) => {

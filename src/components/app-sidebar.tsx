@@ -1,5 +1,6 @@
 import React from "react";
 import { Home, Compass, PlusSquare, MessageCircle, User, Zap } from "lucide-react";
+import { NavLink } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -27,44 +28,84 @@ export function AppSidebar(): JSX.Element {
         <SidebarGroup>
           <SidebarMenu className="space-y-2">
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200">
-                <a href="#" className="flex items-center gap-3">
-                  <Home className="h-5 w-5" /> 
-                  <span>For You</span>
-                </a>
-              </SidebarMenuButton>
+              <NavLink to="/" end>
+                {({ isActive }) => (
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive} 
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <Home className="h-5 w-5" />
+                      <span>For You</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="h-12 px-4 text-base font-medium hover:bg-white/5 hover:text-purple-400 transition-all duration-200">
-                <a href="#" className="flex items-center gap-3">
-                  <Compass className="h-5 w-5" /> 
-                  <span>Discover</span>
-                </a>
-              </SidebarMenuButton>
+              <NavLink to="/discover">
+                {({ isActive }) => (
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive}
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <Compass className="h-5 w-5" />
+                      <span>Discover</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="h-12 px-4 text-base font-medium hover:bg-white/5 hover:text-purple-400 transition-all duration-200">
-                <a href="#" className="flex items-center gap-3">
-                  <PlusSquare className="h-5 w-5" /> 
-                  <span>Upload</span>
-                </a>
-              </SidebarMenuButton>
+              <NavLink to="/upload">
+                {({ isActive }) => (
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive}
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <PlusSquare className="h-5 w-5" />
+                      <span>Upload</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="h-12 px-4 text-base font-medium hover:bg-white/5 hover:text-purple-400 transition-all duration-200">
-                <a href="#" className="flex items-center gap-3">
-                  <MessageCircle className="h-5 w-5" /> 
-                  <span>Messages</span>
-                </a>
-              </SidebarMenuButton>
+              <NavLink to="/messages">
+                {({ isActive }) => (
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive}
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <MessageCircle className="h-5 w-5" />
+                      <span>Messages</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="h-12 px-4 text-base font-medium hover:bg-white/5 hover:text-purple-400 transition-all duration-200">
-                <a href="#" className="flex items-center gap-3">
-                  <User className="h-5 w-5" /> 
-                  <span>Profile</span>
-                </a>
-              </SidebarMenuButton>
+              <NavLink to="/profile/u1">
+                {({ isActive }) => (
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive}
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <User className="h-5 w-5" />
+                      <span>Profile</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
