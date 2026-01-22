@@ -13,20 +13,26 @@ export class UserEntity extends IndexedEntity<User> {
   static seedData = MOCK_USERS;
   /**
    * Helper to find a user by username.
-   * In a production app at scale, you would use a separate Index (e.g. "users-by-name")
-   * mapping name -> id. For this demo, we scan the existing list.
    */
   static async findByUsername(env: Env, username: string): Promise<User | null> {
-    // Ensure seeds exist so we can find default users too
     await this.ensureSeed(env);
-    // List all users (up to a reasonable limit for this demo)
-    // Since we are using a single DO, listing is fast.
     const idx = new Index<string>(env, this.indexName);
     const { items: ids } = await idx.page(null, 1000);
-    // Fetch all user states in parallel
     const users = await Promise.all(ids.map(id => new UserEntity(env, id).getState()));
-    // Find match (case-insensitive)
     return users.find(u => u.name.toLowerCase() === username.toLowerCase()) || null;
+  }
+  /**
+   * Search users by name or bio
+   */
+  static async search(env: Env, query: string): Promise<User[]> {
+    await this.ensureSeed(env);
+    // For demo scale, we fetch a large batch and filter in memory
+    const { items: users } = await this.list(env, null, 1000);
+    const lowerQuery = query.toLowerCase();
+    return users.filter(u => 
+      u.name.toLowerCase().includes(lowerQuery) || 
+      (u.bio && u.bio.toLowerCase().includes(lowerQuery))
+    );
   }
 }
 // POST ENTITY
@@ -44,6 +50,18 @@ export class PostEntity extends IndexedEntity<Post> {
     createdAt: 0
   };
   static seedData = MOCK_POSTS;
+  /**
+   * Search posts by caption or tags
+   */
+  static async search(env: Env, query: string): Promise<Post[]> {
+    await this.ensureSeed(env);
+    const { items: posts } = await this.list(env, null, 1000);
+    const lowerQuery = query.toLowerCase();
+    return posts.filter(p => 
+      (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
+      (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
+    );
+  }
 }
 // CHAT BOARD ENTITY
 export type ChatBoardState = Chat & { messages: ChatMessage[] };

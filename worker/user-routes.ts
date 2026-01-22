@@ -35,15 +35,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return bad(c, 'Username and password are required');
     }
     const user = await UserEntity.findByUsername(c.env, username.trim());
-    // Simple password check (plain text for this phase as per constraints, ideally hashed)
-    // Also allow login for seed users who might not have passwords set in the seed data (optional fallback)
     if (!user || (user.password && user.password !== password)) {
-      // If it's a seed user without a password, we might allow it for demo purposes, 
-      // but let's enforce security if a password exists.
-      // For seed users (u1, u2, etc) they don't have passwords in seedData.
-      // Let's assume seed users can be logged in with ANY password for now to unblock testing,
-      // OR we require them to have passwords. 
-      // Better: If user has NO password (seed), allow. If user HAS password, check it.
       if (user && user.password && user.password !== password) {
          return bad(c, 'Invalid credentials');
       }
@@ -53,6 +45,57 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const { password: _, ...safeUser } = user;
     return ok(c, safeUser);
+  });
+  // --- SEARCH & TRENDING ---
+  app.get('/api/search', async (c) => {
+    const q = c.req.query('q');
+    if (!q || q.trim().length === 0) {
+      return ok(c, { users: [], posts: [] });
+    }
+    const query = q.trim();
+    const [users, posts] = await Promise.all([
+      UserEntity.search(c.env, query),
+      PostEntity.search(c.env, query)
+    ]);
+    // Hydrate posts with user data
+    const hydratedPosts = await Promise.all(posts.map(async (post) => {
+        if (post.userId) {
+            const userEntity = new UserEntity(c.env, post.userId);
+            if (await userEntity.exists()) {
+                const userData = await userEntity.getState();
+                const { password, ...safeUser } = userData;
+                return { ...post, user: safeUser };
+            }
+        }
+        return post;
+    }));
+    // Strip passwords from users
+    const safeUsers = users.map(u => {
+        const { password, ...rest } = u;
+        return rest;
+    });
+    return ok(c, { users: safeUsers, posts: hydratedPosts });
+  });
+  app.get('/api/feed/trending', async (c) => {
+    await PostEntity.ensureSeed(c.env);
+    await UserEntity.ensureSeed(c.env);
+    // Get all posts (limit 100 for demo)
+    const page = await PostEntity.list(c.env, null, 100);
+    // Sort by likes descending
+    const sortedPosts = page.items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    // Hydrate
+    const hydratedPosts = await Promise.all(sortedPosts.map(async (post) => {
+        if (post.userId) {
+            const userEntity = new UserEntity(c.env, post.userId);
+            if (await userEntity.exists()) {
+                const userData = await userEntity.getState();
+                const { password, ...safeUser } = userData;
+                return { ...post, user: safeUser };
+            }
+        }
+        return post;
+    }));
+    return ok(c, { items: hydratedPosts });
   });
   // --- USERS ---
   app.get('/api/users', async (c) => {
@@ -94,7 +137,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');
     await PostEntity.ensureSeed(c.env);
-    const page = await PostEntity.list(c.env, null, 100); 
+    const page = await PostEntity.list(c.env, null, 100);
     const userPosts = page.items.filter(p => p.userId === userId);
     const userEntity = new UserEntity(c.env, userId);
     const userData = await userEntity.getState();
@@ -130,8 +173,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!body.videoUrl || !body.userId) {
         return bad(c, 'videoUrl and userId are required');
     }
-    // SQLite DOs can handle large values, so we can store the base64 string directly.
-    // In a production app, we'd use R2, but for this demo/template constraint, this works.
     const newPost = {
         id: crypto.randomUUID(),
         userId: body.userId,
