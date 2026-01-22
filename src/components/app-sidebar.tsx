@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn } from "lucide-react";
+import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn, LogOut } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -116,18 +116,25 @@ export function AppSidebar(): JSX.Element {
       </SidebarContent>
       <SidebarFooter className="p-6">
         {user ? (
-          <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-slate-900/50 p-4 border border-white/5">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-muted-foreground">Logged in as</p>
-              <button onClick={logout} className="text-xs text-red-400 hover:underline">Logout</button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8 border border-white/10">
+          <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-slate-900/50 p-4 border border-white/5 space-y-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border border-white/10">
                 <AvatarImage src={user.avatar} />
                 <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium text-white truncate">{user.name}</span>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-medium text-white truncate">{user.name}</span>
+                <span className="text-xs text-muted-foreground truncate">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
+              </div>
             </div>
+            <Button 
+              variant="destructive" 
+              className="w-full justify-start bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20"
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Log Out
+            </Button>
           </div>
         ) : (
           <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-slate-900/50 p-4 border border-white/5 space-y-3">

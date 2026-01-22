@@ -6,8 +6,7 @@ import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
   RouterProvider,
-  Outlet,
-  Navigate
+  Outlet
 } from "react-router-dom";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
@@ -20,14 +19,8 @@ import { MessagesPage } from '@/pages/MessagesPage'
 import { SignUpPage } from '@/pages/SignUpPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { Toaster } from '@/components/ui/sonner'
-import { AuthProvider, useAuth } from '@/context/AuthContext'
-// Protected Route Wrapper
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return null; // Or a loading spinner
-  if (!user) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
+import { AuthProvider } from '@/context/AuthContext'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
 const router = createBrowserRouter([
   {
     element: <Outlet />,

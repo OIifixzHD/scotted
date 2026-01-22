@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const { user: currentUser, logout } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +90,7 @@ export function ProfilePage() {
       </AppLayout>
     );
   }
+  const isOwnProfile = currentUser?.id === user.id;
   return (
     <AppLayout container>
       <div className="space-y-8">
@@ -112,20 +115,39 @@ export function ProfilePage() {
                   <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                       {user.name}
-                      <span className="text-blue-400 text-base">��</span>
+                      <span className="text-blue-400 text-base">✓</span>
                     </h1>
                     <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
                   </div>
                   <div className="flex gap-3">
-                    <Button 
-                      className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
-                      onClick={handleFollow}
-                    >
-                      {isFollowing ? "Following" : "Follow"}
-                    </Button>
-                    <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
-                      Message
-                    </Button>
+                    {isOwnProfile ? (
+                      <>
+                        <Button variant="outline" className="border-white/10 text-white hover:bg-white/5 gap-2">
+                          <Edit className="w-4 h-4" />
+                          Edit Profile
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
+                          onClick={logout}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Log Out
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
+                          onClick={handleFollow}
+                        >
+                          {isFollowing ? "Following" : "Follow"}
+                        </Button>
+                        <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
+                          Message
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -171,14 +193,14 @@ export function ProfilePage() {
         {/* Content Tabs */}
         <Tabs defaultValue="videos" className="w-full">
           <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-            <TabsTrigger 
-              value="videos" 
+            <TabsTrigger
+              value="videos"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
             >
               Videos
             </TabsTrigger>
-            <TabsTrigger 
-              value="liked" 
+            <TabsTrigger
+              value="liked"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
             >
               Liked
