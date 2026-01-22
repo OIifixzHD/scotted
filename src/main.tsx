@@ -15,6 +15,7 @@ import { HomePage } from '@/pages/HomePage'
 import { DiscoverPage } from '@/pages/DiscoverPage'
 import { UploadPage } from '@/pages/UploadPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { MessagesPage } from '@/pages/MessagesPage'
 import { Toaster } from '@/components/ui/sonner'
 const router = createBrowserRouter([
   {
@@ -32,6 +33,10 @@ const router = createBrowserRouter([
       {
         path: "/upload",
         element: <UploadPage />,
+      },
+      {
+        path: "/messages",
+        element: <MessagesPage />,
       },
       {
         path: "/profile/:id",

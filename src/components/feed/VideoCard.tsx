@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play } from 'lucide-react';
-import { useIntersection } from 'react-use';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { api } from '@/lib/api-client';
+import { toast } from 'sonner';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -15,7 +16,16 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likes);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  // Initialize liked state from local storage
+  useEffect(() => {
+    const storedLike = localStorage.getItem(`liked_post_${post.id}`);
+    if (storedLike === 'true') {
+      setIsLiked(true);
+    }
+    setLikeCount(post.likes);
+  }, [post.id, post.likes]);
   // Handle Play/Pause based on active state
   useEffect(() => {
     if (isActive) {
@@ -33,11 +43,25 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       setIsPlaying(false);
     }
   }, [isActive]);
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    if (!isLiked) {
-      setShowHeartAnimation(true);
-      setTimeout(() => setShowHeartAnimation(false), 800);
+  const handleLike = async () => {
+    if (isLiked) return; // Prevent double liking for this demo (or implement unlike)
+    // Optimistic Update
+    setIsLiked(true);
+    setLikeCount(prev => prev + 1);
+    setShowHeartAnimation(true);
+    setTimeout(() => setShowHeartAnimation(false), 800);
+    // Persist locally
+    localStorage.setItem(`liked_post_${post.id}`, 'true');
+    // API Call
+    try {
+      await api(`/api/posts/${post.id}/like`, { method: 'POST' });
+    } catch (error) {
+      console.error('Failed to like post:', error);
+      // Revert on error
+      setIsLiked(false);
+      setLikeCount(prev => prev - 1);
+      localStorage.removeItem(`liked_post_${post.id}`);
+      toast.error('Failed to like post');
     }
   };
   const handleDoubleTap = () => {
@@ -118,7 +142,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           )}>
             <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
           </div>
-          <span className="text-xs font-medium text-white text-shadow">{post.likes + (isLiked ? 1 : 0)}</span>
+          <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
         <button className="flex flex-col items-center gap-1 group">
           <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">

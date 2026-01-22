@@ -8,12 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
 import { Loader2, MapPin, Link as LinkIcon, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -24,7 +26,13 @@ export function ProfilePage() {
           api<{ items: Post[] }>(`/api/users/${id}/posts`)
         ]);
         setUser(userData);
+        setFollowerCount(userData.followers || 0);
         setPosts(postsData.items);
+        // Check local storage for follow state
+        const storedFollow = localStorage.getItem(`following_user_${id}`);
+        if (storedFollow === 'true') {
+            setIsFollowing(true);
+        }
       } catch (error) {
         console.error('Failed to fetch profile:', error);
       } finally {
@@ -33,6 +41,34 @@ export function ProfilePage() {
     };
     fetchData();
   }, [id]);
+  const handleFollow = async () => {
+    if (!id || !user) return;
+    // Toggle state
+    const newState = !isFollowing;
+    setIsFollowing(newState);
+    // Update count optimistically
+    setFollowerCount(prev => newState ? prev + 1 : prev - 1);
+    // Persist locally
+    if (newState) {
+        localStorage.setItem(`following_user_${id}`, 'true');
+    } else {
+        localStorage.removeItem(`following_user_${id}`);
+    }
+    // API Call (Only handling follow for now as per requirements, unfollow logic would be similar)
+    if (newState) {
+        try {
+            await api(`/api/users/${id}/follow`, { method: 'POST' });
+            toast.success(`You are now following ${user.name}`);
+        } catch (error) {
+            console.error('Failed to follow user:', error);
+            // Revert
+            setIsFollowing(false);
+            setFollowerCount(prev => prev - 1);
+            localStorage.removeItem(`following_user_${id}`);
+            toast.error('Failed to follow user');
+        }
+    }
+  };
   if (loading) {
     return (
       <AppLayout container>
@@ -76,14 +112,14 @@ export function ProfilePage() {
                   <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                       {user.name}
-                      <span className="text-blue-400 text-base">✓</span>
+                      <span className="text-blue-400 text-base">��</span>
                     </h1>
                     <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
                   </div>
                   <div className="flex gap-3">
                     <Button 
                       className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
-                      onClick={() => setIsFollowing(!isFollowing)}
+                      onClick={handleFollow}
                     >
                       {isFollowing ? "Following" : "Follow"}
                     </Button>
@@ -117,7 +153,7 @@ export function ProfilePage() {
               </div>
               <div className="flex items-center justify-start md:justify-end gap-8 text-center">
                 <div>
-                  <div className="text-2xl font-bold text-white">{user.followers?.toLocaleString() ?? 0}</div>
+                  <div className="text-2xl font-bold text-white">{followerCount.toLocaleString()}</div>
                   <div className="text-xs text-muted-foreground uppercase tracking-wider">Followers</div>
                 </div>
                 <div>

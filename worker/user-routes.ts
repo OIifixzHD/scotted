@@ -23,6 +23,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!name?.trim()) return bad(c, 'name required');
     return ok(c, await UserEntity.create(c.env, { id: crypto.randomUUID(), name: name.trim() }));
   });
+  app.post('/api/users/:id/follow', async (c) => {
+    const id = c.req.param('id');
+    const targetUser = new UserEntity(c.env, id);
+    if (!await targetUser.exists()) return notFound(c, 'User not found');
+    // Increment followers on target
+    await targetUser.mutate(s => ({ ...s, followers: (s.followers || 0) + 1 }));
+    // Increment following on current user (hardcoded 'u1' for demo)
+    const currentUser = new UserEntity(c.env, 'u1');
+    if (await currentUser.exists()) {
+        await currentUser.mutate(s => ({ ...s, following: (s.following || 0) + 1 }));
+    }
+    return ok(c, { success: true });
+  });
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');
     // In a real app, we would use an index. For this demo, we list all and filter.
@@ -74,6 +87,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     const created = await PostEntity.create(c.env, newPost);
     return ok(c, created);
+  });
+  app.post('/api/posts/:id/like', async (c) => {
+    const id = c.req.param('id');
+    const post = new PostEntity(c.env, id);
+    if (!await post.exists()) return notFound(c, 'Post not found');
+    const updated = await post.mutate(s => ({ ...s, likes: s.likes + 1 }));
+    return ok(c, updated);
   });
   // CHATS
   app.get('/api/chats', async (c) => {
