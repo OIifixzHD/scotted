@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { ShareDialog } from './ShareDialog';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -21,6 +22,9 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
+  // New state for Phase 9
+  const [progress, setProgress] = useState(0);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   // Initialize liked state from local storage
   useEffect(() => {
     const storedLike = localStorage.getItem(`liked_post_${post.id}`);
@@ -38,7 +42,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         playPromise
           .then(() => {
             setIsPlaying(true);
-            // If playing but muted, show hint briefly
             if (isMuted) {
                 setShowUnmuteHint(true);
                 setTimeout(() => setShowUnmuteHint(false), 3000);
@@ -47,18 +50,19 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           .catch((error) => {
             console.warn("Autoplay prevented:", error);
             setIsPlaying(false);
-            // Browser prevented autoplay (usually due to sound). 
-            // We are already muted, so this might be a power saving mode or other restriction.
           });
       }
     } else {
       videoRef.current.pause();
       setIsPlaying(false);
-      if (videoRef.current) videoRef.current.currentTime = 0; // Reset for next view
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        setProgress(0);
+      }
     }
   }, [isActive, hasError, isMuted]);
   const handleLike = async () => {
-    if (isLiked) return; 
+    if (isLiked) return;
     setIsLiked(true);
     setLikeCount(prev => prev + 1);
     setShowHeartAnimation(true);
@@ -97,6 +101,15 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
     setHasError(true);
     setIsPlaying(false);
   };
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const current = videoRef.current.currentTime;
+      const duration = videoRef.current.duration;
+      if (duration > 0) {
+        setProgress((current / duration) * 100);
+      }
+    }
+  };
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl">
       {/* Video Player */}
@@ -114,6 +127,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
               muted={isMuted}
               playsInline
               onError={handleError}
+              onTimeUpdate={handleTimeUpdate}
             />
         ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900">
@@ -132,7 +146,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         {/* Unmute Hint */}
         <AnimatePresence>
             {showUnmuteHint && isPlaying && isMuted && (
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
@@ -155,6 +169,13 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+      {/* Progress Bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
+        <div 
+          className="h-full bg-primary transition-all duration-100 ease-linear"
+          style={{ width: `${progress}%` }}
+        />
       </div>
       {/* Right Sidebar Actions */}
       <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
@@ -186,7 +207,10 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{post.comments}</span>
         </button>
-        <button className="flex flex-col items-center gap-1 group">
+        <button 
+          onClick={() => setIsShareOpen(true)}
+          className="flex flex-col items-center gap-1 group"
+        >
           <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
             <Share2 className="w-7 h-7" />
           </div>
@@ -194,8 +218,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         </button>
       </div>
       {/* Bottom Info Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent">
-        <div className="max-w-[80%] space-y-2">
+      <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
+        <div className="max-w-[80%] space-y-2 pointer-events-auto">
           <Link to={`/profile/${post.userId}`}>
             <h3 className="text-lg font-bold text-white text-shadow hover:underline cursor-pointer inline-block">
               @{post.user?.name ?? 'unknown'}
@@ -221,6 +245,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
+      {/* Share Dialog */}
+      <ShareDialog 
+        open={isShareOpen} 
+        onOpenChange={setIsShareOpen} 
+        postId={post.id} 
+      />
     </div>
   );
 }

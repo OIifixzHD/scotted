@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -7,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { cn } from '@/lib/utils';
 export function UploadPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -17,24 +19,32 @@ export function UploadPage() {
   const [caption, setCaption] = useState('');
   const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // 5MB Limit for this demo due to DO storage constraints
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
-      return;
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles?.length > 0) {
+      const file = acceptedFiles[0];
+      // 5MB Limit for this demo
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size must be less than 5MB');
+        return;
+      }
+      setVideoFile(file);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
     }
-    setVideoFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-  };
-  const clearFile = () => {
+  }, []);
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'video/*': ['.mp4', '.webm', '.ogg']
+    },
+    maxFiles: 1,
+    multiple: false
+  });
+  const clearFile = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent dropzone click
     setVideoFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -93,28 +103,54 @@ export function UploadPage() {
               <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="video-upload" className="flex items-center gap-2">
+                    <Label className="flex items-center gap-2">
                       <Film className="w-4 h-4 text-primary" />
                       Select Video
                     </Label>
                     {!videoFile ? (
-                      <div 
-                        className="border-2 border-dashed border-white/10 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-colors"
-                        onClick={() => fileInputRef.current?.click()}
+                      <div
+                        {...getRootProps()}
+                        className={cn(
+                          "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200",
+                          isDragActive 
+                            ? "border-primary bg-primary/10 scale-[1.02]" 
+                            : "border-white/10 hover:bg-white/5 hover:border-white/20"
+                        )}
                       >
-                        <Upload className="w-10 h-10 text-muted-foreground mb-4" />
-                        <p className="text-sm font-medium">Click to upload video</p>
-                        <p className="text-xs text-muted-foreground mt-1">MP4, WebM up to 5MB</p>
+                        <input {...getInputProps()} />
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors",
+                          isDragActive ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+                        )}>
+                          {isDragActive ? (
+                            <CloudUpload className="w-8 h-8 animate-bounce" />
+                          ) : (
+                            <Upload className="w-8 h-8" />
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-center">
+                          {isDragActive ? "Drop video here" : "Drag & drop or click to upload"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          MP4, WebM up to 5MB
+                        </p>
                       </div>
                     ) : (
                       <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <Film className="w-5 h-5 text-primary shrink-0" />
-                          <span className="text-sm truncate">{videoFile.name}</span>
+                          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                            <Film className="w-5 h-5 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{videoFile.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                            </p>
+                          </div>
                         </div>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
+                        <Button
+                          type="button"
+                          variant="ghost"
                           size="icon"
                           onClick={clearFile}
                           className="hover:bg-red-500/20 hover:text-red-500"
@@ -123,14 +159,6 @@ export function UploadPage() {
                         </Button>
                       </div>
                     )}
-                    <input 
-                      ref={fileInputRef}
-                      id="video-upload" 
-                      type="file" 
-                      accept="video/*" 
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="caption" className="flex items-center gap-2">
@@ -159,8 +187,8 @@ export function UploadPage() {
                     />
                   </div>
                   <div className="pt-4">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600 shadow-glow transition-all duration-300"
                       disabled={isSubmitting || !videoFile}
                     >
@@ -184,8 +212,8 @@ export function UploadPage() {
             <div className="flex flex-col items-center justify-center">
               <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
                 {previewUrl ? (
-                  <video 
-                    src={previewUrl} 
+                  <video
+                    src={previewUrl}
                     className="w-full h-full object-cover"
                     controls
                     autoPlay
