@@ -140,6 +140,7 @@ export function ProfilePage() {
     );
   }
   const isOwnProfile = currentUser?.id === user.id;
+  const handle = user.name.toLowerCase().replace(/\s/g, '');
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
@@ -173,7 +174,7 @@ export function ProfilePage() {
                           <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20" />
                         )}
                       </h1>
-                      <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
+                      <p className="text-muted-foreground">@{handle}</p>
                     </div>
                     <div className="flex gap-3">
                       {isOwnProfile ? (
@@ -251,7 +252,14 @@ export function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <a href="#" className="text-primary hover:underline">pulse.so/{user.name}</a>
+                      <a 
+                        href={`https://pulse.aurelia.so/${handle}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-primary hover:underline"
+                      >
+                        pulse.aurelia.so/{handle}
+                      </a>
                     </div>
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
@@ -311,8 +319,8 @@ export function ProfilePage() {
       {currentUser && (
         <EditProfileDialog 
           open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen} 
-          currentUser={currentUser} 
+          onOpenChange={setIsEditDialogOpen}
+          currentUser={currentUser}
         />
       )}
       {/* Report Dialog */}
