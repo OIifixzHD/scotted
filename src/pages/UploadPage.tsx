@@ -18,8 +18,7 @@ const PLACEHOLDER_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
 ];
 // Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
-// Setting to 50MB. Files larger than this will be "uploaded" via simulation.
-const DEMO_MODE_THRESHOLD = 50 * 1024 * 1024; 
+const DEMO_MODE_THRESHOLD = 50 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
@@ -86,7 +85,6 @@ export function UploadPage() {
     },
     maxFiles: 1,
     multiple: false,
-    // No maxSize limit as per requirements, we rely on duration check
   });
   const clearFile = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent dropzone click
@@ -121,7 +119,7 @@ export function UploadPage() {
         // Demo Mode: Use a random placeholder video
         finalVideoUrl = PLACEHOLDER_VIDEOS[Math.floor(Math.random() * PLACEHOLDER_VIDEOS.length)];
         // Simulate upload delay for realism based on file size (capped at 3s)
-        const delay = Math.min(3000, (videoFile.size / 1024 / 1024) * 100); 
+        const delay = Math.min(3000, (videoFile.size / 1024 / 1024) * 100);
         await new Promise(resolve => setTimeout(resolve, Math.max(1000, delay)));
       } else {
         // Real Upload: Convert to Base64
@@ -170,8 +168,8 @@ export function UploadPage() {
                         {...getRootProps()}
                         className={cn(
                           "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden",
-                          isDragActive
-                            ? "border-primary bg-primary/10 scale-[1.02]"
+                          isDragActive 
+                            ? "border-primary bg-primary/10 scale-[1.02]" 
                             : "border-white/10 hover:bg-white/5 hover:border-white/20",
                           isValidating && "opacity-50 pointer-events-none"
                         )}

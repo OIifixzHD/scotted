@@ -7,9 +7,15 @@ import { PageTransition } from "./PageTransition";
 import { AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { BannedPage } from "@/pages/BannedPage";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 export function RootLayout() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  // Show loading screen while auth is initializing
+  // This prevents the "flash of unauthenticated content"
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
   // Global Ban Guard
   // If user is logged in AND banned, show BannedPage instead of app shell
   if (user?.bannedUntil && user.bannedUntil > Date.now()) {
