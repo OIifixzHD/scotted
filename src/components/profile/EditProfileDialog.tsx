@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Camera } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Camera, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@shared/types";
+import { cn, getDecorationClass } from "@/lib/utils";
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -20,12 +22,14 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
   const [name, setName] = useState(currentUser.name);
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
+  const [avatarDecoration, setAvatarDecoration] = useState(currentUser.avatarDecoration || 'none');
   const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     if (open) {
       setName(currentUser.name);
       setBio(currentUser.bio || '');
       setAvatar(currentUser.avatar || '');
+      setAvatarDecoration(currentUser.avatarDecoration || 'none');
     }
   }, [open, currentUser]);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +56,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     try {
       const updatedUser = await api<User>(`/api/users/${currentUser.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name, bio, avatar })
+        body: JSON.stringify({ name, bio, avatar, avatarDecoration })
       });
       login(updatedUser); // Update context
       toast.success("Profile updated successfully");
@@ -64,9 +68,18 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
       setIsSubmitting(false);
     }
   };
+  const decorations = [
+    { value: 'none', label: 'None' },
+    { value: 'gold-border', label: 'Gold Border' },
+    { value: 'neon-glow', label: 'Neon Glow' },
+    { value: 'blue-fire', label: 'Blue Fire' },
+    { value: 'rainbow-ring', label: 'Rainbow Ring' },
+    { value: 'cyber-glitch', label: 'Cyber Glitch' },
+    { value: 'verified-pro', label: 'Verified Pro' },
+  ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-card border-white/10 text-foreground">
+      <DialogContent className="sm:max-w-[425px] bg-card border-white/10 text-foreground max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
           <DialogDescription>
@@ -76,15 +89,17 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
           <div className="flex flex-col items-center gap-4">
             <div className="relative group cursor-pointer">
-              <Avatar className="w-24 h-24 border-2 border-white/10 group-hover:border-primary transition-colors">
-                <AvatarImage src={avatar} />
-                <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
+              <div className={cn("rounded-full transition-all duration-300", getDecorationClass(avatarDecoration))}>
+                <Avatar className="w-24 h-24 border-2 border-white/10 group-hover:border-primary transition-colors">
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </div>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-8 h-8 text-white" />
               </div>
-              <input 
-                type="file" 
+              <input
+                type="file"
                 accept="image/*"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleFileChange}
@@ -109,6 +124,27 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
               onChange={(e) => setBio(e.target.value)}
               className="bg-secondary/50 border-white/10 min-h-[100px]"
             />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Profile Badge
+            </Label>
+            <Select value={avatarDecoration} onValueChange={setAvatarDecoration}>
+                <SelectTrigger className="bg-secondary/50 border-white/10">
+                    <SelectValue placeholder="Select a badge" />
+                </SelectTrigger>
+                <SelectContent>
+                    {decorations.map((decoration) => (
+                        <SelectItem key={decoration.value} value={decoration.value}>
+                            {decoration.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+                Choose a visual style for your avatar.
+            </p>
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

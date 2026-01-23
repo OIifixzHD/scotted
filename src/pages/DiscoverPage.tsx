@@ -7,6 +7,7 @@ import { api } from '@/lib/api-client';
 import type { Post, User } from '@shared/types';
 import { Search, TrendingUp, Hash, Loader2, User as UserIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { VideoModal } from '@/components/feed/VideoModal';
 export function DiscoverPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -14,6 +15,9 @@ export function DiscoverPage() {
   const [searchResults, setSearchResults] = useState<{ users: User[], posts: Post[] }>({ users: [], posts: [] });
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  // Video Modal State
+  const [selectedVideo, setSelectedVideo] = useState<Post | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   // Debounce input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -54,6 +58,10 @@ export function DiscoverPage() {
   }, [debouncedQuery]);
   const handleTagClick = (tag: string) => {
     setSearchQuery(tag);
+  };
+  const handleVideoClick = (post: Post) => {
+    setSelectedVideo(post);
+    setIsVideoModalOpen(true);
   };
   const trendingHashtags = [
     'cyberpunk', 'neon', 'nightcity', 'future', 'tech', 'vibes', 'coding', 'ai'
@@ -110,7 +118,7 @@ export function DiscoverPage() {
                       <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : (
-                  <VideoGrid posts={trendingPosts} />
+                  <VideoGrid posts={trendingPosts} onVideoClick={handleVideoClick} />
                 )}
               </div>
             </>
@@ -143,7 +151,7 @@ export function DiscoverPage() {
               <div className="space-y-4">
                   <h2 className="font-bold text-lg">Videos</h2>
                   {searchResults.posts.length > 0 ? (
-                      <VideoGrid posts={searchResults.posts} />
+                      <VideoGrid posts={searchResults.posts} onVideoClick={handleVideoClick} />
                   ) : (
                       !searching && searchResults.users.length === 0 && (
                           <div className="text-center py-12 text-muted-foreground">
@@ -156,6 +164,12 @@ export function DiscoverPage() {
           )}
         </div>
       </div>
+      {/* Video Modal */}
+      <VideoModal
+        post={selectedVideo}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
     </div>
   );
 }

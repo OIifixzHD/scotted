@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag, AlertTriangle } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import { ReportDialog } from '@/components/profile/ReportDialog';
-import { cn } from '@/lib/utils';
+import { cn, getDecorationClass } from '@/lib/utils';
+import { VideoModal } from '@/components/feed/VideoModal';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, logout, login } = useAuth();
@@ -23,6 +24,9 @@ export function ProfilePage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  // Video Modal State
+  const [selectedVideo, setSelectedVideo] = useState<Post | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -78,13 +82,14 @@ export function ProfilePage() {
         method: 'POST',
         body: JSON.stringify({ currentUserId: currentUser.id })
       });
-      // Refresh current user to update blocked list in context
-      // In a real app we'd just patch the local state, but for now we can re-fetch or just toast
       toast.success(res.blocked ? 'User blocked' : 'User unblocked');
-      // Ideally we should update the auth context here too, but for simplicity we'll rely on page refresh or next auth check
     } catch (error) {
       toast.error('Failed to update block status');
     }
+  };
+  const handleVideoClick = (post: Post) => {
+    setSelectedVideo(post);
+    setIsVideoModalOpen(true);
   };
   if (loading) {
     return (
@@ -128,15 +133,6 @@ export function ProfilePage() {
     );
   }
   const isOwnProfile = currentUser?.id === user.id;
-  // Decoration styles
-  const getDecorationClass = (decoration?: string) => {
-    switch (decoration) {
-      case 'gold-border': return 'ring-4 ring-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.5)]';
-      case 'neon-glow': return 'ring-4 ring-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.8)]';
-      case 'blue-fire': return 'ring-4 ring-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.8)]';
-      default: return 'border-4 border-background';
-    }
-  };
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
@@ -175,16 +171,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -193,8 +189,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -204,7 +200,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button 
+                          <Button
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -276,25 +272,25 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger 
-                value="videos" 
+              <TabsTrigger
+                value="videos"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger 
-                value="liked" 
+              <TabsTrigger
+                value="liked"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
               </TabsTrigger>
             </TabsList>
             <TabsContent value="videos" className="mt-0">
-              <VideoGrid posts={posts} />
+              <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
             </TabsContent>
             <TabsContent value="liked" className="mt-0">
               {isOwnProfile ? (
-                <LikedVideosTab userId={user.id} />
+                <LikedVideosTab userId={user.id} onVideoClick={handleVideoClick} />
               ) : (
                 <div className="py-20 text-center text-muted-foreground">
                   <p>Liked videos are private.</p>
@@ -306,24 +302,30 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog 
-          open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen} 
-          currentUser={currentUser} 
+        <EditProfileDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          currentUser={currentUser}
         />
       )}
       {/* Report Dialog */}
       {user && (
-        <ReportDialog 
-          open={isReportDialogOpen} 
-          onClose={() => setIsReportDialogOpen(false)} 
-          targetUser={user} 
+        <ReportDialog
+          open={isReportDialogOpen}
+          onClose={() => setIsReportDialogOpen(false)}
+          targetUser={user}
         />
       )}
+      {/* Video Modal */}
+      <VideoModal
+        post={selectedVideo}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
     </div>
   );
 }
-function LikedVideosTab({ userId }: { userId: string }) {
+function LikedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick: (post: Post) => void }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -343,5 +345,5 @@ function LikedVideosTab({ userId }: { userId: string }) {
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
-  return <VideoGrid posts={posts} />;
+  return <VideoGrid posts={posts} onVideoClick={onVideoClick} />;
 }

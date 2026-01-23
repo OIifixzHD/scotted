@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,12 +24,14 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [commentCount, setCommentCount] = useState(post.comments);
+  const [viewCount, setViewCount] = useState(post.views || 0);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const hasViewedRef = useRef(false);
   // Sync with prop updates and user auth state
   useEffect(() => {
     if (user && post.likedBy) {
@@ -39,6 +41,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
     }
     setLikeCount(post.likes);
     setCommentCount(post.comments);
+    setViewCount(post.views || 0);
   }, [post, user]);
   // Handle Play/Pause based on active state
   useEffect(() => {
@@ -56,6 +59,13 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
                 setShowUnmuteHint(true);
                 setTimeout(() => setShowUnmuteHint(false), 3000);
             }
+            // Increment view count if not already viewed in this session
+            if (!hasViewedRef.current) {
+                hasViewedRef.current = true;
+                api<{ views: number }>(`/api/posts/${post.id}/view`, { method: 'POST' })
+                    .then(res => setViewCount(res.views))
+                    .catch(e => console.error("Failed to increment view", e));
+            }
           })
           .catch((error) => {
             // Auto-play was prevented
@@ -69,7 +79,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       video.currentTime = 0;
       setProgress(0);
     }
-  }, [isActive, hasError, isMuted]);
+  }, [isActive, hasError, isMuted, post.id]);
   const handleLike = async () => {
     if (!user) {
       toast.error("Please log in to like posts");
@@ -85,7 +95,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       setTimeout(() => setShowHeartAnimation(false), 800);
     }
     try {
-      const res = await api<{ likes: number, isLiked: boolean }>(`/api/posts/${post.id}/like`, { 
+      const res = await api<{ likes: number, isLiked: boolean }>(`/api/posts/${post.id}/like`, {
         method: 'POST',
         body: JSON.stringify({ userId: user.id })
       });
@@ -140,7 +150,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl">
       {/* Video Player */}
-      <div 
+      <div
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -199,7 +209,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       </div>
       {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
-        <div 
+        <div
           className="h-full bg-primary transition-all duration-100 ease-linear"
           style={{ width: `${progress}%` }}
         />
@@ -228,7 +238,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -237,7 +247,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsShareOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -246,6 +256,13 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{post.shares}</span>
         </button>
+        {/* View Count */}
+        <div className="flex flex-col items-center gap-1 group">
+          <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+            <Eye className="w-7 h-7" />
+          </div>
+          <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
+        </div>
       </div>
       {/* Bottom Info Area */}
       <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
@@ -269,15 +286,15 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         </div>
       </div>
       {/* Mute Toggle */}
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog 
-        open={isShareOpen} 
+      <ShareDialog
+        open={isShareOpen}
         onOpenChange={setIsShareOpen}
         postId={post.id}
       />

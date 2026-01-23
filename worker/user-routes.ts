@@ -409,6 +409,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         likedBy: [],
         comments: 0,
         shares: 0,
+        views: 0,
         createdAt: Date.now(),
         tags: body.tags || [],
         commentsList: []
@@ -440,6 +441,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
     }
     return ok(c, result);
+  });
+  app.post('/api/posts/:id/view', async (c) => {
+    const id = c.req.param('id');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const views = await postEntity.incrementViews();
+    return ok(c, { views });
   });
   // --- COMMENTS ---
   app.get('/api/posts/:id/comments', async (c) => {

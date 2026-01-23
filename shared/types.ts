@@ -37,6 +37,7 @@ export interface Post {
   likedBy?: string[]; // Track user IDs who liked the post
   comments: number;
   shares: number;
+  views?: number; // Added for view tracking
   user?: User; // Hydrated user data
   tags?: string[];
   createdAt: number;

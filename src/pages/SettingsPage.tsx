@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ export function SettingsPage() {
   const { user, logout } = useAuth();
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
-  const fetchBlockedUsers = async () => {
+  const fetchBlockedUsers = useCallback(async () => {
     if (!user) return;
     try {
       setLoadingBlocked(true);
@@ -26,10 +26,10 @@ export function SettingsPage() {
     } finally {
       setLoadingBlocked(false);
     }
-  };
+  }, [user]);
   useEffect(() => {
     fetchBlockedUsers();
-  }, [user]);
+  }, [fetchBlockedUsers]);
   const handleUnblock = async (targetId: string) => {
     if (!user) return;
     try {

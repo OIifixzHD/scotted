@@ -9,8 +9,8 @@ import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
-  static readonly initialState: User = { 
-    id: "", 
+  static readonly initialState: User = {
+    id: "",
     name: "",
     isVerified: false,
     bannedUntil: 0,
@@ -36,8 +36,8 @@ export class UserEntity extends IndexedEntity<User> {
     // For demo scale, we fetch a large batch and filter in memory
     const { items: users } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return users.filter(u => 
-      u.name.toLowerCase().includes(lowerQuery) || 
+    return users.filter(u =>
+      u.name.toLowerCase().includes(lowerQuery) ||
       (u.bio && u.bio.toLowerCase().includes(lowerQuery))
     );
   }
@@ -83,6 +83,7 @@ export class PostEntity extends IndexedEntity<Post> {
     likedBy: [],
     comments: 0,
     shares: 0,
+    views: 0,
     createdAt: 0,
     commentsList: []
   };
@@ -94,7 +95,7 @@ export class PostEntity extends IndexedEntity<Post> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return posts.filter(p => 
+    return posts.filter(p =>
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );
@@ -123,6 +124,16 @@ export class PostEntity extends IndexedEntity<Post> {
       likedBy: newLikedBy
     }));
     return { likes: newLikes, isLiked: !isLiked };
+  }
+  /**
+   * Increment view count
+   */
+  async incrementViews(): Promise<number> {
+    const newState = await this.mutate(s => ({
+      ...s,
+      views: (s.views || 0) + 1
+    }));
+    return newState.views || 0;
   }
   /**
    * Add a comment to the post

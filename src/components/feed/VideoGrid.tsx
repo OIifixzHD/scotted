@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import Masonry from 'react-masonry-css';
-import { Play, Heart } from 'lucide-react';
+import { Play, Heart, Eye } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 interface VideoGridProps {
   posts: Post[];
   className?: string;
+  onVideoClick?: (post: Post) => void;
 }
-export function VideoGrid({ posts, className }: VideoGridProps) {
+export function VideoGrid({ posts, className, onVideoClick }: VideoGridProps) {
   const breakpointColumnsObj = {
     default: 4,
     1280: 3,
@@ -29,12 +30,12 @@ export function VideoGrid({ posts, className }: VideoGridProps) {
       columnClassName="pl-4 bg-clip-padding"
     >
       {posts.map((post) => (
-        <GridItem key={post.id} post={post} />
+        <GridItem key={post.id} post={post} onClick={() => onVideoClick?.(post)} />
       ))}
     </Masonry>
   );
 }
-function GridItem({ post }: { post: Post }) {
+function GridItem({ post, onClick }: { post: Post, onClick?: () => void }) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const handleMouseEnter = () => {
@@ -47,10 +48,11 @@ function GridItem({ post }: { post: Post }) {
     if (videoRef.current) videoRef.current.currentTime = 0;
   };
   return (
-    <div 
+    <div
       className="relative mb-4 rounded-xl overflow-hidden bg-card border border-white/5 group cursor-pointer aspect-[9/16]"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={onClick}
     >
       <video
         ref={videoRef}
@@ -66,8 +68,8 @@ function GridItem({ post }: { post: Post }) {
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-100">
         <div className="flex items-center justify-between text-white text-xs font-medium">
           <div className="flex items-center gap-1">
-            <Play className="w-3 h-3 fill-white" />
-            <span>{Math.floor(Math.random() * 10000)}</span>
+            <Eye className="w-3 h-3 fill-white/50" />
+            <span>{post.views || 0}</span>
           </div>
           <div className="flex items-center gap-1">
             <Heart className="w-3 h-3" />
