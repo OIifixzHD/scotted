@@ -62,7 +62,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // --- ADMIN ---
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy } = await c.req.json() as Partial<User>;
+    const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar } = await c.req.json() as Partial<User>;
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
@@ -75,6 +75,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (banReason !== undefined) updates.banReason = banReason;
     if (isAdmin !== undefined) updates.isAdmin = isAdmin;
     if (bannedBy !== undefined) updates.bannedBy = bannedBy;
+    if (bio !== undefined) updates.bio = bio;
+    if (avatar !== undefined) updates.avatar = avatar;
     // Admin can still force update name if absolutely necessary, but generally discouraged
     if (name !== undefined) updates.name = name;
     const updated = await userEntity.updateAdminStats(updates);
