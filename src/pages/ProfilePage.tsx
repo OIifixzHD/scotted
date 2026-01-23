@@ -161,7 +161,7 @@ export function ProfilePage() {
                   <Avatar className="w-32 h-32">
                     <AvatarImage src={user.avatar} className="object-cover" />
                     <AvatarFallback className="text-2xl bg-purple-900 text-white">
-                      {user.name.substring(0, 2).toUpperCase()}
+                      {user.displayName?.substring(0, 2).toUpperCase() || user.name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -169,7 +169,7 @@ export function ProfilePage() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                        {user.name}
+                        {user.displayName || user.name}
                         {user.isVerified && (
                           <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20" />
                         )}
@@ -255,7 +255,7 @@ export function ProfilePage() {
                       <a 
                         href={`https://pulse.aurelia.so/${handle}`} 
                         target="_blank" 
-                        rel="noopener noreferrer" 
+                        rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
                         pulse.aurelia.so/{handle}

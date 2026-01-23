@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Camera, Sparkles } from "lucide-react";
+import { Loader2, Camera, Sparkles, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -19,14 +19,14 @@ interface EditProfileDialogProps {
 }
 export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfileDialogProps) {
   const { login } = useAuth(); // Used to update local user state
-  const [name, setName] = useState(currentUser.name);
+  const [displayName, setDisplayName] = useState(currentUser.displayName || currentUser.name);
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
   const [avatarDecoration, setAvatarDecoration] = useState(currentUser.avatarDecoration || 'none');
   const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     if (open) {
-      setName(currentUser.name);
+      setDisplayName(currentUser.displayName || currentUser.name);
       setBio(currentUser.bio || '');
       setAvatar(currentUser.avatar || '');
       setAvatarDecoration(currentUser.avatarDecoration || 'none');
@@ -48,15 +48,15 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("Name is required");
+    if (!displayName.trim()) {
+      toast.error("Display Name is required");
       return;
     }
     setIsSubmitting(true);
     try {
       const updatedUser = await api<User>(`/api/users/${currentUser.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name, bio, avatar, avatarDecoration })
+        body: JSON.stringify({ displayName, bio, avatar, avatarDecoration })
       });
       login(updatedUser); // Update context
       toast.success("Profile updated successfully");
@@ -92,7 +92,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
               <div className={cn("rounded-full transition-all duration-300", getDecorationClass(avatarDecoration))}>
                 <Avatar className="w-24 h-24 border-2 border-white/10 group-hover:border-primary transition-colors">
                     <AvatarImage src={avatar} />
-                    <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    <AvatarFallback>{displayName.substring(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
               </div>
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -108,13 +108,28 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
             <p className="text-xs text-muted-foreground">Click to change avatar</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="displayName">Display Name</Label>
             <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               className="bg-secondary/50 border-white/10"
+              placeholder="Your visible name"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="username" className="flex items-center gap-2">
+              Username
+              <Lock className="w-3 h-3 text-muted-foreground" />
+            </Label>
+            <Input
+              id="username"
+              value={`@${currentUser.name}`}
+              readOnly
+              disabled
+              className="bg-secondary/20 border-white/5 text-muted-foreground cursor-not-allowed"
+            />
+            <p className="text-xs text-muted-foreground">Username cannot be changed.</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>

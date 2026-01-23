@@ -201,7 +201,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video">
       {/* Video Player */}
-      <div
+      <div 
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -264,7 +264,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         onClick={handleSeek}
       >
         <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-           <div
+           <div 
              className="h-full bg-primary transition-all duration-100 ease-linear relative"
              style={{ width: `${progress}%` }}
            >
@@ -279,7 +279,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
             <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
                 <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
                     <AvatarImage src={post.user?.avatar} />
-                    <AvatarFallback>{post.user?.name?.substring(0, 2) ?? 'U'}</AvatarFallback>
+                    <AvatarFallback>{post.user?.displayName?.substring(0, 2) || post.user?.name?.substring(0, 2) || 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5">
                     <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
@@ -297,7 +297,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button
+        <button 
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -306,7 +306,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button
+        <button 
           onClick={() => setIsShareOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -330,7 +330,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         <div className="max-w-[80%] space-y-2 pointer-events-auto">
           <Link to={`/profile/${post.userId}`}>
             <h3 className="text-lg font-bold text-white text-shadow hover:underline cursor-pointer inline-block">
-              @{post.user?.name ?? 'unknown'}
+              @{post.user?.displayName || post.user?.name || 'unknown'}
             </h3>
           </Link>
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
@@ -340,23 +340,23 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
             <Music2 className="w-3 h-3 animate-spin-slow" />
             <div className="overflow-hidden w-32">
                 <p className="animate-marquee whitespace-nowrap">
-                  Original Sound - {post.user?.name ?? 'Unknown User'} • Pulse Original Audio
+                  Original Sound - {post.user?.displayName || post.user?.name || 'Unknown User'} • Pulse Original Audio
                 </p>
             </div>
           </div>
         </div>
       </div>
       {/* Mute Toggle */}
-      <button
+      <button 
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog
-        open={isShareOpen}
-        onOpenChange={setIsShareOpen}
+      <ShareDialog 
+        open={isShareOpen} 
+        onOpenChange={setIsShareOpen} 
         postId={post.id}
       />
       {/* Comments Sheet */}

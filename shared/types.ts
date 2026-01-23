@@ -5,7 +5,8 @@ export interface ApiResponse<T = unknown> {
 }
 export interface User {
   id: string;
-  name: string;
+  name: string; // Username/Handle (Immutable)
+  displayName?: string; // Visual Name (Mutable)
   password?: string; // Added for auth
   avatar?: string;
   bio?: string;

@@ -18,6 +18,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const newUser: User = {
       id: crypto.randomUUID(),
       name: username.trim(),
+      displayName: username.trim(), // Initialize displayName with username
       password: password.trim(), // In a real app, hash this!
       bio: bio?.trim() || 'New to Pulse',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
@@ -71,6 +72,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (isVerified !== undefined) updates.isVerified = isVerified;
     if (bannedUntil !== undefined) updates.bannedUntil = bannedUntil;
     if (banReason !== undefined) updates.banReason = banReason;
+    // Admin can still force update name if absolutely necessary, but generally discouraged
     if (name !== undefined) updates.name = name;
     const updated = await userEntity.updateAdminStats(updates);
     const { password: _, ...safeUser } = updated;
@@ -198,9 +200,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { name, bio, avatar, avatarDecoration } = await c.req.json() as { name?: string; bio?: string; avatar?: string; avatarDecoration?: string };
-    if (!name?.trim()) {
-      return bad(c, 'Name is required');
+    // We do NOT extract 'name' here to prevent username changes
+    const { displayName, bio, avatar, avatarDecoration } = await c.req.json() as { displayName?: string; bio?: string; avatar?: string; avatarDecoration?: string };
+    if (displayName !== undefined && !displayName.trim()) {
+      return bad(c, 'Display Name cannot be empty');
     }
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
@@ -208,8 +211,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const updated = await userEntity.mutate(s => ({
       ...s,
-      name: name.trim(),
-      bio: bio?.trim(),
+      displayName: displayName?.trim() || s.displayName || s.name, // Update display name
+      bio: bio?.trim() ?? s.bio,
       avatar: avatar || s.avatar, // Keep existing if not provided
       avatarDecoration: avatarDecoration || s.avatarDecoration
     }));

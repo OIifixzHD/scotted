@@ -12,6 +12,7 @@ export class UserEntity extends IndexedEntity<User> {
   static readonly initialState: User = {
     id: "",
     name: "",
+    displayName: "",
     isVerified: false,
     bannedUntil: 0,
     banReason: "",
@@ -29,7 +30,7 @@ export class UserEntity extends IndexedEntity<User> {
     return users.find(u => u.name.toLowerCase() === username.toLowerCase()) || null;
   }
   /**
-   * Search users by name or bio
+   * Search users by name, display name, or bio
    */
   static async search(env: Env, query: string): Promise<User[]> {
     await this.ensureSeed(env);
@@ -38,6 +39,7 @@ export class UserEntity extends IndexedEntity<User> {
     const lowerQuery = query.toLowerCase();
     return users.filter(u =>
       u.name.toLowerCase().includes(lowerQuery) ||
+      (u.displayName && u.displayName.toLowerCase().includes(lowerQuery)) ||
       (u.bio && u.bio.toLowerCase().includes(lowerQuery))
     );
   }

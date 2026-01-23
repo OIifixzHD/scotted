@@ -153,10 +153,10 @@ export function AppSidebar(): JSX.Element {
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10 border border-white/10">
                 <AvatarImage src={user.avatar} />
-                <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>{user.displayName?.substring(0, 2).toUpperCase() || user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col overflow-hidden">
-                <span className="text-sm font-medium text-white truncate">{user.name}</span>
+                <span className="text-sm font-medium text-white truncate">{user.displayName || user.name}</span>
                 <span className="text-xs text-muted-foreground truncate">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
               </div>
             </div>
