@@ -3,13 +3,20 @@
  */
 import { IndexedEntity, Index } from "./core-utils";
 import type { Env } from "./core-utils";
-import type { User, Chat, ChatMessage, Post, Comment, Notification } from "@shared/types";
+import type { User, Chat, ChatMessage, Post, Comment, Notification, Report } from "@shared/types";
 import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/mock-data";
 // USER ENTITY
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
-  static readonly initialState: User = { id: "", name: "" };
+  static readonly initialState: User = { 
+    id: "", 
+    name: "",
+    isVerified: false,
+    bannedUntil: 0,
+    banReason: "",
+    blockedUserIds: []
+  };
   static seedData = MOCK_USERS;
   /**
    * Helper to find a user by username.
@@ -29,8 +36,8 @@ export class UserEntity extends IndexedEntity<User> {
     // For demo scale, we fetch a large batch and filter in memory
     const { items: users } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return users.filter(u =>
-      u.name.toLowerCase().includes(lowerQuery) ||
+    return users.filter(u => 
+      u.name.toLowerCase().includes(lowerQuery) || 
       (u.bio && u.bio.toLowerCase().includes(lowerQuery))
     );
   }
@@ -42,6 +49,25 @@ export class UserEntity extends IndexedEntity<User> {
       ...state,
       ...updates
     }));
+  }
+  /**
+   * Toggle block status for a target user
+   */
+  async toggleBlock(targetId: string): Promise<{ blocked: boolean, blockedUserIds: string[] }> {
+    const state = await this.getState();
+    const blockedIds = state.blockedUserIds || [];
+    const isBlocked = blockedIds.includes(targetId);
+    let newBlockedIds: string[];
+    if (isBlocked) {
+      newBlockedIds = blockedIds.filter(id => id !== targetId);
+    } else {
+      newBlockedIds = [...blockedIds, targetId];
+    }
+    await this.mutate(s => ({
+      ...s,
+      blockedUserIds: newBlockedIds
+    }));
+    return { blocked: !isBlocked, blockedUserIds: newBlockedIds };
   }
 }
 // POST ENTITY
@@ -68,7 +94,7 @@ export class PostEntity extends IndexedEntity<Post> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return posts.filter(p =>
+    return posts.filter(p => 
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );
@@ -167,5 +193,25 @@ export class NotificationEntity extends IndexedEntity<Notification> {
     // Sort by newest first
     userNotifications.sort((a, b) => b.createdAt - a.createdAt);
     return userNotifications.slice(0, limit);
+  }
+}
+// REPORT ENTITY
+export class ReportEntity extends IndexedEntity<Report> {
+  static readonly entityName = "report";
+  static readonly indexName = "reports";
+  static readonly initialState: Report = {
+    id: "",
+    reporterId: "",
+    targetId: "",
+    reason: "",
+    createdAt: 0,
+    status: 'pending'
+  };
+  static seedData = [];
+  static async listAll(env: Env): Promise<Report[]> {
+    const { items } = await this.list(env, null, 1000);
+    // Sort by newest first
+    items.sort((a, b) => b.createdAt - a.createdAt);
+    return items;
   }
 }

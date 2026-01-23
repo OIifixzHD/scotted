@@ -14,6 +14,11 @@ export interface User {
   followingIds?: string[]; // Added for social graph
   avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc.
   isAdmin?: boolean;
+  // Phase 2: Governance & Security
+  isVerified?: boolean;
+  bannedUntil?: number; // Timestamp
+  banReason?: string;
+  blockedUserIds?: string[];
 }
 export interface Comment {
   id: string;
@@ -58,4 +63,15 @@ export interface Notification {
   createdAt: number;
   actor?: User; // Hydrated
   post?: Post; // Hydrated (optional)
+}
+export interface Report {
+  id: string;
+  reporterId: string;
+  targetId: string;
+  reason: string;
+  description?: string;
+  createdAt: number;
+  status: 'pending' | 'resolved' | 'dismissed';
+  reporter?: User; // Hydrated
+  target?: User; // Hydrated
 }

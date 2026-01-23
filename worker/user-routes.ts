@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity } from "./entities";
+import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification } from "@shared/types";
+import type { User, Notification, Post, Report } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- AUTHENTICATION ---
@@ -25,7 +25,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       following: 0,
       followingIds: [],
       avatarDecoration: 'none',
-      isAdmin: false
+      isAdmin: false,
+      isVerified: false,
+      bannedUntil: 0,
+      banReason: "",
+      blockedUserIds: []
     };
     const created = await UserEntity.create(c.env, newUser);
     // Don't return password
@@ -46,13 +50,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, 'User not found');
       }
     }
+    // Check if banned
+    if (user.bannedUntil && user.bannedUntil > Date.now()) {
+        return bad(c, `Account suspended until ${new Date(user.bannedUntil).toLocaleDateString()}. Reason: ${user.banReason || 'Violation of terms'}`);
+    }
     const { password: _, ...safeUser } = user;
     return ok(c, safeUser);
   });
   // --- ADMIN ---
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { followers, avatarDecoration } = await c.req.json() as { followers?: number; avatarDecoration?: string };
+    const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name } = await c.req.json() as Partial<User>;
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
@@ -60,9 +68,52 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const updates: Partial<User> = {};
     if (followers !== undefined) updates.followers = followers;
     if (avatarDecoration !== undefined) updates.avatarDecoration = avatarDecoration;
+    if (isVerified !== undefined) updates.isVerified = isVerified;
+    if (bannedUntil !== undefined) updates.bannedUntil = bannedUntil;
+    if (banReason !== undefined) updates.banReason = banReason;
+    if (name !== undefined) updates.name = name;
     const updated = await userEntity.updateAdminStats(updates);
     const { password: _, ...safeUser } = updated;
     return ok(c, safeUser);
+  });
+  app.delete('/api/admin/users/:id', async (c) => {
+    const id = c.req.param('id');
+    const userEntity = new UserEntity(c.env, id);
+    if (!await userEntity.exists()) {
+        return notFound(c, 'User not found');
+    }
+    await UserEntity.delete(c.env, id);
+    return ok(c, { deleted: true });
+  });
+  app.get('/api/admin/reports', async (c) => {
+    const reports = await ReportEntity.listAll(c.env);
+    // Hydrate reports
+    const hydrated = await Promise.all(reports.map(async (r) => {
+        const reporterEntity = new UserEntity(c.env, r.reporterId);
+        const targetEntity = new UserEntity(c.env, r.targetId);
+        let reporter: User | undefined;
+        let target: User | undefined;
+        if (await reporterEntity.exists()) {
+            const d = await reporterEntity.getState();
+            const { password, ...safe } = d;
+            reporter = safe;
+        }
+        if (await targetEntity.exists()) {
+            const d = await targetEntity.getState();
+            const { password, ...safe } = d;
+            target = safe;
+        }
+        return { ...r, reporter, target };
+    }));
+    return ok(c, hydrated);
+  });
+  app.post('/api/admin/reports/:id/resolve', async (c) => {
+    const id = c.req.param('id');
+    const { status } = await c.req.json() as { status: 'resolved' | 'dismissed' };
+    const reportEntity = new ReportEntity(c.env, id);
+    if (!await reportEntity.exists()) return notFound(c, 'Report not found');
+    const updated = await reportEntity.mutate(s => ({ ...s, status }));
+    return ok(c, updated);
   });
   // --- SEARCH & TRENDING ---
   app.get('/api/search', async (c) => {
@@ -210,6 +261,55 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const { password, ...safeUser } = updatedCurrentUser;
     return ok(c, safeUser);
+  });
+  // Block User
+  app.post('/api/users/:id/block', async (c) => {
+    const targetId = c.req.param('id');
+    const { currentUserId } = await c.req.json() as { currentUserId?: string };
+    if (!currentUserId) return bad(c, 'currentUserId required');
+    if (currentUserId === targetId) return bad(c, 'Cannot block yourself');
+    const currentUserEntity = new UserEntity(c.env, currentUserId);
+    if (!await currentUserEntity.exists()) return notFound(c, 'Current user not found');
+    const result = await currentUserEntity.toggleBlock(targetId);
+    return ok(c, result);
+  });
+  // Get Blocked Users
+  app.get('/api/users/blocked', async (c) => {
+    const userId = c.req.query('userId');
+    if (!userId) return bad(c, 'userId required');
+    const userEntity = new UserEntity(c.env, userId);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+    const user = await userEntity.getState();
+    const blockedIds = user.blockedUserIds || [];
+    if (blockedIds.length === 0) return ok(c, []);
+    // Fetch details for blocked users
+    const blockedUsers = await Promise.all(blockedIds.map(async (id) => {
+        const uEntity = new UserEntity(c.env, id);
+        if (await uEntity.exists()) {
+            const uData = await uEntity.getState();
+            const { password, ...safe } = uData;
+            return safe;
+        }
+        return null;
+    }));
+    return ok(c, blockedUsers.filter(Boolean));
+  });
+  // Report User
+  app.post('/api/users/:id/report', async (c) => {
+    const targetId = c.req.param('id');
+    const { reporterId, reason, description } = await c.req.json() as { reporterId: string, reason: string, description?: string };
+    if (!reporterId || !reason) return bad(c, 'reporterId and reason required');
+    const report: Report = {
+        id: crypto.randomUUID(),
+        reporterId,
+        targetId,
+        reason,
+        description,
+        createdAt: Date.now(),
+        status: 'pending'
+    };
+    const created = await ReportEntity.create(c.env, report);
+    return ok(c, created);
   });
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');

@@ -4,12 +4,14 @@ import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2 } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
+import { ReportDialog } from '@/components/profile/ReportDialog';
 import { cn } from '@/lib/utils';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [followerCount, setFollowerCount] = useState(0);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +45,7 @@ export function ProfilePage() {
   }, [id]);
   // Determine if following based on currentUser's followingIds
   const isFollowing = currentUser?.followingIds?.includes(user?.id || '') || false;
+  const isBlocked = currentUser?.blockedUserIds?.includes(user?.id || '') || false;
   const handleFollow = async () => {
     if (!id || !user || !currentUser) {
         if (!currentUser) toast.error("Please log in to follow");
@@ -67,6 +71,21 @@ export function ProfilePage() {
         setIsFollowLoading(false);
     }
   };
+  const handleBlock = async () => {
+    if (!id || !currentUser) return;
+    try {
+      const res = await api<{ blocked: boolean }>(`/api/users/${id}/block`, {
+        method: 'POST',
+        body: JSON.stringify({ currentUserId: currentUser.id })
+      });
+      // Refresh current user to update blocked list in context
+      // In a real app we'd just patch the local state, but for now we can re-fetch or just toast
+      toast.success(res.blocked ? 'User blocked' : 'User unblocked');
+      // Ideally we should update the auth context here too, but for simplicity we'll rely on page refresh or next auth check
+    } catch (error) {
+      toast.error('Failed to update block status');
+    }
+  };
   if (loading) {
     return (
       <div className="h-full overflow-y-auto">
@@ -90,8 +109,25 @@ export function ProfilePage() {
       </div>
     );
   }
+  // Check if user is banned
+  if (user.bannedUntil && user.bannedUntil > Date.now()) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
+          <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-center">
+            <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center">
+              <Ban className="w-10 h-10 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">Account Suspended</h2>
+            <p className="text-muted-foreground max-w-md">
+              This account has been suspended for violating our community guidelines.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const isOwnProfile = currentUser?.id === user.id;
-  const isVerified = (user.followers || 0) > 5;
   // Decoration styles
   const getDecorationClass = (decoration?: string) => {
     switch (decoration) {
@@ -130,7 +166,7 @@ export function ProfilePage() {
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         {user.name}
-                        {isVerified && (
+                        {user.isVerified && (
                           <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20" />
                         )}
                       </h1>
@@ -178,6 +214,21 @@ export function ProfilePage() {
                           <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
                             Message
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="border border-white/10 text-white hover:bg-white/5">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-card border-white/10">
+                              <DropdownMenuItem onClick={handleBlock} className="text-red-400 focus:text-red-400">
+                                <Ban className="mr-2 h-4 w-4" /> {isBlocked ? 'Unblock' : 'Block'} User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)} className="text-yellow-400 focus:text-yellow-400">
+                                <Flag className="mr-2 h-4 w-4" /> Report User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </>
                       )}
                     </div>
@@ -257,18 +308,24 @@ export function ProfilePage() {
       {currentUser && (
         <EditProfileDialog 
           open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen}
-          currentUser={currentUser}
+          onOpenChange={setIsEditDialogOpen} 
+          currentUser={currentUser} 
+        />
+      )}
+      {/* Report Dialog */}
+      {user && (
+        <ReportDialog 
+          open={isReportDialogOpen} 
+          onClose={() => setIsReportDialogOpen(false)} 
+          targetUser={user} 
         />
       )}
     </div>
   );
 }
-
 function LikedVideosTab({ userId }: { userId: string }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const fetchLiked = async () => {
       try {
@@ -283,10 +340,8 @@ function LikedVideosTab({ userId }: { userId: string }) {
     };
     fetchLiked();
   }, [userId]);
-
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
-
   return <VideoGrid posts={posts} />;
 }
