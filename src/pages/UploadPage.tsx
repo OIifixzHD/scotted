@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 const PLACEHOLDER_VIDEOS = [
@@ -17,6 +17,10 @@ const PLACEHOLDER_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
 ];
+// Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
+// Setting to 50MB. Files larger than this will be "uploaded" via simulation.
+const DEMO_MODE_THRESHOLD = 50 * 1024 * 1024; 
+const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -26,27 +30,53 @@ export function UploadPage() {
   const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDemoUpload, setIsDemoUpload] = useState(false);
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const [isValidating, setIsValidating] = useState(false);
+  const validateVideo = (file: File): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = function() {
+        window.URL.revokeObjectURL(video.src);
+        const duration = video.duration;
+        if (duration > MAX_DURATION_SECONDS) {
+          reject(new Error(`Video exceeds 5 minutes limit (Current: ${Math.floor(duration / 60)}m ${Math.floor(duration % 60)}s)`));
+        } else {
+          resolve();
+        }
+      };
+      video.onerror = function() {
+        window.URL.revokeObjectURL(video.src);
+        reject(new Error("Invalid video file or format not supported"));
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
-      // 500MB Limit
-      if (file.size > 500 * 1024 * 1024) {
-        toast.error('File size must be less than 500MB');
-        return;
+      setIsValidating(true);
+      try {
+        // 1. Validate Duration
+        await validateVideo(file);
+        // 2. Check for Demo Mode trigger
+        if (file.size > DEMO_MODE_THRESHOLD) {
+          setIsDemoUpload(true);
+          toast.info('Large file detected. Uploading in Demo Mode (using placeholder for storage safety).', {
+            duration: 5000,
+            icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />
+          });
+        } else {
+          setIsDemoUpload(false);
+        }
+        setVideoFile(file);
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to validate video");
+        console.error("Validation error:", error);
+      } finally {
+        setIsValidating(false);
       }
-      // Check for Demo Mode trigger (> 1MB)
-      if (file.size > 1 * 1024 * 1024) {
-        setIsDemoUpload(true);
-        toast.info('Large file detected (>1MB). Uploading in Demo Mode (using placeholder for storage).', {
-          duration: 5000,
-          icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />
-        });
-      } else {
-        setIsDemoUpload(false);
-      }
-      setVideoFile(file);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
     }
   }, []);
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -56,7 +86,7 @@ export function UploadPage() {
     },
     maxFiles: 1,
     multiple: false,
-    maxSize: 500 * 1024 * 1024 // 500MB
+    // No maxSize limit as per requirements, we rely on duration check
   });
   const clearFile = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent dropzone click
@@ -90,8 +120,9 @@ export function UploadPage() {
       if (isDemoUpload) {
         // Demo Mode: Use a random placeholder video
         finalVideoUrl = PLACEHOLDER_VIDEOS[Math.floor(Math.random() * PLACEHOLDER_VIDEOS.length)];
-        // Simulate upload delay for realism
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Simulate upload delay for realism based on file size (capped at 3s)
+        const delay = Math.min(3000, (videoFile.size / 1024 / 1024) * 100); 
+        await new Promise(resolve => setTimeout(resolve, Math.max(1000, delay)));
       } else {
         // Real Upload: Convert to Base64
         finalVideoUrl = await convertToBase64(videoFile);
@@ -138,29 +169,43 @@ export function UploadPage() {
                       <div
                         {...getRootProps()}
                         className={cn(
-                          "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200",
-                          isDragActive 
-                            ? "border-primary bg-primary/10 scale-[1.02]" 
-                            : "border-white/10 hover:bg-white/5 hover:border-white/20"
+                          "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden",
+                          isDragActive
+                            ? "border-primary bg-primary/10 scale-[1.02]"
+                            : "border-white/10 hover:bg-white/5 hover:border-white/20",
+                          isValidating && "opacity-50 pointer-events-none"
                         )}
                       >
                         <input {...getInputProps()} />
-                        <div className={cn(
-                          "w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors",
-                          isDragActive ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
-                        )}>
-                          {isDragActive ? (
-                            <CloudUpload className="w-8 h-8 animate-bounce" />
-                          ) : (
-                            <Upload className="w-8 h-8" />
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-center">
-                          {isDragActive ? "Drop video here" : "Drag & drop or click to upload"}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          MP4, WebM up to 500MB
-                        </p>
+                        {isValidating ? (
+                          <div className="flex flex-col items-center animate-pulse">
+                            <Sparkles className="w-8 h-8 text-primary mb-4 animate-spin" />
+                            <p className="text-sm font-medium">Validating video...</p>
+                          </div>
+                        ) : (
+                          <>
+                            <div className={cn(
+                              "w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors",
+                              isDragActive ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+                            )}>
+                              {isDragActive ? (
+                                <CloudUpload className="w-8 h-8 animate-bounce" />
+                              ) : (
+                                <Upload className="w-8 h-8" />
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-center">
+                              {isDragActive ? "Drop video here" : "Drag & drop or click to upload"}
+                            </p>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> Max 5 mins
+                                </span>
+                                <span>•</span>
+                                <span>Any size</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
@@ -170,9 +215,9 @@ export function UploadPage() {
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{videoFile.name}</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-muted-foreground flex items-center gap-2">
                               {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                              {isDemoUpload && <span className="text-yellow-500 ml-2">(Demo Mode)</span>}
+                              {isDemoUpload && <span className="text-yellow-500 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Demo Mode</span>}
                             </p>
                           </div>
                         </div>

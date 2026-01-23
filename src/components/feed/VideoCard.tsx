@@ -261,7 +261,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         postId={post.id} 
       />
       {/* Comments Sheet */}
-      <CommentsSheet 
+      <CommentsSheet
         postId={post.id}
         open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
