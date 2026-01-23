@@ -19,6 +19,7 @@ import { MessagesPage } from '@/pages/MessagesPage'
 import { SignUpPage } from '@/pages/SignUpPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { AdminPage } from '@/pages/AdminPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/context/AuthContext'
@@ -75,6 +76,14 @@ const router = createBrowserRouter([
             element: (
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: "/admin",
+            element: (
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             ),
           },

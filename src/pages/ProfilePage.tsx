@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
+import { cn } from '@/lib/utils';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, logout, login } = useAuth();
@@ -90,6 +91,16 @@ export function ProfilePage() {
     );
   }
   const isOwnProfile = currentUser?.id === user.id;
+  const isVerified = (user.followers || 0) > 5;
+  // Decoration styles
+  const getDecorationClass = (decoration?: string) => {
+    switch (decoration) {
+      case 'gold-border': return 'ring-4 ring-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.5)]';
+      case 'neon-glow': return 'ring-4 ring-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.8)]';
+      case 'blue-fire': return 'ring-4 ring-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.8)]';
+      default: return 'border-4 border-background';
+    }
+  };
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
@@ -106,34 +117,38 @@ export function ProfilePage() {
             {/* Profile Info */}
             <div className="px-4 md:px-8 pb-4">
               <div className="relative -mt-16 mb-4 flex flex-col md:flex-row md:items-end gap-4 md:gap-8">
-                <Avatar className="w-32 h-32 border-4 border-background shadow-2xl animate-neon-pulse">
-                  <AvatarImage src={user.avatar} className="object-cover" />
-                  <AvatarFallback className="text-2xl bg-purple-900 text-white">
-                    {user.name.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className={cn("rounded-full transition-all duration-300", getDecorationClass(user.avatarDecoration))}>
+                  <Avatar className="w-32 h-32">
+                    <AvatarImage src={user.avatar} className="object-cover" />
+                    <AvatarFallback className="text-2xl bg-purple-900 text-white">
+                      {user.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
                 <div className="flex-1 space-y-2 pt-2 md:pt-0">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         {user.name}
-                        <span className="text-blue-400 text-base"></span>
+                        {isVerified && (
+                          <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20" />
+                        )}
                       </h1>
                       <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
                     </div>
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -142,8 +157,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button
-                            variant="destructive"
+                          <Button 
+                            variant="destructive" 
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -153,7 +168,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button
+                          <Button 
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -210,14 +225,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger
-                value="videos"
+              <TabsTrigger 
+                value="videos" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger
-                value="liked"
+              <TabsTrigger 
+                value="liked" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
@@ -236,8 +251,8 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog
-          open={isEditDialogOpen}
+        <EditProfileDialog 
+          open={isEditDialogOpen} 
           onOpenChange={setIsEditDialogOpen}
           currentUser={currentUser}
         />

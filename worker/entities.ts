@@ -34,6 +34,15 @@ export class UserEntity extends IndexedEntity<User> {
       (u.bio && u.bio.toLowerCase().includes(lowerQuery))
     );
   }
+  /**
+   * Admin update for stats and decorations
+   */
+  async updateAdminStats(updates: Partial<User>): Promise<User> {
+    return this.mutate(state => ({
+      ...state,
+      ...updates
+    }));
+  }
 }
 // POST ENTITY
 export class PostEntity extends IndexedEntity<Post> {
@@ -45,6 +54,7 @@ export class PostEntity extends IndexedEntity<Post> {
     videoUrl: "",
     caption: "",
     likes: 0,
+    likedBy: [],
     comments: 0,
     shares: 0,
     createdAt: 0,
@@ -62,6 +72,31 @@ export class PostEntity extends IndexedEntity<Post> {
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );
+  }
+  /**
+   * Toggle like for a user
+   */
+  async toggleLike(userId: string): Promise<{ likes: number, isLiked: boolean }> {
+    const state = await this.getState();
+    const likedBy = state.likedBy || [];
+    const isLiked = likedBy.includes(userId);
+    let newLikedBy: string[];
+    let newLikes: number;
+    if (isLiked) {
+      // Unlike
+      newLikedBy = likedBy.filter(id => id !== userId);
+      newLikes = Math.max(0, (state.likes || 0) - 1);
+    } else {
+      // Like
+      newLikedBy = [...likedBy, userId];
+      newLikes = (state.likes || 0) + 1;
+    }
+    await this.mutate(s => ({
+      ...s,
+      likes: newLikes,
+      likedBy: newLikedBy
+    }));
+    return { likes: newLikes, isLiked: !isLiked };
   }
   /**
    * Add a comment to the post

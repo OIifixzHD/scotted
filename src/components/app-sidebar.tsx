@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn, LogOut, Settings } from "lucide-react";
+import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn, LogOut, Settings, Shield } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -127,6 +127,23 @@ export function AppSidebar(): JSX.Element {
                 )}
               </NavLink>
             </SidebarMenuItem>
+            {/* Admin Link */}
+            <SidebarMenuItem>
+              <NavLink to="/admin">
+                {({ isActive }) => (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <Shield className="h-5 w-5" />
+                      <span>Admin Panel</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
@@ -143,8 +160,8 @@ export function AppSidebar(): JSX.Element {
                 <span className="text-xs text-muted-foreground truncate">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
               </div>
             </div>
-            <Button
-              variant="destructive"
+            <Button 
+              variant="destructive" 
               className="w-full justify-start bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20"
               onClick={logout}
             >

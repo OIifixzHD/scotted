@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { ShareDialog } from './ShareDialog';
 import { CommentsSheet } from './CommentsSheet';
+import { useAuth } from '@/context/AuthContext';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -16,8 +17,10 @@ interface VideoCardProps {
   toggleMute: () => void;
 }
 export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProps) {
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Initialize state from props
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const [commentCount, setCommentCount] = useState(post.comments);
@@ -27,15 +30,16 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const [progress, setProgress] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  // Initialize liked state from local storage
+  // Sync with prop updates and user auth state
   useEffect(() => {
-    const storedLike = localStorage.getItem(`liked_post_${post.id}`);
-    if (storedLike === 'true') {
-      setIsLiked(true);
+    if (user && post.likedBy) {
+      setIsLiked(post.likedBy.includes(user.id));
+    } else {
+      setIsLiked(false);
     }
     setLikeCount(post.likes);
     setCommentCount(post.comments);
-  }, [post.id, post.likes, post.comments]);
+  }, [post, user]);
   // Handle Play/Pause based on active state
   useEffect(() => {
     const video = videoRef.current;
@@ -55,7 +59,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           })
           .catch((error) => {
             // Auto-play was prevented
-            // This is expected in some browsers if not muted, or if user hasn't interacted
             console.warn("Autoplay prevented:", error);
             setIsPlaying(false);
           });
@@ -68,25 +71,43 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
     }
   }, [isActive, hasError, isMuted]);
   const handleLike = async () => {
-    if (isLiked) return;
-    setIsLiked(true);
-    setLikeCount(prev => prev + 1);
-    setShowHeartAnimation(true);
-    setTimeout(() => setShowHeartAnimation(false), 800);
-    localStorage.setItem(`liked_post_${post.id}`, 'true');
+    if (!user) {
+      toast.error("Please log in to like posts");
+      return;
+    }
+    // Optimistic Update
+    const previousLiked = isLiked;
+    const previousCount = likeCount;
+    setIsLiked(!previousLiked);
+    setLikeCount(prev => previousLiked ? prev - 1 : prev + 1);
+    if (!previousLiked) {
+      setShowHeartAnimation(true);
+      setTimeout(() => setShowHeartAnimation(false), 800);
+    }
     try {
-      await api(`/api/posts/${post.id}/like`, { method: 'POST' });
+      const res = await api<{ likes: number, isLiked: boolean }>(`/api/posts/${post.id}/like`, { 
+        method: 'POST',
+        body: JSON.stringify({ userId: user.id })
+      });
+      // Sync with server response to be sure
+      setLikeCount(res.likes);
+      setIsLiked(res.isLiked);
     } catch (error) {
-      console.error('Failed to like post:', error);
-      setIsLiked(false);
-      setLikeCount(prev => prev - 1);
-      localStorage.removeItem(`liked_post_${post.id}`);
-      toast.error('Failed to like post');
+      console.error('Failed to toggle like:', error);
+      // Revert on error
+      setIsLiked(previousLiked);
+      setLikeCount(previousCount);
+      toast.error('Failed to update like');
     }
   };
   const handleDoubleTap = () => {
-    if (!isLiked) handleLike();
-    else {
+    if (!user) {
+        toast.error("Please log in to like posts");
+        return;
+    }
+    if (!isLiked) {
+        handleLike();
+    } else {
         setShowHeartAnimation(true);
         setTimeout(() => setShowHeartAnimation(false), 800);
     }
@@ -257,8 +278,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       {/* Share Dialog */}
       <ShareDialog 
         open={isShareOpen} 
-        onOpenChange={setIsShareOpen} 
-        postId={post.id} 
+        onOpenChange={setIsShareOpen}
+        postId={post.id}
       />
       {/* Comments Sheet */}
       <CommentsSheet

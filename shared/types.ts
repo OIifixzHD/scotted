@@ -12,6 +12,8 @@ export interface User {
   followers?: number;
   following?: number;
   followingIds?: string[]; // Added for social graph
+  avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc.
+  isAdmin?: boolean;
 }
 export interface Comment {
   id: string;
@@ -27,6 +29,7 @@ export interface Post {
   videoUrl: string; // Can be a URL or a Base64 Data URI
   caption: string;
   likes: number;
+  likedBy?: string[]; // Track user IDs who liked the post
   comments: number;
   shares: number;
   user?: User; // Hydrated user data

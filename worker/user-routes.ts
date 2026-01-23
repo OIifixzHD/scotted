@@ -23,7 +23,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
       followers: 0,
       following: 0,
-      followingIds: []
+      followingIds: [],
+      avatarDecoration: 'none',
+      isAdmin: false
     };
     const created = await UserEntity.create(c.env, newUser);
     // Don't return password
@@ -45,6 +47,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
     }
     const { password: _, ...safeUser } = user;
+    return ok(c, safeUser);
+  });
+  // --- ADMIN ---
+  app.put('/api/admin/users/:id', async (c) => {
+    const id = c.req.param('id');
+    const { followers, avatarDecoration } = await c.req.json() as { followers?: number; avatarDecoration?: string };
+    const userEntity = new UserEntity(c.env, id);
+    if (!await userEntity.exists()) {
+      return notFound(c, 'User not found');
+    }
+    const updates: Partial<User> = {};
+    if (followers !== undefined) updates.followers = followers;
+    if (avatarDecoration !== undefined) updates.avatarDecoration = avatarDecoration;
+    const updated = await userEntity.updateAdminStats(updates);
+    const { password: _, ...safeUser } = updated;
     return ok(c, safeUser);
   });
   // --- SEARCH & TRENDING ---
@@ -260,6 +277,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         videoUrl: body.videoUrl,
         caption: body.caption || '',
         likes: 0,
+        likedBy: [],
         comments: 0,
         shares: 0,
         createdAt: Date.now(),
@@ -271,10 +289,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.post('/api/posts/:id/like', async (c) => {
     const id = c.req.param('id');
+    const { userId } = await c.req.json() as { userId?: string };
+    if (!userId) return bad(c, 'userId required');
     const post = new PostEntity(c.env, id);
     if (!await post.exists()) return notFound(c, 'Post not found');
-    const updated = await post.mutate(s => ({ ...s, likes: s.likes + 1 }));
-    return ok(c, updated);
+    const result = await post.toggleLike(userId);
+    return ok(c, result);
   });
   // --- COMMENTS ---
   app.get('/api/posts/:id/comments', async (c) => {
