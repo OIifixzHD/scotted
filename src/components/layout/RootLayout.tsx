@@ -5,8 +5,16 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNav } from "./MobileNav";
 import { PageTransition } from "./PageTransition";
 import { AnimatePresence } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { BannedPage } from "@/pages/BannedPage";
 export function RootLayout() {
   const location = useLocation();
+  const { user } = useAuth();
+  // Global Ban Guard
+  // If user is logged in AND banned, show BannedPage instead of app shell
+  if (user?.bannedUntil && user.bannedUntil > Date.now()) {
+    return <BannedPage />;
+  }
   return (
     <SidebarProvider defaultOpen={true} className="h-screen w-full bg-background overflow-hidden">
       <AppSidebar />

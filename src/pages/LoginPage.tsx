@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api-client';
@@ -6,17 +6,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Zap, Loader2 } from 'lucide-react';
+import { Zap, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User } from '@shared/types';
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, isLoading: isAuthLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     password: ''
   });
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, isAuthLoading, navigate]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.username || !formData.password) {
@@ -30,14 +36,21 @@ export function LoginPage() {
         body: JSON.stringify(formData)
       });
       login(user);
-      navigate('/');
+      // Navigation happens automatically via useEffect
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : 'Failed to login');
+      const message = error instanceof Error ? error.message : 'Failed to login';
+      toast.error(message, {
+        icon: <AlertCircle className="w-4 h-4 text-red-500" />,
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
   };
+  if (isAuthLoading) {
+    return null; // Or a loading spinner
+  }
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-black relative overflow-hidden">
       {/* Background Effects */}
@@ -74,8 +87,8 @@ export function LoginPage() {
               onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
             />
           </div>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full bg-primary hover:bg-primary/90 shadow-glow"
             disabled={isLoading}
           >
