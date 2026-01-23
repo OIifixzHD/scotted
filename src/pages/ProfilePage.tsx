@@ -91,6 +91,13 @@ export function ProfilePage() {
     setSelectedVideo(post);
     setIsVideoModalOpen(true);
   };
+  const handlePostDelete = () => {
+    // Remove deleted post from list
+    if (selectedVideo) {
+        setPosts(prev => prev.filter(p => p.id !== selectedVideo.id));
+        setIsVideoModalOpen(false);
+    }
+  };
   if (loading) {
     return (
       <div className="h-full overflow-y-auto">
@@ -171,16 +178,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -189,8 +196,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button
-                            variant="destructive"
+                          <Button 
+                            variant="destructive" 
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -200,7 +207,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button
+                          <Button 
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -272,14 +279,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger
-                value="videos"
+              <TabsTrigger 
+                value="videos" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger
-                value="liked"
+              <TabsTrigger 
+                value="liked" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
@@ -302,10 +309,10 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          currentUser={currentUser}
+        <EditProfileDialog 
+          open={isEditDialogOpen} 
+          onOpenChange={setIsEditDialogOpen} 
+          currentUser={currentUser} 
         />
       )}
       {/* Report Dialog */}
@@ -313,7 +320,9 @@ export function ProfilePage() {
         <ReportDialog
           open={isReportDialogOpen}
           onClose={() => setIsReportDialogOpen(false)}
-          targetUser={user}
+          targetId={user.id}
+          targetType="user"
+          targetName={user.name}
         />
       )}
       {/* Video Modal */}
@@ -321,6 +330,7 @@ export function ProfilePage() {
         post={selectedVideo}
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
+        onDelete={handlePostDelete}
       />
     </div>
   );

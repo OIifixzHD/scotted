@@ -8,13 +8,14 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
-import type { User } from "@shared/types";
 interface ReportDialogProps {
   open: boolean;
   onClose: () => void;
-  targetUser: User;
+  targetId: string;
+  targetType: 'user' | 'post';
+  targetName?: string; // For display purposes (e.g. user name or "this post")
 }
-export function ReportDialog({ open, onClose, targetUser }: ReportDialogProps) {
+export function ReportDialog({ open, onClose, targetId, targetType, targetName }: ReportDialogProps) {
   const { user } = useAuth();
   const [reason, setReason] = useState('');
   const [description, setDescription] = useState('');
@@ -23,7 +24,10 @@ export function ReportDialog({ open, onClose, targetUser }: ReportDialogProps) {
     if (!user || !reason) return;
     setIsSubmitting(true);
     try {
-      await api(`/api/users/${targetUser.id}/report`, {
+      const endpoint = targetType === 'user'
+        ? `/api/users/${targetId}/report`
+        : `/api/posts/${targetId}/report`;
+      await api(endpoint, {
         method: 'POST',
         body: JSON.stringify({
           reporterId: user.id,
@@ -42,13 +46,14 @@ export function ReportDialog({ open, onClose, targetUser }: ReportDialogProps) {
       setIsSubmitting(false);
     }
   };
+  const displayTarget = targetName || (targetType === 'user' ? 'this user' : 'this post');
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
       <DialogContent className="sm:max-w-[425px] bg-card border-white/10 text-foreground">
         <DialogHeader>
-          <DialogTitle>Report User</DialogTitle>
+          <DialogTitle>Report {targetType === 'user' ? 'User' : 'Content'}</DialogTitle>
           <DialogDescription>
-            Report @{targetUser.name} for violating community guidelines.
+            Report {displayTarget} for violating community guidelines.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -63,14 +68,15 @@ export function ReportDialog({ open, onClose, targetUser }: ReportDialogProps) {
                 <SelectItem value="harassment">Harassment or Bullying</SelectItem>
                 <SelectItem value="inappropriate">Inappropriate Content</SelectItem>
                 <SelectItem value="impersonation">Impersonation</SelectItem>
+                <SelectItem value="misinformation">Misinformation</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Description (Optional)</Label>
-            <Textarea 
-              placeholder="Provide more details..." 
+            <Textarea
+              placeholder="Provide more details..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="bg-secondary/50 border-white/10 min-h-[100px]"
@@ -79,8 +85,8 @@ export function ReportDialog({ open, onClose, targetUser }: ReportDialogProps) {
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={handleSubmit} 
+          <Button
+            onClick={handleSubmit}
             disabled={isSubmitting || !reason}
             className="bg-red-600 hover:bg-red-700 text-white"
           >

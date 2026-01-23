@@ -214,6 +214,7 @@ export class ReportEntity extends IndexedEntity<Report> {
     id: "",
     reporterId: "",
     targetId: "",
+    targetType: "user",
     reason: "",
     createdAt: 0,
     status: 'pending'

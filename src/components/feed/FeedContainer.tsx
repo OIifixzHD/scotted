@@ -70,6 +70,9 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [posts]);
+  const handlePostDelete = (postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+  };
   if (loading) {
     return (
       <div className="h-full w-full bg-black py-4 md:py-8">
@@ -128,21 +131,22 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
     );
   }
   return (
-    <div
+    <div 
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black"
     >
       {posts.map((post) => (
-        <div
-            key={post.id}
+        <div 
+            key={post.id} 
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
-          <VideoCard
-            post={post}
+          <VideoCard 
+            post={post} 
             isActive={activeVideoId === post.id}
             isMuted={isMuted}
             toggleMute={() => setIsMuted(!isMuted)}
+            onDelete={() => handlePostDelete(post.id)}
           />
         </div>
       ))}

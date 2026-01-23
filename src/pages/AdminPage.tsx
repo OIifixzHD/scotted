@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit } from "lucide-react";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { useNavigate } from 'react-router-dom';
@@ -208,6 +208,7 @@ export function AdminPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
+                      <TableHead>Type</TableHead>
                       <TableHead>Reporter</TableHead>
                       <TableHead>Target</TableHead>
                       <TableHead>Reason</TableHead>
@@ -218,13 +219,25 @@ export function AdminPage() {
                   <TableBody>
                     {reports.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No reports found.</TableCell>
+                        <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">No reports found.</TableCell>
                       </TableRow>
                     ) : (
                       reports.map((report) => (
                         <TableRow key={report.id} className="border-white/10 hover:bg-white/5">
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                                {report.targetType === 'user' ? <UserIcon className="w-4 h-4 text-blue-400" /> : <FileText className="w-4 h-4 text-purple-400" />}
+                                <span className="capitalize text-sm">{report.targetType}</span>
+                            </div>
+                          </TableCell>
                           <TableCell className="font-medium">{report.reporter?.name || 'Unknown'}</TableCell>
-                          <TableCell className="text-red-400">@{report.target?.name || 'Unknown'}</TableCell>
+                          <TableCell className="text-red-400">
+                            {report.targetType === 'user' ? (
+                                <span>@{report.target?.name || 'Unknown'}</span>
+                            ) : (
+                                <span className="italic text-xs">{report.post?.caption?.substring(0, 20) || 'Post Content'}...</span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium capitalize">{report.reason}</span>
@@ -258,10 +271,10 @@ export function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
-      <UserManagementDialog 
-        open={dialogOpen} 
-        onClose={() => setDialogOpen(false)} 
-        user={selectedUser} 
+      <UserManagementDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        user={selectedUser}
         mode={dialogMode}
         onSuccess={fetchData}
       />

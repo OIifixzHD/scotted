@@ -7,23 +7,29 @@ interface VideoModalProps {
   post: Post | null;
   isOpen: boolean;
   onClose: () => void;
+  onDelete?: () => void;
 }
-export function VideoModal({ post, isOpen, onClose }: VideoModalProps) {
+export function VideoModal({ post, isOpen, onClose, onDelete }: VideoModalProps) {
   const [isMuted, setIsMuted] = useState(false);
   if (!post) return null;
+  const handleDelete = () => {
+    onDelete?.();
+    onClose();
+  };
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md p-0 bg-black border-none overflow-hidden h-[80vh] md:h-[85vh] flex flex-col items-center justify-center">
         <DialogTitle className="sr-only">Video Player</DialogTitle>
         <div className="relative w-full h-full">
-            <VideoCard
+            <VideoCard 
                 post={post}
                 isActive={isOpen}
                 isMuted={isMuted}
                 toggleMute={() => setIsMuted(!isMuted)}
+                onDelete={handleDelete}
             />
             {/* Close Button Overlay */}
-            <button
+            <button 
                 onClick={onClose}
                 className="absolute top-4 left-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-50"
             >

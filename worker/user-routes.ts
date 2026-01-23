@@ -90,20 +90,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     // Hydrate reports
     const hydrated = await Promise.all(reports.map(async (r) => {
         const reporterEntity = new UserEntity(c.env, r.reporterId);
-        const targetEntity = new UserEntity(c.env, r.targetId);
         let reporter: User | undefined;
-        let target: User | undefined;
         if (await reporterEntity.exists()) {
             const d = await reporterEntity.getState();
             const { password, ...safe } = d;
             reporter = safe;
         }
-        if (await targetEntity.exists()) {
-            const d = await targetEntity.getState();
-            const { password, ...safe } = d;
-            target = safe;
+        let target: User | undefined;
+        let post: Post | undefined;
+        if (r.targetType === 'user') {
+            const targetEntity = new UserEntity(c.env, r.targetId);
+            if (await targetEntity.exists()) {
+                const d = await targetEntity.getState();
+                const { password, ...safe } = d;
+                target = safe;
+            }
+        } else if (r.targetType === 'post') {
+            const postEntity = new PostEntity(c.env, r.targetId);
+            if (await postEntity.exists()) {
+                post = await postEntity.getState();
+            }
         }
-        return { ...r, reporter, target };
+        return { ...r, reporter, target, post };
     }));
     return ok(c, hydrated);
   });
@@ -190,7 +198,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { name, bio, avatar } = await c.req.json() as { name?: string; bio?: string; avatar?: string };
+    const { name, bio, avatar, avatarDecoration } = await c.req.json() as { name?: string; bio?: string; avatar?: string; avatarDecoration?: string };
     if (!name?.trim()) {
       return bad(c, 'Name is required');
     }
@@ -202,7 +210,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       ...s,
       name: name.trim(),
       bio: bio?.trim(),
-      avatar: avatar || s.avatar // Keep existing if not provided
+      avatar: avatar || s.avatar, // Keep existing if not provided
+      avatarDecoration: avatarDecoration || s.avatarDecoration
     }));
     const { password, ...safeUser } = updated;
     return ok(c, safeUser);
@@ -303,6 +312,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         id: crypto.randomUUID(),
         reporterId,
         targetId,
+        targetType: 'user',
         reason,
         description,
         createdAt: Date.now(),
@@ -415,6 +425,39 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         commentsList: []
     };
     const created = await PostEntity.create(c.env, newPost);
+    return ok(c, created);
+  });
+  app.delete('/api/posts/:id', async (c) => {
+    const id = c.req.param('id');
+    const { userId } = await c.req.json() as { userId?: string };
+    if (!userId) return bad(c, 'userId required');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const post = await postEntity.getState();
+    const userEntity = new UserEntity(c.env, userId);
+    const user = await userEntity.getState();
+    // Allow deletion if user is owner OR user is admin
+    if (post.userId !== userId && !user.isAdmin) {
+        return bad(c, 'Unauthorized');
+    }
+    await PostEntity.delete(c.env, id);
+    return ok(c, { deleted: true });
+  });
+  app.post('/api/posts/:id/report', async (c) => {
+    const targetId = c.req.param('id');
+    const { reporterId, reason, description } = await c.req.json() as { reporterId: string, reason: string, description?: string };
+    if (!reporterId || !reason) return bad(c, 'reporterId and reason required');
+    const report: Report = {
+        id: crypto.randomUUID(),
+        reporterId,
+        targetId,
+        targetType: 'post',
+        reason,
+        description,
+        createdAt: Date.now(),
+        status: 'pending'
+    };
+    const created = await ReportEntity.create(c.env, report);
     return ok(c, created);
   });
   app.post('/api/posts/:id/like', async (c) => {

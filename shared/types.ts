@@ -69,10 +69,12 @@ export interface Report {
   id: string;
   reporterId: string;
   targetId: string;
+  targetType: 'user' | 'post'; // Added to distinguish report targets
   reason: string;
   description?: string;
   createdAt: number;
   status: 'pending' | 'resolved' | 'dismissed';
   reporter?: User; // Hydrated
-  target?: User; // Hydrated
+  target?: User; // Hydrated (if targetType is user)
+  post?: Post; // Hydrated (if targetType is post)
 }

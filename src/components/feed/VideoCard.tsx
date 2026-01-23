@@ -10,13 +10,15 @@ import { Link } from 'react-router-dom';
 import { ShareDialog } from './ShareDialog';
 import { CommentsSheet } from './CommentsSheet';
 import { useAuth } from '@/context/AuthContext';
+import { PostOptions } from './PostOptions';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
   isMuted: boolean;
   toggleMute: () => void;
+  onDelete?: () => void;
 }
-export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProps) {
+export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: VideoCardProps) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -150,7 +152,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl">
       {/* Video Player */}
-      <div
+      <div 
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -209,7 +211,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       </div>
       {/* Progress Bar */}
       <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
-        <div
+        <div 
           className="h-full bg-primary transition-all duration-100 ease-linear"
           style={{ width: `${progress}%` }}
         />
@@ -238,7 +240,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button
+        <button 
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -247,7 +249,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button
+        <button 
           onClick={() => setIsShareOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -263,6 +265,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           </div>
           <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
         </div>
+        {/* More Options */}
+        <PostOptions post={post} onDelete={onDelete} />
       </div>
       {/* Bottom Info Area */}
       <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
@@ -286,22 +290,22 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         </div>
       </div>
       {/* Mute Toggle */}
-      <button
+      <button 
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog
-        open={isShareOpen}
-        onOpenChange={setIsShareOpen}
-        postId={post.id}
+      <ShareDialog 
+        open={isShareOpen} 
+        onOpenChange={setIsShareOpen} 
+        postId={post.id} 
       />
       {/* Comments Sheet */}
-      <CommentsSheet
-        postId={post.id}
-        open={isCommentsOpen}
+      <CommentsSheet 
+        postId={post.id} 
+        open={isCommentsOpen} 
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
