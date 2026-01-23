@@ -5,8 +5,12 @@ import { api } from '@/lib/api-client';
 import type { Post } from '@shared/types';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Film, Plus } from 'lucide-react';
-export function FeedContainer() {
+import { Film, Plus, Users } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+interface FeedContainerProps {
+  endpoint?: string;
+}
+export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,11 +18,24 @@ export function FeedContainer() {
   // Track which video is currently in view
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
   useEffect(() => {
     const fetchFeed = async () => {
       try {
         setLoading(true);
-        const response = await api<{ items: Post[] }>('/api/feed');
+        setError(null);
+        let url = endpoint;
+        // If fetching following feed, we need to append userId
+        if (endpoint.includes('following')) {
+            if (!user) {
+                // Not logged in, can't fetch following
+                setPosts([]);
+                setLoading(false);
+                return;
+            }
+            url = `${endpoint}?userId=${user.id}`;
+        }
+        const response = await api<{ items: Post[] }>(url);
         setPosts(response.items);
         if (response.items.length > 0) {
             setActiveVideoId(response.items[0].id);
@@ -30,7 +47,7 @@ export function FeedContainer() {
       }
     };
     fetchFeed();
-  }, []);
+  }, [endpoint, user?.id]);
   // Intersection Observer logic for scroll snapping
   useEffect(() => {
     const container = containerRef.current;
@@ -67,6 +84,28 @@ export function FeedContainer() {
       </div>
     );
   }
+  // Empty State for Following Feed
+  if (posts.length === 0 && endpoint.includes('following')) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-black p-6 text-center space-y-6">
+        <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center">
+          <Users className="w-10 h-10 text-muted-foreground" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-white">Your Following feed is empty</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">
+            Follow creators to see their latest pulses here.
+          </p>
+        </div>
+        <Button asChild variant="outline" className="border-white/10 hover:bg-white/5">
+          <Link to="/discover">
+            Find People to Follow
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+  // Empty State for General Feed
   if (posts.length === 0) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center bg-black p-6 text-center space-y-6">

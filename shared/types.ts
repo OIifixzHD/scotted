@@ -11,6 +11,7 @@ export interface User {
   bio?: string;
   followers?: number;
   following?: number;
+  followingIds?: string[]; // Added for social graph
 }
 export interface Comment {
   id: string;

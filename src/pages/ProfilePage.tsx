@@ -12,13 +12,13 @@ import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
-  const { user: currentUser, logout } = useAuth();
+  const { user: currentUser, logout, login } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
@@ -31,11 +31,6 @@ export function ProfilePage() {
         setUser(userData);
         setFollowerCount(userData.followers || 0);
         setPosts(postsData.items);
-        // Check local storage for follow state
-        const storedFollow = localStorage.getItem(`following_user_${id}`);
-        if (storedFollow === 'true') {
-            setIsFollowing(true);
-        }
       } catch (error) {
         console.error('Failed to fetch profile:', error);
       } finally {
@@ -43,33 +38,32 @@ export function ProfilePage() {
       }
     };
     fetchData();
-  }, [id, currentUser]); // Re-fetch if currentUser changes (e.g. after edit)
+  }, [id]);
+  // Determine if following based on currentUser's followingIds
+  const isFollowing = currentUser?.followingIds?.includes(user?.id || '') || false;
   const handleFollow = async () => {
-    if (!id || !user) return;
-    // Toggle state
-    const newState = !isFollowing;
-    setIsFollowing(newState);
-    // Update count optimistically
-    setFollowerCount(prev => newState ? prev + 1 : prev - 1);
-    // Persist locally
-    if (newState) {
-        localStorage.setItem(`following_user_${id}`, 'true');
-    } else {
-        localStorage.removeItem(`following_user_${id}`);
+    if (!id || !user || !currentUser) {
+        if (!currentUser) toast.error("Please log in to follow");
+        return;
     }
-    // API Call (Only handling follow for now as per requirements, unfollow logic would be similar)
-    if (newState) {
-        try {
-            await api(`/api/users/${id}/follow`, { method: 'POST' });
-            toast.success(`You are now following ${user.name}`);
-        } catch (error) {
-            console.error('Failed to follow user:', error);
-            // Revert
-            setIsFollowing(false);
-            setFollowerCount(prev => prev - 1);
-            localStorage.removeItem(`following_user_${id}`);
-            toast.error('Failed to follow user');
-        }
+    try {
+        setIsFollowLoading(true);
+        // Optimistic update
+        setFollowerCount(prev => isFollowing ? prev - 1 : prev + 1);
+        const updatedCurrentUser = await api<User>(`/api/users/${id}/follow`, { 
+            method: 'POST',
+            body: JSON.stringify({ currentUserId: currentUser.id })
+        });
+        // Update global context with new followingIds
+        login(updatedCurrentUser);
+        toast.success(isFollowing ? `Unfollowed ${user.name}` : `Following ${user.name}`);
+    } catch (error) {
+        console.error('Failed to follow user:', error);
+        // Revert optimistic update
+        setFollowerCount(prev => isFollowing ? prev + 1 : prev - 1);
+        toast.error('Failed to update follow status');
+    } finally {
+        setIsFollowLoading(false);
     }
   };
   if (loading) {
@@ -123,7 +117,7 @@ export function ProfilePage() {
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         {user.name}
-                        <span className="text-blue-400 text-base">���</span>
+                        <span className="text-blue-400 text-base"></span>
                       </h1>
                       <p className="text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</p>
                     </div>
@@ -152,8 +146,9 @@ export function ProfilePage() {
                           <Button 
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
+                            disabled={isFollowLoading}
                           >
-                            {isFollowing ? "Following" : "Follow"}
+                            {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                           </Button>
                           <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
                             Message
@@ -233,8 +228,8 @@ export function ProfilePage() {
       {currentUser && (
         <EditProfileDialog 
           open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen} 
-          currentUser={currentUser} 
+          onOpenChange={setIsEditDialogOpen}
+          currentUser={currentUser}
         />
       )}
     </div>

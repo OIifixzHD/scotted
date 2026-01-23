@@ -22,7 +22,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       bio: bio?.trim() || 'New to Pulse',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
       followers: 0,
-      following: 0
+      following: 0,
+      followingIds: []
     };
     const created = await UserEntity.create(c.env, newUser);
     // Don't return password
@@ -119,7 +120,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { password, ...safeUser } = data;
     return ok(c, safeUser);
   });
-  // NEW: Update User Profile
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
     const { name, bio, avatar } = await c.req.json() as { name?: string; bio?: string; avatar?: string };
@@ -139,20 +139,49 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { password, ...safeUser } = updated;
     return ok(c, safeUser);
   });
+  // Toggle Follow
   app.post('/api/users/:id/follow', async (c) => {
-    const id = c.req.param('id');
+    const targetId = c.req.param('id');
     const { currentUserId } = await c.req.json() as { currentUserId?: string };
     if (!currentUserId) return bad(c, 'currentUserId required');
-    const targetUser = new UserEntity(c.env, id);
-    if (!await targetUser.exists()) return notFound(c, 'User not found');
-    // Increment followers on target
-    await targetUser.mutate(s => ({ ...s, followers: (s.followers || 0) + 1 }));
-    // Increment following on current user
-    const currentUser = new UserEntity(c.env, currentUserId);
-    if (await currentUser.exists()) {
-        await currentUser.mutate(s => ({ ...s, following: (s.following || 0) + 1 }));
-    }
-    return ok(c, { success: true });
+    if (currentUserId === targetId) return bad(c, 'Cannot follow yourself');
+    const currentUserEntity = new UserEntity(c.env, currentUserId);
+    if (!await currentUserEntity.exists()) return notFound(c, 'Current user not found');
+    const targetUserEntity = new UserEntity(c.env, targetId);
+    if (!await targetUserEntity.exists()) return notFound(c, 'Target user not found');
+    // Mutate current user (update following list and count)
+    const updatedCurrentUser = await currentUserEntity.mutate(user => {
+        const followingIds = user.followingIds || [];
+        const isFollowing = followingIds.includes(targetId);
+        let newFollowingIds;
+        let followingCountChange = 0;
+        if (isFollowing) {
+            // Unfollow
+            newFollowingIds = followingIds.filter(id => id !== targetId);
+            followingCountChange = -1;
+        } else {
+            // Follow
+            newFollowingIds = [...followingIds, targetId];
+            followingCountChange = 1;
+        }
+        return {
+            ...user,
+            followingIds: newFollowingIds,
+            following: Math.max(0, (user.following || 0) + followingCountChange)
+        };
+    });
+    // Mutate target user (update followers count)
+    await targetUserEntity.mutate(user => {
+        // Check if we just followed or unfollowed based on the updated current user state
+        const isFollowingNow = updatedCurrentUser.followingIds?.includes(targetId);
+        const change = isFollowingNow ? 1 : -1;
+        return {
+            ...user,
+            followers: Math.max(0, (user.followers || 0) + change)
+        };
+    });
+    const { password, ...safeUser } = updatedCurrentUser;
+    return ok(c, safeUser);
   });
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');
@@ -187,6 +216,38 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     // Sort by newest first
     hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
     return ok(c, { ...page, items: hydratedPosts });
+  });
+  // Following Feed
+  app.get('/api/feed/following', async (c) => {
+    const userId = c.req.query('userId');
+    if (!userId) return bad(c, 'userId required');
+    const userEntity = new UserEntity(c.env, userId);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+    const user = await userEntity.getState();
+    const followingIds = user.followingIds || [];
+    if (followingIds.length === 0) {
+        return ok(c, { items: [] });
+    }
+    // Fetch posts and filter by followingIds
+    // Note: In a production app, this would use a proper index or query
+    await PostEntity.ensureSeed(c.env);
+    const page = await PostEntity.list(c.env, null, 500); // Fetch larger batch to filter
+    const followingPosts = page.items.filter(p => followingIds.includes(p.userId));
+    // Hydrate
+    const hydratedPosts = await Promise.all(followingPosts.map(async (post) => {
+        if (post.userId) {
+            const uEntity = new UserEntity(c.env, post.userId);
+            if (await uEntity.exists()) {
+                const uData = await uEntity.getState();
+                const { password, ...safe } = uData;
+                return { ...post, user: safe };
+            }
+        }
+        return post;
+    }));
+    // Sort by newest
+    hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
+    return ok(c, { items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
     const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[] };
