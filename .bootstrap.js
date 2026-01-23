@@ -83,7 +83,8 @@ function runSetupCommands() {
     "bun add react-dropzone@^14.2.3",
     "bun add date-fns",
     "bun add @radix-ui/react-dialog",
-    "bun add @radix-ui/react-slot"
+    "bun add @radix-ui/react-slot",
+    "bun add react-dropzone"
 ];
     
     if (commands.length === 0) {
