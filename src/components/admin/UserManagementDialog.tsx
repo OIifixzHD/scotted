@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Shield } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { useAuth } from "@/context/AuthContext";
 import type { User } from "@shared/types";
 interface UserManagementDialogProps {
   open: boolean;
@@ -17,10 +18,12 @@ interface UserManagementDialogProps {
   onSuccess: () => void;
 }
 export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: UserManagementDialogProps) {
+  const { user: currentUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   // Edit Mode State
   const [name, setName] = useState('');
   const [isVerified, setIsVerified] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   // Ban Mode State
   const [banDuration, setBanDuration] = useState('1'); // days
   const [banReason, setBanReason] = useState('');
@@ -28,6 +31,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
     if (user) {
       setName(user.name);
       setIsVerified(user.isVerified || false);
+      setIsAdmin(user.isAdmin || false);
       setBanReason('');
       setBanDuration('1');
     }
@@ -40,6 +44,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
       if (mode === 'edit') {
         updates.name = name;
         updates.isVerified = isVerified;
+        updates.isAdmin = isAdmin;
       } else if (mode === 'ban') {
         const durationDays = parseInt(banDuration);
         const bannedUntil = durationDays === -1 
@@ -47,6 +52,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
           : Date.now() + (durationDays * 24 * 60 * 60 * 1000);
         updates.bannedUntil = bannedUntil;
         updates.banReason = banReason || 'Violation of terms';
+        updates.bannedBy = currentUser?.name || 'System Administrator';
       }
       await api(`/api/admin/users/${user.id}`, {
         method: 'PUT',
@@ -70,7 +76,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
           <DialogTitle>{mode === 'edit' ? 'Edit User' : 'Ban User'}</DialogTitle>
           <DialogDescription>
             {mode === 'edit' 
-              ? `Modify details for ${user.name}` 
+              ? `Modify details for ${user.name}`
               : `Suspend access for ${user.name}`
             }
           </DialogDescription>
@@ -80,9 +86,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
             <>
               <div className="space-y-2">
                 <Label htmlFor="name">Display Name</Label>
-                <Input 
-                  id="name" 
-                  value={name} 
+                <Input
+                  id="name"
+                  value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="bg-secondary/50 border-white/10"
                 />
@@ -92,9 +98,23 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                   <Label>Verified Status</Label>
                   <p className="text-xs text-muted-foreground">Grant blue checkmark</p>
                 </div>
-                <Switch 
-                  checked={isVerified} 
-                  onCheckedChange={setIsVerified} 
+                <Switch
+                  checked={isVerified}
+                  onCheckedChange={setIsVerified}
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg border border-purple-500/20 bg-purple-500/10">
+                <div className="space-y-0.5">
+                  <Label className="flex items-center gap-2 text-purple-300">
+                    <Shield className="w-4 h-4" />
+                    Admin Access
+                  </Label>
+                  <p className="text-xs text-purple-200/70">Grant full system control</p>
+                </div>
+                <Switch
+                  checked={isAdmin}
+                  onCheckedChange={setIsAdmin}
+                  className="data-[state=checked]:bg-purple-500"
                 />
               </div>
             </>
@@ -121,8 +141,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
               </div>
               <div className="space-y-2">
                 <Label>Reason</Label>
-                <Input 
-                  placeholder="e.g. Spam, Harassment" 
+                <Input
+                  placeholder="e.g. Spam, Harassment"
                   value={banReason}
                   onChange={(e) => setBanReason(e.target.value)}
                   className="bg-secondary/50 border-white/10"

@@ -19,6 +19,7 @@ export interface User {
   isVerified?: boolean;
   bannedUntil?: number; // Timestamp
   banReason?: string;
+  bannedBy?: string; // Admin who issued the ban
   blockedUserIds?: string[];
 }
 export interface Comment {

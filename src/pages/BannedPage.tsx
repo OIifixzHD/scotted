@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { ShieldAlert, LogOut, Calendar, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, LogOut, Calendar, AlertTriangle, User } from 'lucide-react';
 import { format } from 'date-fns';
 export function BannedPage() {
   const { user, logout } = useAuth();
@@ -41,11 +41,21 @@ export function BannedPage() {
               </p>
             </div>
           </div>
+          <div className="h-px bg-red-500/20 w-full" />
+          <div className="flex items-start gap-3">
+            <User className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs text-red-300 uppercase font-bold tracking-wider mb-1">Banned By</p>
+              <p className="text-sm text-white font-medium">
+                {user.bannedBy || "System Administrator"}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="pt-4">
           <Button 
-            onClick={logout} 
-            variant="outline" 
+            onClick={logout}
+            variant="outline"
             className="w-full border-white/10 hover:bg-white/5 hover:text-white"
           >
             <LogOut className="w-4 h-4 mr-2" />

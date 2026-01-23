@@ -30,6 +30,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       isVerified: false,
       bannedUntil: 0,
       banReason: "",
+      bannedBy: "",
       blockedUserIds: []
     };
     const created = await UserEntity.create(c.env, newUser);
@@ -61,7 +62,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // --- ADMIN ---
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name } = await c.req.json() as Partial<User>;
+    const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy } = await c.req.json() as Partial<User>;
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
@@ -72,6 +73,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (isVerified !== undefined) updates.isVerified = isVerified;
     if (bannedUntil !== undefined) updates.bannedUntil = bannedUntil;
     if (banReason !== undefined) updates.banReason = banReason;
+    if (isAdmin !== undefined) updates.isAdmin = isAdmin;
+    if (bannedBy !== undefined) updates.bannedBy = bannedBy;
     // Admin can still force update name if absolutely necessary, but generally discouraged
     if (name !== undefined) updates.name = name;
     const updated = await userEntity.updateAdminStats(updates);
