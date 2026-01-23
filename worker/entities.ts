@@ -3,7 +3,7 @@
  */
 import { IndexedEntity, Index } from "./core-utils";
 import type { Env } from "./core-utils";
-import type { User, Chat, ChatMessage, Post, Comment } from "@shared/types";
+import type { User, Chat, ChatMessage, Post, Comment, Notification } from "@shared/types";
 import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/mock-data";
 // USER ENTITY
 export class UserEntity extends IndexedEntity<User> {
@@ -144,5 +144,28 @@ export class ChatBoardEntity extends IndexedEntity<ChatBoardState> {
     const msg: ChatMessage = { id: crypto.randomUUID(), chatId: this.id, userId, text, ts: Date.now() };
     await this.mutate(s => ({ ...s, messages: [...s.messages, msg] }));
     return msg;
+  }
+}
+// NOTIFICATION ENTITY
+export class NotificationEntity extends IndexedEntity<Notification> {
+  static readonly entityName = "notification";
+  static readonly indexName = "notifications";
+  static readonly initialState: Notification = {
+    id: "",
+    userId: "",
+    actorId: "",
+    type: "like",
+    read: false,
+    createdAt: 0
+  };
+  static seedData = [];
+  static async listForUser(env: Env, userId: string, limit: number = 50): Promise<Notification[]> {
+    // In a real app, we would have a secondary index for userId.
+    // For this demo with limited data, we list all and filter.
+    const { items } = await this.list(env, null, 500);
+    const userNotifications = items.filter(n => n.userId === userId);
+    // Sort by newest first
+    userNotifications.sort((a, b) => b.createdAt - a.createdAt);
+    return userNotifications.slice(0, limit);
   }
 }

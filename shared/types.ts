@@ -48,3 +48,14 @@ export interface ChatMessage {
   text: string;
   ts: number; // epoch millis
 }
+export interface Notification {
+  id: string;
+  userId: string; // Recipient
+  actorId: string; // Who performed the action
+  type: 'like' | 'comment' | 'follow';
+  postId?: string; // Optional, for like/comment
+  read: boolean;
+  createdAt: number;
+  actor?: User; // Hydrated
+  post?: Post; // Hydrated (optional)
+}

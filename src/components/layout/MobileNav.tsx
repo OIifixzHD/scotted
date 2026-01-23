@@ -26,9 +26,9 @@ export function MobileNav() {
       highlight: true
     },
     {
-      to: '/messages',
+      to: '/inbox',
       icon: MessageCircle,
-      label: 'Inbox',
+      label: 'Inbox', // Label remains Inbox
       end: false
     },
     {

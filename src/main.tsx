@@ -15,7 +15,7 @@ import { HomePage } from '@/pages/HomePage'
 import { DiscoverPage } from '@/pages/DiscoverPage'
 import { UploadPage } from '@/pages/UploadPage'
 import { ProfilePage } from '@/pages/ProfilePage'
-import { MessagesPage } from '@/pages/MessagesPage'
+import { InboxPage } from '@/pages/InboxPage'
 import { SignUpPage } from '@/pages/SignUpPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -60,10 +60,10 @@ const router = createBrowserRouter([
             ),
           },
           {
-            path: "/messages",
+            path: "/inbox",
             element: (
               <ProtectedRoute>
-                <MessagesPage />
+                <InboxPage />
               </ProtectedRoute>
             ),
           },

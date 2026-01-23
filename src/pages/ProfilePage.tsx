@@ -242,9 +242,13 @@ export function ProfilePage() {
               <VideoGrid posts={posts} />
             </TabsContent>
             <TabsContent value="liked" className="mt-0">
-              <div className="py-20 text-center text-muted-foreground">
-                <p>Liked videos are private.</p>
-              </div>
+              {isOwnProfile ? (
+                <LikedVideosTab userId={user.id} />
+              ) : (
+                <div className="py-20 text-center text-muted-foreground">
+                  <p>Liked videos are private.</p>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -259,4 +263,30 @@ export function ProfilePage() {
       )}
     </div>
   );
+}
+
+function LikedVideosTab({ userId }: { userId: string }) {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLiked = async () => {
+      try {
+        setLoading(true);
+        const res = await api<{ items: Post[] }>(`/api/users/${userId}/liked`);
+        setPosts(res.items);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLiked();
+  }, [userId]);
+
+  if (loading) {
+    return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
+
+  return <VideoGrid posts={posts} />;
 }

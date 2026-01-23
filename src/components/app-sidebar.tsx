@@ -80,7 +80,7 @@ export function AppSidebar(): JSX.Element {
               </NavLink>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <NavLink to="/messages">
+              <NavLink to="/inbox">
                 {({ isActive }) => (
                   <SidebarMenuButton
                     asChild
@@ -89,7 +89,7 @@ export function AppSidebar(): JSX.Element {
                   >
                     <span className="flex items-center gap-3 cursor-pointer">
                       <MessageCircle className="h-5 w-5" />
-                      <span>Messages</span>
+                      <span>Inbox</span>
                     </span>
                   </SidebarMenuButton>
                 )}

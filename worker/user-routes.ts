@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, ChatBoardEntity, PostEntity } from "./entities";
+import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User } from "@shared/types";
+import type { User, Notification } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- AUTHENTICATION ---
@@ -189,7 +189,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     // Mutate target user (update followers count)
     await targetUserEntity.mutate(user => {
-        // Check if we just followed or unfollowed based on the updated current user state
         const isFollowingNow = updatedCurrentUser.followingIds?.includes(targetId);
         const change = isFollowingNow ? 1 : -1;
         return {
@@ -197,6 +196,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             followers: Math.max(0, (user.followers || 0) + change)
         };
     });
+    // Create Notification if followed
+    if (updatedCurrentUser.followingIds?.includes(targetId)) {
+        const notif: Notification = {
+            id: crypto.randomUUID(),
+            userId: targetId,
+            actorId: currentUserId,
+            type: 'follow',
+            read: false,
+            createdAt: Date.now()
+        };
+        await NotificationEntity.create(c.env, notif);
+    }
     const { password, ...safeUser } = updatedCurrentUser;
     return ok(c, safeUser);
   });
@@ -210,6 +221,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { password, ...safeUser } = userData;
     const hydrated = userPosts.map(p => ({ ...p, user: safeUser }));
     return ok(c, { items: hydrated, next: null });
+  });
+  app.get('/api/users/:id/liked', async (c) => {
+    const userId = c.req.param('id');
+    await PostEntity.ensureSeed(c.env);
+    const page = await PostEntity.list(c.env, null, 500);
+    const likedPosts = page.items.filter(p => p.likedBy?.includes(userId));
+    // Hydrate posts with their authors
+    const hydrated = await Promise.all(likedPosts.map(async (post) => {
+        if (post.userId) {
+            const uEntity = new UserEntity(c.env, post.userId);
+            if (await uEntity.exists()) {
+                const uData = await uEntity.getState();
+                const { password, ...safe } = uData;
+                return { ...post, user: safe };
+            }
+        }
+        return post;
+    }));
+    return ok(c, { items: hydrated });
   });
   // --- FEED / POSTS ---
   app.get('/api/feed', async (c) => {
@@ -246,7 +276,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return ok(c, { items: [] });
     }
     // Fetch posts and filter by followingIds
-    // Note: In a production app, this would use a proper index or query
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 500); // Fetch larger batch to filter
     const followingPosts = page.items.filter(p => followingIds.includes(p.userId));
@@ -291,9 +320,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const id = c.req.param('id');
     const { userId } = await c.req.json() as { userId?: string };
     if (!userId) return bad(c, 'userId required');
-    const post = new PostEntity(c.env, id);
-    if (!await post.exists()) return notFound(c, 'Post not found');
-    const result = await post.toggleLike(userId);
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const result = await postEntity.toggleLike(userId);
+    // Create Notification if liked (and not self-like)
+    if (result.isLiked) {
+        const post = await postEntity.getState();
+        if (post.userId !== userId) {
+            const notif: Notification = {
+                id: crypto.randomUUID(),
+                userId: post.userId,
+                actorId: userId,
+                type: 'like',
+                postId: id,
+                read: false,
+                createdAt: Date.now()
+            };
+            await NotificationEntity.create(c.env, notif);
+        }
+    }
     return ok(c, result);
   });
   // --- COMMENTS ---
@@ -308,15 +353,54 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const id = c.req.param('id');
     const { userId, text } = await c.req.json() as { userId?: string; text?: string };
     if (!userId || !text?.trim()) return bad(c, 'userId and text required');
-    const post = new PostEntity(c.env, id);
-    if (!await post.exists()) return notFound(c, 'Post not found');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
     // Get user details for snapshot
     const userEntity = new UserEntity(c.env, userId);
     if (!await userEntity.exists()) return bad(c, 'User not found');
     const userData = await userEntity.getState();
     const { password, ...safeUser } = userData;
-    const comment = await post.addComment(userId, text.trim(), safeUser);
+    const comment = await postEntity.addComment(userId, text.trim(), safeUser);
+    // Create Notification (if not self-comment)
+    const post = await postEntity.getState();
+    if (post.userId !== userId) {
+        const notif: Notification = {
+            id: crypto.randomUUID(),
+            userId: post.userId,
+            actorId: userId,
+            type: 'comment',
+            postId: id,
+            read: false,
+            createdAt: Date.now()
+        };
+        await NotificationEntity.create(c.env, notif);
+    }
     return ok(c, comment);
+  });
+  // --- NOTIFICATIONS ---
+  app.get('/api/notifications', async (c) => {
+    const userId = c.req.query('userId');
+    if (!userId) return bad(c, 'userId required');
+    const notifications = await NotificationEntity.listForUser(c.env, userId);
+    // Hydrate notifications with actor and post data
+    const hydrated = await Promise.all(notifications.map(async (n) => {
+        const actorEntity = new UserEntity(c.env, n.actorId);
+        let actor: User | undefined;
+        if (await actorEntity.exists()) {
+            const aData = await actorEntity.getState();
+            const { password, ...safe } = aData;
+            actor = safe;
+        }
+        let post: Post | undefined;
+        if (n.postId) {
+            const postEntity = new PostEntity(c.env, n.postId);
+            if (await postEntity.exists()) {
+                post = await postEntity.getState();
+            }
+        }
+        return { ...n, actor, post };
+    }));
+    return ok(c, hydrated);
   });
   // --- CHATS ---
   app.get('/api/chats', async (c) => {
