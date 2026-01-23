@@ -47,7 +47,7 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
       }
     };
     fetchFeed();
-  }, [endpoint, user?.id]);
+  }, [endpoint, user]);
   // Intersection Observer logic for scroll snapping
   useEffect(() => {
     const container = containerRef.current;

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { User } from '@shared/types';
 import { toast } from 'sonner';
 interface AuthContextType {
@@ -26,24 +26,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setIsLoading(false);
   }, []);
-  const login = (userData: User) => {
+  const login = useCallback((userData: User) => {
     setUser(userData);
     localStorage.setItem('pulse_user', JSON.stringify(userData));
     toast.success(`Welcome back, ${userData.name}!`);
-  };
-  const logout = () => {
+  }, []);
+  const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('pulse_user');
     toast.info('Logged out successfully');
-  };
+  }, []);
+  const value = useMemo(() => ({
+    user,
+    isLoading,
+    login,
+    logout,
+    isAuthenticated: !!user
+  }), [user, isLoading, login, logout]);
   return (
-    <AuthContext.Provider value={{
-      user,
-      isLoading,
-      login,
-      logout,
-      isAuthenticated: !!user
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -50,7 +50,7 @@ export function ProfilePage() {
         setIsFollowLoading(true);
         // Optimistic update
         setFollowerCount(prev => isFollowing ? prev - 1 : prev + 1);
-        const updatedCurrentUser = await api<User>(`/api/users/${id}/follow`, { 
+        const updatedCurrentUser = await api<User>(`/api/users/${id}/follow`, {
             method: 'POST',
             body: JSON.stringify({ currentUserId: currentUser.id })
         });
@@ -124,16 +124,26 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="outline"
+                            className="border-white/10 text-white hover:bg-white/5 gap-2"
+                            asChild
+                          >
+                            <Link to="/settings">
+                              <Settings className="w-4 h-4" />
+                              Settings
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="destructive"
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -143,7 +153,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button 
+                          <Button
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -200,14 +210,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger 
-                value="videos" 
+              <TabsTrigger
+                value="videos"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger 
-                value="liked" 
+              <TabsTrigger
+                value="liked"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
@@ -226,8 +236,8 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog 
-          open={isEditDialogOpen} 
+        <EditProfileDialog
+          open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           currentUser={currentUser}
         />
