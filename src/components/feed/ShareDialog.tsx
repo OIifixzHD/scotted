@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, Twitter, Facebook, Linkedin } from "lucide-react";
+import { Copy, Check, Twitter, Facebook, Linkedin, Share } from "lucide-react";
 import { toast } from "sonner";
 interface ShareDialogProps {
   open: boolean;
@@ -30,6 +30,22 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
       toast.error("Failed to copy link");
     }
   };
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Check out this Pulse!',
+          text: 'I found this amazing video on Pulse.',
+          url: shareUrl,
+        });
+        onOpenChange(false);
+      } catch (err) {
+        // User cancelled or share failed
+        console.log('Share cancelled or failed', err);
+      }
+    }
+  };
+  const hasNativeShare = typeof navigator.share === 'function';
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-white/10 text-foreground">
@@ -61,6 +77,17 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
           </Button>
         </div>
         <div className="flex justify-center gap-4 pt-4">
+            {hasNativeShare && (
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="rounded-full border-white/10 hover:bg-white/5 text-primary" 
+                    onClick={handleNativeShare}
+                    title="Share via System"
+                >
+                    <Share className="h-4 w-4" />
+                </Button>
+            )}
             <Button variant="outline" size="icon" className="rounded-full border-white/10 hover:bg-white/5" onClick={() => toast.info("Shared to Twitter (Mock)")}>
                 <Twitter className="h-4 w-4" />
             </Button>

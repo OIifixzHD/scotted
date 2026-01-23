@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -6,11 +7,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
 import type { Post, User } from '@shared/types';
 import { Search, TrendingUp, Hash, Loader2, User as UserIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { VideoModal } from '@/components/feed/VideoModal';
 export function DiscoverPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
   const [searchResults, setSearchResults] = useState<{ users: User[], posts: Post[] }>({ users: [], posts: [] });
   const [loading, setLoading] = useState(false);
@@ -25,6 +27,14 @@ export function DiscoverPage() {
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+  // Sync URL with debounced query
+  useEffect(() => {
+    if (debouncedQuery) {
+      setSearchParams({ q: debouncedQuery });
+    } else {
+      setSearchParams({});
+    }
+  }, [debouncedQuery, setSearchParams]);
   // Fetch Trending on mount
   useEffect(() => {
     const fetchTrending = async () => {

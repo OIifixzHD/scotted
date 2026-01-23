@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -82,6 +82,36 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
       setProgress(0);
     }
   }, [isActive, hasError, isMuted, post.id]);
+  const togglePlay = useCallback(() => {
+    if (videoRef.current && !hasError) {
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        videoRef.current.play().catch(e => console.warn("Play failed", e));
+        setIsPlaying(true);
+      }
+    }
+  }, [isPlaying, hasError]);
+  // Keyboard Shortcuts
+  useEffect(() => {
+    if (!isActive) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        toggleMute();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, togglePlay, toggleMute]);
   const handleLike = async () => {
     if (!user) {
       toast.error("Please log in to like posts");
@@ -124,17 +154,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         setTimeout(() => setShowHeartAnimation(false), 800);
     }
   };
-  const togglePlay = () => {
-    if (videoRef.current && !hasError) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        videoRef.current.play().catch(e => console.warn("Play failed", e));
-        setIsPlaying(true);
-      }
-    }
-  };
   const handleError = () => {
     console.error(`Video failed to load: ${post.videoUrl}`);
     setHasError(true);
@@ -149,10 +168,40 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
       }
     }
   };
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation(); // Don't toggle play
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    if (videoRef.current && videoRef.current.duration) {
+      videoRef.current.currentTime = percentage * videoRef.current.duration;
+      setProgress(percentage * 100);
+    }
+  };
+  const renderCaption = (text: string) => {
+    // Split by whitespace but keep delimiters to preserve formatting
+    const parts = text.split(/(\s+)/);
+    return parts.map((part, index) => {
+      if (part.startsWith('#') && part.length > 1) {
+        const tag = part.substring(1);
+        return (
+          <Link
+            key={index}
+            to={`/discover?q=${encodeURIComponent(tag)}`}
+            className="text-primary font-bold hover:underline hover:text-primary/80 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </Link>
+        );
+      }
+      return part;
+    });
+  };
   return (
-    <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl">
+    <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video">
       {/* Video Player */}
-      <div 
+      <div
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -209,12 +258,20 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           )}
         </AnimatePresence>
       </div>
-      {/* Progress Bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-30">
-        <div 
-          className="h-full bg-primary transition-all duration-100 ease-linear"
-          style={{ width: `${progress}%` }}
-        />
+      {/* Interactive Progress Bar */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
+        onClick={handleSeek}
+      >
+        <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
+           <div
+             className="h-full bg-primary transition-all duration-100 ease-linear relative"
+             style={{ width: `${progress}%` }}
+           >
+              {/* Scrubber Handle (visible on hover) */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 shadow-sm scale-0 group-hover:scale-100 transition-all duration-200" />
+           </div>
+        </div>
       </div>
       {/* Right Sidebar Actions */}
       <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
@@ -240,7 +297,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -249,7 +306,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsShareOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -277,7 +334,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
             </h3>
           </Link>
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
-            {post.caption}
+            {renderCaption(post.caption)}
           </p>
           <div className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2">
             <Music2 className="w-3 h-3 animate-spin-slow" />
@@ -290,22 +347,22 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         </div>
       </div>
       {/* Mute Toggle */}
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog 
-        open={isShareOpen} 
-        onOpenChange={setIsShareOpen} 
-        postId={post.id} 
+      <ShareDialog
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        postId={post.id}
       />
       {/* Comments Sheet */}
-      <CommentsSheet 
-        postId={post.id} 
-        open={isCommentsOpen} 
+      <CommentsSheet
+        postId={post.id}
+        open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
