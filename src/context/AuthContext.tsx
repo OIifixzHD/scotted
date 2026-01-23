@@ -37,12 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     toast.info('Logged out successfully');
   };
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      logout, 
-      isAuthenticated: !!user 
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      login,
+      logout,
+      isAuthenticated: !!user
     }}>
       {children}
     </AuthContext.Provider>

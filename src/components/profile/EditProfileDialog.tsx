@@ -70,7 +70,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
           <DialogDescription>
-            Make changes to your profile here. Click save when you're done.
+            Update your public profile information. Changes will be visible immediately.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
@@ -83,8 +83,8 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
               <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <Camera className="w-8 h-8 text-white" />
               </div>
-              <input
-                type="file"
+              <input 
+                type="file" 
                 accept="image/*"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleFileChange}

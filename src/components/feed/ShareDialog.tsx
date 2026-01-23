@@ -36,7 +36,7 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
         <DialogHeader>
           <DialogTitle>Share Pulse</DialogTitle>
           <DialogDescription>
-            Share this vibe with your friends.
+            Share this vibe with your friends on social media or copy the link.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center space-x-2">

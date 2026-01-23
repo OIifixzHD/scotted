@@ -8,9 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+const PLACEHOLDER_VIDEOS = [
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
+];
 export function UploadPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -19,13 +25,24 @@ export function UploadPage() {
   const [caption, setCaption] = useState('');
   const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDemoUpload, setIsDemoUpload] = useState(false);
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
-      // 5MB Limit for this demo
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size must be less than 5MB');
+      // 500MB Limit
+      if (file.size > 500 * 1024 * 1024) {
+        toast.error('File size must be less than 500MB');
         return;
+      }
+      // Check for Demo Mode trigger (> 1MB)
+      if (file.size > 1 * 1024 * 1024) {
+        setIsDemoUpload(true);
+        toast.info('Large file detected (>1MB). Uploading in Demo Mode (using placeholder for storage).', {
+          duration: 5000,
+          icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />
+        });
+      } else {
+        setIsDemoUpload(false);
       }
       setVideoFile(file);
       const url = URL.createObjectURL(file);
@@ -38,13 +55,15 @@ export function UploadPage() {
       'video/*': ['.mp4', '.webm', '.ogg']
     },
     maxFiles: 1,
-    multiple: false
+    multiple: false,
+    maxSize: 500 * 1024 * 1024 // 500MB
   });
   const clearFile = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent dropzone click
     setVideoFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
+    setIsDemoUpload(false);
   };
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -67,23 +86,31 @@ export function UploadPage() {
     }
     try {
       setIsSubmitting(true);
-      // Convert to Base64
-      const base64Video = await convertToBase64(videoFile);
+      let finalVideoUrl = '';
+      if (isDemoUpload) {
+        // Demo Mode: Use a random placeholder video
+        finalVideoUrl = PLACEHOLDER_VIDEOS[Math.floor(Math.random() * PLACEHOLDER_VIDEOS.length)];
+        // Simulate upload delay for realism
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } else {
+        // Real Upload: Convert to Base64
+        finalVideoUrl = await convertToBase64(videoFile);
+      }
       // Parse tags
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
       await api('/api/posts', {
         method: 'POST',
         body: JSON.stringify({
-          videoUrl: base64Video,
+          videoUrl: finalVideoUrl,
           caption,
           tags: tagList,
           userId: user.id,
         }),
       });
-      toast.success('Pulse posted successfully!');
+      toast.success(isDemoUpload ? 'Pulse posted (Demo Mode)!' : 'Pulse posted successfully!');
       navigate(`/profile/${user.id}`);
     } catch (error) {
-      toast.error('Failed to post pulse. File might be too large for the demo server.');
+      toast.error('Failed to post pulse. Please try again.');
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -132,7 +159,7 @@ export function UploadPage() {
                           {isDragActive ? "Drop video here" : "Drag & drop or click to upload"}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          MP4, WebM up to 5MB
+                          MP4, WebM up to 500MB
                         </p>
                       </div>
                     ) : (
@@ -145,6 +172,7 @@ export function UploadPage() {
                             <p className="text-sm font-medium truncate">{videoFile.name}</p>
                             <p className="text-xs text-muted-foreground">
                               {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
+                              {isDemoUpload && <span className="text-yellow-500 ml-2">(Demo Mode)</span>}
                             </p>
                           </div>
                         </div>

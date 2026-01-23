@@ -4,6 +4,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -90,6 +91,9 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
               {comments.length}
             </span>
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            View and add comments to this post.
+          </SheetDescription>
         </SheetHeader>
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           {loading ? (
@@ -142,9 +146,9 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
                 className="flex-1 bg-secondary/50 border-white/10 focus-visible:ring-primary"
                 disabled={submitting}
               />
-              <Button
-                type="submit"
-                size="icon"
+              <Button 
+                type="submit" 
+                size="icon" 
                 disabled={!text.trim() || submitting}
                 className="bg-primary hover:bg-primary/90 shrink-0"
               >

@@ -24,7 +24,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
-  // New state for Phase 9
   const [progress, setProgress] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -39,9 +38,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
   }, [post.id, post.likes, post.comments]);
   // Handle Play/Pause based on active state
   useEffect(() => {
-    if (!videoRef.current || hasError) return;
+    const video = videoRef.current;
+    if (!video || hasError) return;
     if (isActive) {
-      const playPromise = videoRef.current.play();
+      // Ensure muted state is set before playing to satisfy autoplay policies
+      video.muted = isMuted;
+      const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
@@ -53,17 +55,16 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
           })
           .catch((error) => {
             // Auto-play was prevented
+            // This is expected in some browsers if not muted, or if user hasn't interacted
             console.warn("Autoplay prevented:", error);
             setIsPlaying(false);
           });
       }
     } else {
-      videoRef.current.pause();
+      video.pause();
       setIsPlaying(false);
-      if (videoRef.current) {
-        videoRef.current.currentTime = 0;
-        setProgress(0);
-      }
+      video.currentTime = 0;
+      setProgress(0);
     }
   }, [isActive, hasError, isMuted]);
   const handleLike = async () => {
@@ -96,7 +97,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
         videoRef.current.pause();
         setIsPlaying(false);
       } else {
-        videoRef.current.play();
+        videoRef.current.play().catch(e => console.warn("Play failed", e));
         setIsPlaying(true);
       }
     }
@@ -261,8 +262,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute }: VideoCardProp
       />
       {/* Comments Sheet */}
       <CommentsSheet 
-        postId={post.id} 
-        open={isCommentsOpen} 
+        postId={post.id}
+        open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
