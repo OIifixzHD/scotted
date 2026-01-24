@@ -24,6 +24,7 @@ export interface User {
   blockedUserIds?: string[];
   // Phase 4: Personalization
   notInterestedPostIds?: string[];
+  createdAt?: number; // Added for analytics
 }
 export interface Comment {
   id: string;
@@ -86,4 +87,19 @@ export interface Report {
   reporter?: User; // Hydrated
   target?: User; // Hydrated (if targetType is user)
   post?: Post; // Hydrated (if targetType is post)
+}
+// Analytics Types
+export interface ChartDataPoint {
+  name: string;
+  [key: string]: string | number;
+}
+export interface AdminStats {
+  totalUsers: number;
+  totalPosts: number;
+  totalViews: number;
+  totalEngagement: number;
+  totalLikes: number;
+  totalComments: number;
+  userGrowth: ChartDataPoint[];
+  activity: ChartDataPoint[];
 }

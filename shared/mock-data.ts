@@ -16,7 +16,8 @@ export const MOCK_USERS: User[] = [
     blockedUserIds: [],
     bannedUntil: 0,
     banReason: '',
-    avatarDecoration: 'verified-pro'
+    avatarDecoration: 'verified-pro',
+    createdAt: Date.now() // Ensure admin has a creation date
   }
 ];
 export const MOCK_CHATS: Chat[] = [];

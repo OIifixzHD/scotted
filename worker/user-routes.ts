@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification, Post, Report, Comment } from "@shared/types";
+import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- AUTHENTICATION ---
@@ -33,7 +33,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       banReason: "",
       bannedBy: "",
       blockedUserIds: [],
-      notInterestedPostIds: []
+      notInterestedPostIds: [],
+      createdAt: Date.now() // Track creation time for analytics
     };
     const created = await UserEntity.create(c.env, newUser);
     // Don't return password
@@ -64,29 +65,77 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // --- ADMIN ---
   app.get('/api/admin/stats', async (c) => {
     // In a real app, verify admin token here or rely on middleware
-    // Fetch all data (limit high for demo)
     await UserEntity.ensureSeed(c.env);
     await PostEntity.ensureSeed(c.env);
-    const [usersPage, postsPage] = await Promise.all([
+    // Fetch all data (limit high for demo)
+    const [usersPage, postsPage, notificationsPage] = await Promise.all([
         UserEntity.list(c.env, null, 10000),
-        PostEntity.list(c.env, null, 10000)
+        PostEntity.list(c.env, null, 10000),
+        NotificationEntity.list(c.env, null, 10000)
     ]);
     const users = usersPage.items;
     const posts = postsPage.items;
+    const notifications = notificationsPage.items;
     const totalUsers = users.length;
     const totalPosts = posts.length;
     const totalViews = posts.reduce((acc, p) => acc + (p.views || 0), 0);
     const totalLikes = posts.reduce((acc, p) => acc + (p.likes || 0), 0);
     const totalComments = posts.reduce((acc, p) => acc + (p.comments || 0), 0);
     const totalEngagement = totalLikes + totalComments;
-    return ok(c, {
+    // Real-time Aggregation for Charts (Last 7 Days)
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d);
+    }
+    // Initialize chart data structures
+    const userGrowth: ChartDataPoint[] = days.map(d => ({
+        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dateStr: d.toDateString(), // Helper for matching
+        users: 0
+    }));
+    const activity: ChartDataPoint[] = days.map(d => ({
+        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dateStr: d.toDateString(), // Helper for matching
+        likes: 0,
+        comments: 0
+    }));
+    // Aggregate User Growth
+    users.forEach(u => {
+        if (u.createdAt) {
+            const d = new Date(u.createdAt).toDateString();
+            const point = userGrowth.find(p => p.dateStr === d);
+            if (point) {
+                (point.users as number)++;
+            }
+        }
+    });
+    // Aggregate Activity (Likes & Comments from Notifications)
+    notifications.forEach(n => {
+        if (n.createdAt) {
+            const d = new Date(n.createdAt).toDateString();
+            const point = activity.find(p => p.dateStr === d);
+            if (point) {
+                if (n.type === 'like') (point.likes as number)++;
+                if (n.type === 'comment') (point.comments as number)++;
+            }
+        }
+    });
+    // Clean up helper properties
+    userGrowth.forEach(p => delete p.dateStr);
+    activity.forEach(p => delete p.dateStr);
+    const stats: AdminStats = {
         totalUsers,
         totalPosts,
         totalViews,
         totalEngagement,
         totalLikes,
-        totalComments
-    });
+        totalComments,
+        userGrowth,
+        activity
+    };
+    return ok(c, stats);
   });
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api-client';
-import type { User, Report } from '@shared/types';
+import type { User, Report, AdminStats } from '@shared/types';
 import {
   Table,
   TableBody,
@@ -28,14 +28,6 @@ import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-interface AdminStats {
-  totalUsers: number;
-  totalPosts: number;
-  totalViews: number;
-  totalEngagement: number;
-  totalLikes: number;
-  totalComments: number;
-}
 export function AdminPage() {
   const navigate = useNavigate();
   const { user: currentUser, isLoading: isAuthLoading } = useAuth();
@@ -124,25 +116,6 @@ export function AdminPage() {
       toast.error(`Failed to update report: ${errorMessage}`);
     }
   };
-  // Mock Data for Analytics (Charts)
-  const userGrowthData = [
-    { name: 'Mon', users: 12 },
-    { name: 'Tue', users: 19 },
-    { name: 'Wed', users: 15 },
-    { name: 'Thu', users: 25 },
-    { name: 'Fri', users: 32 },
-    { name: 'Sat', users: 45 },
-    { name: 'Sun', users: 58 },
-  ];
-  const activityData = [
-    { name: 'Mon', likes: 120, comments: 45 },
-    { name: 'Tue', likes: 150, comments: 55 },
-    { name: 'Wed', likes: 180, comments: 40 },
-    { name: 'Thu', likes: 220, comments: 70 },
-    { name: 'Fri', likes: 300, comments: 90 },
-    { name: 'Sat', likes: 450, comments: 120 },
-    { name: 'Sun', likes: 380, comments: 100 },
-  ];
   if (isAuthLoading || (currentUser?.name !== 'AdminUser001')) {
     return (
       <div className="flex justify-center py-20">
@@ -384,18 +357,20 @@ export function AdminPage() {
                   <h3 className="text-lg font-bold">New Users (Last 7 Days)</h3>
                 </div>
                 <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={userGrowthData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                      <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
-                        itemStyle={{ color: '#fff' }}
-                      />
-                      <Bar dataKey="users" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {stats?.userGrowth && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.userGrowth}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                        <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                          itemStyle={{ color: '#fff' }}
+                        />
+                        <Bar dataKey="users" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
               {/* Activity Chart */}
@@ -405,19 +380,21 @@ export function AdminPage() {
                   <h3 className="text-lg font-bold">Platform Activity</h3>
                 </div>
                 <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={activityData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                      <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
-                        itemStyle={{ color: '#fff' }}
-                      />
-                      <Line type="monotone" dataKey="likes" stroke="#7c3aed" strokeWidth={2} dot={{ fill: '#7c3aed' }} />
-                      <Line type="monotone" dataKey="comments" stroke="#2dd4bf" strokeWidth={2} dot={{ fill: '#2dd4bf' }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {stats?.activity && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={stats.activity}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                        <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                          itemStyle={{ color: '#fff' }}
+                        />
+                        <Line type="monotone" dataKey="likes" stroke="#7c3aed" strokeWidth={2} dot={{ fill: '#7c3aed' }} />
+                        <Line type="monotone" dataKey="comments" stroke="#2dd4bf" strokeWidth={2} dot={{ fill: '#2dd4bf' }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>
