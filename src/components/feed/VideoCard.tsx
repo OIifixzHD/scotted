@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -34,8 +34,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
   // Initialize state from props
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
-  const [isSaved, setIsSaved] = useState(false);
-  const [saveCount, setSaveCount] = useState(post.saves || 0);
   const [commentCount, setCommentCount] = useState(post.comments);
   const [shareCount, setShareCount] = useState(post.shares || 0);
   const [viewCount, setViewCount] = useState(post.views || 0);
@@ -50,13 +48,10 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
   useEffect(() => {
     if (user) {
       setIsLiked(post.likedBy?.includes(user.id) || false);
-      setIsSaved(post.savedBy?.includes(user.id) || false);
     } else {
       setIsLiked(false);
-      setIsSaved(false);
     }
     setLikeCount(post.likes);
-    setSaveCount(post.saves || 0);
     setCommentCount(post.comments);
     setShareCount(post.shares || 0);
     setViewCount(post.views || 0);
@@ -159,31 +154,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       toast.error('Failed to update like');
     }
   };
-  const handleSave = async () => {
-    if (!user) {
-      toast.error("Please log in to save posts");
-      return;
-    }
-    // Optimistic Update
-    const previousSaved = isSaved;
-    const previousCount = saveCount;
-    setIsSaved(!previousSaved);
-    setSaveCount(prev => previousSaved ? prev - 1 : prev + 1);
-    try {
-      const res = await api<{ saves: number, isSaved: boolean }>(`/api/posts/${post.id}/save`, {
-        method: 'POST',
-        body: JSON.stringify({ userId: user.id })
-      });
-      setSaveCount(res.saves);
-      setIsSaved(res.isSaved);
-      toast.success(res.isSaved ? "Added to bookmarks" : "Removed from bookmarks");
-    } catch (error) {
-      console.error('Failed to toggle save:', error);
-      setIsSaved(previousSaved);
-      setSaveCount(previousCount);
-      toast.error('Failed to update bookmark');
-    }
-  };
   const handleShare = async () => {
     setIsShareOpen(true);
     // Optimistic update
@@ -260,7 +230,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video"
     >
       {/* Video Player */}
-      <div
+      <div 
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -320,12 +290,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </AnimatePresence>
       </div>
       {/* Interactive Progress Bar */}
-      <div
+      <div 
         className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
         onClick={handleSeek}
       >
         <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-           <div
+           <div 
              className="h-full bg-primary transition-all duration-100 ease-linear relative"
              style={{ width: `${progress}%` }}
            >
@@ -349,7 +319,10 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
                 </div>
             </Link>
         </div>
-        <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
+        <button 
+          onClick={handleLike}
+          className="flex flex-col items-center gap-1 group"
+        >
           <div className={cn(
             "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
             isLiked ? "text-red-500" : "text-white"
@@ -358,7 +331,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button
+        <button 
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -367,19 +340,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button
-          onClick={handleSave}
-          className="flex flex-col items-center gap-1 group"
-        >
-          <div className={cn(
-            "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
-            isSaved ? "text-yellow-400" : "text-white"
-          )}>
-            <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
-          </div>
-          <span className="text-xs font-medium text-white text-shadow">{saveCount}</span>
-        </button>
-        <button
+        <button 
           onClick={handleShare}
           className="flex flex-col items-center gap-1 group"
         >
@@ -415,7 +376,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}
           </p>
-          <Link
+          <Link 
             to={`/sound/${post.soundId || 'default-sound'}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
@@ -430,22 +391,22 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </div>
       </div>
       {/* Mute Toggle */}
-      <button
+      <button 
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog
-        open={isShareOpen}
-        onOpenChange={setIsShareOpen}
-        postId={post.id}
+      <ShareDialog 
+        open={isShareOpen} 
+        onOpenChange={setIsShareOpen} 
+        postId={post.id} 
       />
       {/* Comments Sheet */}
-      <CommentsSheet
-        postId={post.id}
-        open={isCommentsOpen}
+      <CommentsSheet 
+        postId={post.id} 
+        open={isCommentsOpen} 
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />

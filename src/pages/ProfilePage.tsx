@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag, Bookmark } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -321,15 +321,6 @@ export function ProfilePage() {
               >
                 Liked
               </TabsTrigger>
-              {isOwnProfile && (
-                <TabsTrigger 
-                  value="saved" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base flex items-center gap-2"
-                >
-                  <Bookmark className="w-4 h-4" />
-                  Saved
-                </TabsTrigger>
-              )}
             </TabsList>
             <TabsContent value="videos" className="mt-0">
               <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
@@ -343,11 +334,6 @@ export function ProfilePage() {
                 </div>
               )}
             </TabsContent>
-            {isOwnProfile && (
-              <TabsContent value="saved" className="mt-0">
-                <SavedVideosTab userId={user.id} />
-              </TabsContent>
-            )}
           </Tabs>
         </div>
       </div>
@@ -355,8 +341,8 @@ export function ProfilePage() {
       {currentUser && (
         <EditProfileDialog 
           open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen}
-          currentUser={currentUser}
+          onOpenChange={setIsEditDialogOpen} 
+          currentUser={currentUser} 
         />
       )}
       {/* Report Dialog */}
@@ -421,69 +407,6 @@ function LikedVideosTab({ userId }: { userId: string }) {
   };
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
-  return (
-    <>
-      <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
-      <VideoModal
-        post={selectedVideoIndex !== null ? posts[selectedVideoIndex] : null}
-        isOpen={isVideoModalOpen}
-        onClose={() => setIsVideoModalOpen(false)}
-        onNext={handleNext}
-        onPrev={handlePrev}
-        hasNext={selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1}
-        hasPrev={selectedVideoIndex !== null && selectedVideoIndex > 0}
-      />
-    </>
-  );
-}
-function SavedVideosTab({ userId }: { userId: string }) {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
-  useEffect(() => {
-    const fetchSaved = async () => {
-      try {
-        setLoading(true);
-        const res = await api<{ items: Post[] }>(`/api/users/${userId}/saved`);
-        setPosts(res.items);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchSaved();
-  }, [userId]);
-  const handleVideoClick = (post: Post) => {
-    const index = posts.findIndex(p => p.id === post.id);
-    if (index !== -1) {
-        setSelectedVideoIndex(index);
-        setIsVideoModalOpen(true);
-    }
-  };
-  const handleNext = () => {
-    if (selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1) {
-        setSelectedVideoIndex(selectedVideoIndex + 1);
-    }
-  };
-  const handlePrev = () => {
-    if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
-        setSelectedVideoIndex(selectedVideoIndex - 1);
-    }
-  };
-  if (loading) {
-    return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
-  if (posts.length === 0) {
-    return (
-      <div className="py-20 text-center text-muted-foreground">
-        <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-20" />
-        <p>No saved videos yet.</p>
-        <p className="text-sm">Bookmark videos to watch them later.</p>
-      </div>
-    );
   }
   return (
     <>
