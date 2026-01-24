@@ -207,7 +207,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
     });
   };
   return (
-    <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video"
+    >
       {/* Video Player */}
       <div
         className="absolute inset-0 cursor-pointer bg-gray-900"
@@ -222,6 +227,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
               loop
               muted={isMuted}
               playsInline
+              preload={isActive ? "auto" : "metadata"}
               onError={handleError}
               onTimeUpdate={handleTimeUpdate}
             />
@@ -333,6 +339,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </div>
         {/* More Options */}
         <PostOptions post={post} onDelete={onDelete} />
+        {/* Spinning Disc */}
+        <div className="mt-4 animate-spin-slow">
+            <div className="w-10 h-10 rounded-full bg-black border-4 border-gray-800 flex items-center justify-center overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-tr from-purple-600 to-teal-400" />
+            </div>
+        </div>
       </div>
       {/* Bottom Info Area */}
       <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
@@ -345,15 +357,15 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}
           </p>
-          <Link 
+          <Link
             to={`/sound/${post.soundId || 'default-sound'}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
           >
-            <Music2 className="w-3 h-3 animate-spin-slow" />
+            <Music2 className="w-3 h-3" />
             <div className="overflow-hidden w-32">
                 <p className="animate-marquee whitespace-nowrap">
-                  {post.soundName || 'Original Audio'} ��� {post.user?.displayName || post.user?.name || 'Unknown User'}
+                  {post.soundName || 'Original Audio'} • {post.user?.displayName || post.user?.name || 'Unknown User'}
                 </p>
             </div>
           </Link>
@@ -379,6 +391,6 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
-    </div>
+    </motion.div>
   );
 }

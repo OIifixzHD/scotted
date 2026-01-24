@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -6,9 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 const PLACEHOLDER_VIDEOS = [
@@ -18,7 +19,8 @@ const PLACEHOLDER_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
 ];
 // Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
-const DEMO_MODE_THRESHOLD = 50 * 1024 * 1024;
+// Lowered to 5MB to ensure stability in demo environment
+const DEMO_MODE_THRESHOLD = 5 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
@@ -28,8 +30,15 @@ export function UploadPage() {
   const [caption, setCaption] = useState('');
   const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [isDemoUpload, setIsDemoUpload] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
   const validateVideo = (file: File): Promise<void> => {
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
@@ -60,9 +69,9 @@ export function UploadPage() {
         // 2. Check for Demo Mode trigger
         if (file.size > DEMO_MODE_THRESHOLD) {
           setIsDemoUpload(true);
-          toast.info('Large file detected. Uploading in Demo Mode (using placeholder for storage safety).', {
+          toast.info('Large file detected. Switching to High-Speed Demo Mode.', {
             duration: 5000,
-            icon: <AlertTriangle className="w-4 h-4 text-yellow-500" />
+            icon: <Zap className="w-4 h-4 text-yellow-500" />
           });
         } else {
           setIsDemoUpload(false);
@@ -92,6 +101,7 @@ export function UploadPage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
     setIsDemoUpload(false);
+    setUploadProgress(0);
   };
   const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -114,17 +124,27 @@ export function UploadPage() {
     }
     try {
       setIsSubmitting(true);
+      setUploadProgress(0);
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 200);
       let finalVideoUrl = '';
       if (isDemoUpload) {
         // Demo Mode: Use a random placeholder video
         finalVideoUrl = PLACEHOLDER_VIDEOS[Math.floor(Math.random() * PLACEHOLDER_VIDEOS.length)];
-        // Simulate upload delay for realism based on file size (capped at 3s)
-        const delay = Math.min(3000, (videoFile.size / 1024 / 1024) * 100);
-        await new Promise(resolve => setTimeout(resolve, Math.max(1000, delay)));
+        // Simulate upload delay for realism based on file size (capped at 2s for speed)
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
         // Real Upload: Convert to Base64
+        // This can be slow, so we do it while progress bar is running
         finalVideoUrl = await convertToBase64(videoFile);
       }
+      clearInterval(progressInterval);
+      setUploadProgress(100);
       // Parse tags
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
       await api('/api/posts', {
@@ -136,11 +156,12 @@ export function UploadPage() {
           userId: user.id,
         }),
       });
-      toast.success(isDemoUpload ? 'Pulse posted (Demo Mode)!' : 'Pulse posted successfully!');
+      toast.success(isDemoUpload ? 'Pulse posted (High-Speed Mode)!' : 'Pulse posted successfully!');
       navigate(`/profile/${user.id}`);
     } catch (error) {
       toast.error('Failed to post pulse. Please try again.');
       console.error(error);
+      setUploadProgress(0);
     } finally {
       setIsSubmitting(false);
     }
@@ -168,8 +189,8 @@ export function UploadPage() {
                         {...getRootProps()}
                         className={cn(
                           "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden",
-                          isDragActive 
-                            ? "border-primary bg-primary/10 scale-[1.02]" 
+                          isDragActive
+                            ? "border-primary bg-primary/10 scale-[1.02]"
                             : "border-white/10 hover:bg-white/5 hover:border-white/20",
                           isValidating && "opacity-50 pointer-events-none"
                         )}
@@ -215,7 +236,7 @@ export function UploadPage() {
                             <p className="text-sm font-medium truncate">{videoFile.name}</p>
                             <p className="text-xs text-muted-foreground flex items-center gap-2">
                               {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                              {isDemoUpload && <span className="text-yellow-500 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Demo Mode</span>}
+                              {isDemoUpload && <span className="text-yellow-500 flex items-center gap-1 font-bold"><Zap className="w-3 h-3" /> High Speed Mode</span>}
                             </p>
                           </div>
                         </div>
@@ -225,6 +246,7 @@ export function UploadPage() {
                           size="icon"
                           onClick={clearFile}
                           className="hover:bg-red-500/20 hover:text-red-500"
+                          disabled={isSubmitting}
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -242,6 +264,7 @@ export function UploadPage() {
                       value={caption}
                       onChange={(e) => setCaption(e.target.value)}
                       className="bg-secondary/50 border-white/10 min-h-[100px]"
+                      disabled={isSubmitting}
                     />
                   </div>
                   <div className="space-y-2">
@@ -255,8 +278,18 @@ export function UploadPage() {
                       value={tags}
                       onChange={(e) => setTags(e.target.value)}
                       className="bg-secondary/50 border-white/10"
+                      disabled={isSubmitting}
                     />
                   </div>
+                  {isSubmitting && (
+                    <div className="space-y-2 animate-fade-in">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Uploading...</span>
+                        <span>{Math.round(uploadProgress)}%</span>
+                      </div>
+                      <Progress value={uploadProgress} className="h-2" />
+                    </div>
+                  )}
                   <div className="pt-4">
                     <Button
                       type="submit"

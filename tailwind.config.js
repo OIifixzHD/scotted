@@ -105,14 +105,24 @@ export default {
   			'accordion-up': {
   				from: { height: 'var(--radix-accordion-content-height)' },
   				to: { height: '0' }
-  			}
+  			},
+            'marquee': {
+                '0%': { transform: 'translateX(0%)' },
+                '100%': { transform: 'translateX(-100%)' }
+            },
+            'spin-slow': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg)' }
+            }
   		},
   		animation: {
   			'fade-in': 'fade-in 0.6s ease-out',
             'heart-beat': 'heart-beat 0.3s ease-in-out',
             'neon-pulse': 'neon-pulse 2s infinite',
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+            'marquee': 'marquee 10s linear infinite',
+            'spin-slow': 'spin-slow 3s linear infinite'
   		},
   		backgroundImage: {
   			'gradient-primary': 'linear-gradient(135deg, #7c3aed, #2dd4bf)',
