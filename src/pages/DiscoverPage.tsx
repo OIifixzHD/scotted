@@ -64,7 +64,7 @@ export function DiscoverPage() {
       }
     };
     fetchInitialData();
-  }, [currentUser?.id]); // Re-fetch if user changes (e.g. login)
+  }, [currentUser]); // Re-fetch if user changes (e.g. login)
   // Perform Search when debounced query changes
   useEffect(() => {
     if (!debouncedQuery) return;

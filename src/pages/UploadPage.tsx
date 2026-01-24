@@ -22,8 +22,8 @@ const PLACEHOLDER_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
 ];
 // Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
-// Increased to 100MB as requested
-const DEMO_MODE_THRESHOLD = 100 * 1024 * 1024;
+// Lowered to 5MB to ensure reliability in demo environment with Worker limits
+const DEMO_MODE_THRESHOLD = 5 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
@@ -166,8 +166,14 @@ export function UploadPage() {
       toast.success(isDemoUpload ? 'Pulse posted (High-Speed Mode)!' : 'Pulse posted successfully!');
       navigate(`/profile/${user.id}`);
     } catch (error) {
-      toast.error('Failed to post pulse. Please try again.');
-      console.error(error);
+      console.error("Upload failed:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      // Check for common payload size errors if not in demo mode
+      if (!isDemoUpload && videoFile.size > 1024 * 1024) {
+         toast.error(`Upload failed: File might be too large. Try a smaller file or use Demo Mode. (${errorMessage})`);
+      } else {
+         toast.error(`Failed to post pulse: ${errorMessage}`);
+      }
       setUploadProgress(0);
     } finally {
       setIsSubmitting(false);
@@ -233,7 +239,7 @@ export function UploadPage() {
                                 <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" /> Max 5 mins
                                 </span>
-                                <span>���</span>
+                                <span>•</span>
                                 <span>Any size</span>
                             </div>
                           </>
@@ -270,7 +276,7 @@ export function UploadPage() {
                             <div>
                               <p className="font-bold">High-Speed Demo Mode Active</p>
                               <p className="text-yellow-500/80 text-xs mt-1">
-                                This file ({formatBytes(videoFile.size)}) exceeds the 100MB limit for direct storage.
+                                This file ({formatBytes(videoFile.size)}) exceeds the 5MB limit for direct storage. 
                                 A high-quality placeholder video will be used instead to ensure instant upload performance.
                               </p>
                             </div>

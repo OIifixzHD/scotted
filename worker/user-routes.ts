@@ -626,7 +626,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
-    const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[]; soundName?: string };
+    let body;
+    try {
+      body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[]; soundName?: string };
+    } catch (e) {
+      return bad(c, 'Invalid JSON or payload too large');
+    }
     if (!body.videoUrl || !body.userId) {
         return bad(c, 'videoUrl and userId are required');
     }
