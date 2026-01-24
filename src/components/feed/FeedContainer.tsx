@@ -25,15 +25,10 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
         setLoading(true);
         setError(null);
         let url = endpoint;
-        // If fetching following feed, we need to append userId
-        if (endpoint.includes('following')) {
-            if (!user) {
-                // Not logged in, can't fetch following
-                setPosts([]);
-                setLoading(false);
-                return;
-            }
-            url = `${endpoint}?userId=${user.id}`;
+        // Append userId for personalization if logged in
+        if (user) {
+            const separator = url.includes('?') ? '&' : '?';
+            url = `${url}${separator}userId=${user.id}`;
         }
         const response = await api<{ items: Post[] }>(url);
         setPosts(response.items);
@@ -102,6 +97,9 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   };
   const handlePostUpdate = (updatedPost: Post) => {
     setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+  };
+  const handlePostHide = (postId: string) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
   };
   if (loading) {
     return (
@@ -179,6 +177,7 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
             toggleMute={() => setIsMuted(!isMuted)}
             onDelete={() => handlePostDelete(post.id)}
             onUpdate={handlePostUpdate}
+            onHide={() => handlePostHide(post.id)}
             shouldPreload={index === activeIndex + 1}
           />
         </div>

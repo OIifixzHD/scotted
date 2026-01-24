@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock, Zap, Info } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock, Zap, Info, Music2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
 const PLACEHOLDER_VIDEOS = [
@@ -27,6 +27,7 @@ const DEMO_MODE_THRESHOLD = 1 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
@@ -36,6 +37,8 @@ export function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDemoUpload, setIsDemoUpload] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const soundId = searchParams.get('soundId');
+  const soundName = searchParams.get('soundName');
   // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
@@ -157,6 +160,7 @@ export function UploadPage() {
           caption,
           tags: tagList,
           userId: user.id,
+          soundName: soundName || undefined,
         }),
       });
       toast.success(isDemoUpload ? 'Pulse posted (High-Speed Mode)!' : 'Pulse posted successfully!');
@@ -182,6 +186,12 @@ export function UploadPage() {
               </div>
               <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {soundName && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary">
+                      <Music2 className="w-4 h-4" />
+                      <span className="text-sm font-medium">Using Sound: {soundName}</span>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Film className="w-4 h-4 text-primary" />
@@ -260,7 +270,7 @@ export function UploadPage() {
                             <div>
                               <p className="font-bold">High-Speed Demo Mode Active</p>
                               <p className="text-yellow-500/80 text-xs mt-1">
-                                This file ({formatBytes(videoFile.size)}) exceeds the 1MB limit for direct storage. 
+                                This file ({formatBytes(videoFile.size)}) exceeds the 1MB limit for direct storage.
                                 A high-quality placeholder video will be used instead to ensure instant upload performance.
                               </p>
                             </div>

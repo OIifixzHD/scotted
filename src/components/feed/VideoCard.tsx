@@ -18,9 +18,10 @@ interface VideoCardProps {
   toggleMute: () => void;
   onDelete?: () => void;
   onUpdate?: (post: Post) => void;
+  onHide?: () => void;
   shouldPreload?: boolean;
 }
-export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute, onDelete, onUpdate, shouldPreload }: VideoCardProps) {
+export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute, onDelete, onUpdate, onHide, shouldPreload }: VideoCardProps) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -395,9 +396,9 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
         </div>
         {/* More Options */}
-        <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} />
+        <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
         {/* Spinning Disc */}
-        <div className="mt-4 animate-spin-slow">
+        <div className="mt-4 animate-spin-slow" style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}>
             <div className="w-10 h-10 rounded-full bg-black border-4 border-gray-800 flex items-center justify-center overflow-hidden">
                 <div className="w-full h-full bg-gradient-to-tr from-purple-600 to-teal-400" />
             </div>

@@ -100,7 +100,7 @@ export function SoundPage() {
               </div>
               <div className="flex items-center justify-center md:justify-start gap-3 pt-2">
                 <Button asChild className="bg-primary hover:bg-primary/90 shadow-glow gap-2">
-                  <Link to="/upload">
+                  <Link to={`/upload?soundId=${sound.id}&soundName=${encodeURIComponent(sound.name)}`}>
                     <Plus className="w-4 h-4" />
                     Use this Sound
                   </Link>

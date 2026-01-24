@@ -18,7 +18,8 @@ export class UserEntity extends IndexedEntity<User> {
     banReason: "",
     bannedBy: "",
     blockedUserIds: [],
-    bannerStyle: "default"
+    bannerStyle: "default",
+    notInterestedPostIds: []
   };
   static seedData = MOCK_USERS;
   /**
@@ -72,6 +73,16 @@ export class UserEntity extends IndexedEntity<User> {
       blockedUserIds: newBlockedIds
     }));
     return { blocked: !isBlocked, blockedUserIds: newBlockedIds };
+  }
+  /**
+   * Mark a post as not interested
+   */
+  async markNotInterested(postId: string): Promise<void> {
+    await this.mutate(s => {
+        const current = s.notInterestedPostIds || [];
+        if (current.includes(postId)) return s;
+        return { ...s, notInterestedPostIds: [...current, postId] };
+    });
   }
 }
 // POST ENTITY

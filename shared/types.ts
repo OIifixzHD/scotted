@@ -22,6 +22,8 @@ export interface User {
   banReason?: string;
   bannedBy?: string; // Admin who issued the ban
   blockedUserIds?: string[];
+  // Phase 4: Personalization
+  notInterestedPostIds?: string[];
 }
 export interface Comment {
   id: string;

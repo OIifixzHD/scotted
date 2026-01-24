@@ -32,7 +32,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       bannedUntil: 0,
       banReason: "",
       bannedBy: "",
-      blockedUserIds: []
+      blockedUserIds: [],
+      notInterestedPostIds: []
     };
     const created = await UserEntity.create(c.env, newUser);
     // Don't return password
@@ -407,6 +408,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const created = await ReportEntity.create(c.env, report);
     return ok(c, created);
   });
+  // Not Interested
+  app.post('/api/users/:id/not-interested', async (c) => {
+    const id = c.req.param('id');
+    const { postId } = await c.req.json() as { postId: string };
+    if (!postId) return bad(c, 'postId required');
+    const userEntity = new UserEntity(c.env, id);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+    await userEntity.markNotInterested(postId);
+    return ok(c, { success: true });
+  });
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');
     await PostEntity.ensureSeed(c.env);
@@ -463,9 +474,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await UserEntity.ensureSeed(c.env);
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
+    const userId = c.req.query('userId');
+    let hiddenPostIds: string[] = [];
+    if (userId) {
+        const userEntity = new UserEntity(c.env, userId);
+        if (await userEntity.exists()) {
+            const u = await userEntity.getState();
+            hiddenPostIds = u.notInterestedPostIds || [];
+        }
+    }
     // Fetch more posts to ensure we have enough valid ones
     const page = await PostEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : 20);
-    const hydratedPosts = await Promise.all(page.items.map(async (post) => {
+    // Filter hidden posts
+    const visibleItems = page.items.filter(p => !hiddenPostIds.includes(p.id));
+    const hydratedPosts = await Promise.all(visibleItems.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
             if (await userEntity.exists()) {

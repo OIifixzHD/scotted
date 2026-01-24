@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@shared/types";
 import { api } from "@/lib/api-client";
@@ -18,8 +18,9 @@ interface PostOptionsProps {
   post: Post;
   onDelete?: () => void;
   onUpdate?: (post: Post) => void;
+  onHide?: () => void;
 }
-export function PostOptions({ post, onDelete, onUpdate }: PostOptionsProps) {
+export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsProps) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -55,6 +56,20 @@ export function PostOptions({ post, onDelete, onUpdate }: PostOptionsProps) {
       toast.error("Failed to copy link");
     }
   };
+  const handleNotInterested = async () => {
+    if (!user) return;
+    try {
+      await api(`/api/users/${user.id}/not-interested`, {
+        method: 'POST',
+        body: JSON.stringify({ postId: post.id })
+      });
+      toast.success("Post hidden");
+      onHide?.();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to hide post");
+    }
+  };
   return (
     <>
       <DropdownMenu>
@@ -79,10 +94,16 @@ export function PostOptions({ post, onDelete, onUpdate }: PostOptionsProps) {
             </DropdownMenuItem>
           )}
           {user && !isOwner && (
-            <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)} className="cursor-pointer text-yellow-500 focus:text-yellow-500">
-              <Flag className="w-4 h-4 mr-2" />
-              Report
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onClick={handleNotInterested} className="cursor-pointer">
+                <Ban className="w-4 h-4 mr-2" />
+                Not Interested
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)} className="cursor-pointer text-yellow-500 focus:text-yellow-500">
+                <Flag className="w-4 h-4 mr-2" />
+                Report
+              </DropdownMenuItem>
+            </>
           )}
           {canDelete && (
             <>
