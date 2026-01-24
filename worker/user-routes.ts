@@ -300,6 +300,40 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     return ok(c, { ...page, items: safeItems });
   });
+  // Suggested Users (Who to Follow)
+  app.get('/api/users/suggested', async (c) => {
+    const userId = c.req.query('userId');
+    await UserEntity.ensureSeed(c.env);
+    // Get current user's following list if logged in
+    let followingIds: string[] = [];
+    if (userId) {
+        const currentUserEntity = new UserEntity(c.env, userId);
+        if (await currentUserEntity.exists()) {
+            const currentUser = await currentUserEntity.getState();
+            followingIds = currentUser.followingIds || [];
+        }
+    }
+    // Fetch a batch of users to filter from
+    const page = await UserEntity.list(c.env, null, 100);
+    // Filter out:
+    // 1. The current user themselves
+    // 2. Users already followed
+    const candidates = page.items.filter(u => {
+        if (userId && u.id === userId) return false;
+        if (followingIds.includes(u.id)) return false;
+        return true;
+    });
+    // Sort by popularity (followers count) descending
+    candidates.sort((a, b) => (b.followers || 0) - (a.followers || 0));
+    // Take top 10
+    const suggestions = candidates.slice(0, 10);
+    // Strip passwords
+    const safeSuggestions = suggestions.map(u => {
+        const { password, ...rest } = u;
+        return rest;
+    });
+    return ok(c, safeSuggestions);
+  });
   app.get('/api/users/:id', async (c) => {
     const id = c.req.param('id');
     await UserEntity.ensureSeed(c.env);
