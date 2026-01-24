@@ -9,18 +9,21 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock, Zap, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { cn } from '@/lib/utils';
+import { cn, formatBytes } from '@/lib/utils';
 const PLACEHOLDER_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
 ];
 // Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
-// Lowered to 5MB to ensure stability in demo environment
-const DEMO_MODE_THRESHOLD = 5 * 1024 * 1024;
+// Lowered to 1MB to ensure stability with Durable Object storage limits
+const DEMO_MODE_THRESHOLD = 1 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
@@ -227,29 +230,42 @@ export function UploadPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                            <Film className="w-5 h-5 text-primary" />
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                              <Film className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{videoFile.name}</p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                                {formatBytes(videoFile.size)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{videoFile.name}</p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-2">
-                              {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                              {isDemoUpload && <span className="text-yellow-500 flex items-center gap-1 font-bold"><Zap className="w-3 h-3" /> High Speed Mode</span>}
-                            </p>
-                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={clearFile}
+                            className="hover:bg-red-500/20 hover:text-red-500"
+                            disabled={isSubmitting}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={clearFile}
-                          className="hover:bg-red-500/20 hover:text-red-500"
-                          disabled={isSubmitting}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                        {isDemoUpload && (
+                          <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-sm">
+                            <Zap className="w-5 h-5 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-bold">High-Speed Demo Mode Active</p>
+                              <p className="text-yellow-500/80 text-xs mt-1">
+                                This file ({formatBytes(videoFile.size)}) exceeds the 1MB limit for direct storage. 
+                                A high-quality placeholder video will be used instead to ensure instant upload performance.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
