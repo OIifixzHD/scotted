@@ -14,6 +14,7 @@ export interface User {
   following?: number;
   followingIds?: string[]; // Added for social graph
   avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc.
+  bannerStyle?: string; // 'default', 'cosmic', 'neon', 'sunset', 'ocean', 'midnight'
   isAdmin?: boolean;
   // Phase 2: Governance & Security
   isVerified?: boolean;

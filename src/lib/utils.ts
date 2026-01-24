@@ -14,3 +14,14 @@ export const getDecorationClass = (decoration?: string) => {
     default: return 'border-4 border-background';
   }
 };
+export const getBannerStyle = (style?: string) => {
+  switch (style) {
+    case 'cosmic': return 'bg-gradient-to-r from-slate-900 via-purple-900 to-black';
+    case 'neon': return 'bg-gradient-to-r from-fuchsia-600 via-purple-600 to-cyan-600';
+    case 'sunset': return 'bg-gradient-to-r from-orange-500 via-red-500 to-purple-600';
+    case 'ocean': return 'bg-gradient-to-r from-blue-900 via-teal-800 to-emerald-900';
+    case 'midnight': return 'bg-gradient-to-b from-gray-900 to-black';
+    case 'default':
+    default: return 'bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900';
+  }
+};

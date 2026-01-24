@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Camera, Sparkles, Lock } from "lucide-react";
+import { Loader2, Camera, Sparkles, Lock, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -23,6 +23,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
   const [avatarDecoration, setAvatarDecoration] = useState(currentUser.avatarDecoration || 'none');
+  const [bannerStyle, setBannerStyle] = useState(currentUser.bannerStyle || 'default');
   const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     if (open) {
@@ -30,6 +31,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
       setBio(currentUser.bio || '');
       setAvatar(currentUser.avatar || '');
       setAvatarDecoration(currentUser.avatarDecoration || 'none');
+      setBannerStyle(currentUser.bannerStyle || 'default');
     }
   }, [open, currentUser]);
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,7 +58,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     try {
       const updatedUser = await api<User>(`/api/users/${currentUser.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ displayName, bio, avatar, avatarDecoration })
+        body: JSON.stringify({ displayName, bio, avatar, avatarDecoration, bannerStyle })
       });
       login(updatedUser); // Update context
       toast.success("Profile updated successfully");
@@ -76,6 +78,14 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     { value: 'rainbow-ring', label: 'Rainbow Ring' },
     { value: 'cyber-glitch', label: 'Cyber Glitch' },
     { value: 'verified-pro', label: 'Verified Pro' },
+  ];
+  const bannerStyles = [
+    { value: 'default', label: 'Default (Purple/Indigo)' },
+    { value: 'cosmic', label: 'Cosmic (Dark/Purple)' },
+    { value: 'neon', label: 'Neon (Fuchsia/Cyan)' },
+    { value: 'sunset', label: 'Sunset (Orange/Red)' },
+    { value: 'ocean', label: 'Ocean (Blue/Teal)' },
+    { value: 'midnight', label: 'Midnight (Gray/Black)' },
   ];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,26 +150,43 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
               className="bg-secondary/50 border-white/10 min-h-[100px]"
             />
           </div>
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Profile Badge
-            </Label>
-            <Select value={avatarDecoration} onValueChange={setAvatarDecoration}>
-                <SelectTrigger className="bg-secondary/50 border-white/10">
-                    <SelectValue placeholder="Select a badge" />
-                </SelectTrigger>
-                <SelectContent>
-                    {decorations.map((decoration) => (
-                        <SelectItem key={decoration.value} value={decoration.value}>
-                            {decoration.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-                Choose a visual style for your avatar.
-            </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    Profile Badge
+                </Label>
+                <Select value={avatarDecoration} onValueChange={setAvatarDecoration}>
+                    <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectValue placeholder="Select a badge" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {decorations.map((decoration) => (
+                            <SelectItem key={decoration.value} value={decoration.value}>
+                                {decoration.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-primary" />
+                    Banner Theme
+                </Label>
+                <Select value={bannerStyle} onValueChange={setBannerStyle}>
+                    <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectValue placeholder="Select a theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {bannerStyles.map((style) => (
+                            <SelectItem key={style.value} value={style.value}>
+                                {style.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

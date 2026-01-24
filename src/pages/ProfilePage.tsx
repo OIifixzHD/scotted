@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import { ReportDialog } from '@/components/profile/ReportDialog';
-import { cn, getDecorationClass } from '@/lib/utils';
+import { cn, getDecorationClass, getBannerStyle } from '@/lib/utils';
 import { VideoModal } from '@/components/feed/VideoModal';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -148,11 +148,14 @@ export function ProfilePage() {
           {/* Profile Header */}
           <div className="relative">
             {/* Banner */}
-            <div className="h-48 md:h-64 w-full rounded-2xl bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 overflow-hidden relative">
+            <div className={cn(
+              "h-48 md:h-64 w-full rounded-2xl overflow-hidden relative transition-all duration-500",
+              getBannerStyle(user.bannerStyle)
+            )}>
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
               {/* Animated Pulse Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-teal-500/20 animate-pulse pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent animate-pulse pointer-events-none"></div>
             </div>
             {/* Profile Info */}
             <div className="px-4 md:px-8 pb-4">
@@ -179,16 +182,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -197,8 +200,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -208,7 +211,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button 
+                          <Button
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -252,9 +255,9 @@ export function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <a 
-                        href={`https://pulse.aurelia.so/${handle}`} 
-                        target="_blank" 
+                      <a
+                        href={`https://pulse.aurelia.so/${handle}`}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
@@ -287,14 +290,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger 
-                value="videos" 
+              <TabsTrigger
+                value="videos"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger 
-                value="liked" 
+              <TabsTrigger
+                value="liked"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
@@ -317,8 +320,8 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog 
-          open={isEditDialogOpen} 
+        <EditProfileDialog
+          open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           currentUser={currentUser}
         />

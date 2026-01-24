@@ -17,7 +17,8 @@ export class UserEntity extends IndexedEntity<User> {
     bannedUntil: 0,
     banReason: "",
     bannedBy: "",
-    blockedUserIds: []
+    blockedUserIds: [],
+    bannerStyle: "default"
   };
   static seedData = MOCK_USERS;
   /**
