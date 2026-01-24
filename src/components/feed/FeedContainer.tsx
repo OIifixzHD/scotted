@@ -14,9 +14,9 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
   // Track which video is currently in view
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   useEffect(() => {
@@ -141,8 +141,8 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
-          <VideoCard 
-            post={post} 
+          <VideoCard
+            post={post}
             isActive={activeVideoId === post.id}
             isMuted={isMuted}
             toggleMute={() => setIsMuted(!isMuted)}

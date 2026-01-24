@@ -29,7 +29,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 export function AdminPage() {
   const navigate = useNavigate();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isLoading: isAuthLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState<User[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
@@ -38,6 +38,15 @@ export function AdminPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogMode, setDialogMode] = useState<'edit' | 'ban'>('edit');
+  // Security Check
+  useEffect(() => {
+    if (!isAuthLoading) {
+      if (!currentUser || currentUser.name !== 'AdminUser001') {
+        toast.error('Access Denied: Unauthorized.');
+        navigate('/', { replace: true });
+      }
+    }
+  }, [currentUser, isAuthLoading, navigate]);
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -49,14 +58,17 @@ export function AdminPage() {
       setReports(reportsRes);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to fetch admin data");
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to fetch admin data: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
   };
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (currentUser?.name === 'AdminUser001') {
+      fetchData();
+    }
+  }, [currentUser]);
   const handleOpenDialog = (user: User, mode: 'edit' | 'ban') => {
     setSelectedUser(user);
     setDialogMode(mode);
@@ -69,20 +81,22 @@ export function AdminPage() {
       toast.success('User deleted');
       fetchData();
     } catch (error) {
-      toast.error('Failed to delete user');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to delete user: ${errorMessage}`);
     }
   };
   const handleMessageUser = async (targetUser: User) => {
     if (!currentUser) return;
     try {
       // Create a chat or find existing (simplified for demo: create new with title)
-      const chat = await api<{ id: string }>('/api/chats', {
+      await api<{ id: string }>('/api/chats', {
         method: 'POST',
         body: JSON.stringify({ title: `Admin Chat: ${targetUser.name}` })
       });
       navigate('/inbox');
     } catch (error) {
-      toast.error('Failed to start chat');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to start chat: ${errorMessage}`);
     }
   };
   const handleResolveReport = async (reportId: string, status: 'resolved' | 'dismissed') => {
@@ -94,7 +108,8 @@ export function AdminPage() {
       toast.success(`Report ${status}`);
       fetchData();
     } catch (error) {
-      toast.error('Failed to update report');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to update report: ${errorMessage}`);
     }
   };
   // Mock Data for Analytics
@@ -116,6 +131,13 @@ export function AdminPage() {
     { name: 'Sat', likes: 450, comments: 120 },
     { name: 'Sun', likes: 380, comments: 100 },
   ];
+  if (isAuthLoading || (currentUser?.name !== 'AdminUser001')) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
     <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12 space-y-8">

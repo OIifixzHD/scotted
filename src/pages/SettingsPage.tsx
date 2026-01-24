@@ -35,6 +35,7 @@ export function SettingsPage() {
       setBlockedUsers(res);
     } catch (error) {
       console.error(error);
+      // Silent fail for blocked users fetch, just log it
     } finally {
       setLoadingBlocked(false);
     }
@@ -52,7 +53,8 @@ export function SettingsPage() {
       toast.success('User unblocked');
       fetchBlockedUsers();
     } catch (error) {
-      toast.error('Failed to unblock user');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to unblock user: ${errorMessage}`);
     }
   };
   const handleDeleteAccount = async () => {
@@ -67,7 +69,8 @@ export function SettingsPage() {
       logout();
     } catch (error) {
       console.error(error);
-      toast.error('Failed to delete account');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(`Failed to delete account: ${errorMessage}`);
       setIsDeleting(false);
     }
   };

@@ -32,7 +32,10 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
   const [isVerified, setIsVerified] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   // Ban Mode State
-  const [banDuration, setBanDuration] = useState('1'); // days
+  const [banDurationType, setBanDurationType] = useState<'preset' | 'custom'>('preset');
+  const [banDuration, setBanDuration] = useState('1'); // days (preset)
+  const [customBanValue, setCustomBanValue] = useState('1');
+  const [customBanUnit, setCustomBanUnit] = useState<'seconds' | 'minutes' | 'hours' | 'days'>('hours');
   const [banReason, setBanReason] = useState('');
   useEffect(() => {
     if (user) {
@@ -45,6 +48,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
       setIsAdmin(user.isAdmin || false);
       setBanReason('');
       setBanDuration('1');
+      setBanDurationType('preset');
+      setCustomBanValue('1');
+      setCustomBanUnit('hours');
     }
   }, [user, open]);
   const handleSave = async () => {
@@ -61,10 +67,21 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         updates.isVerified = isVerified;
         updates.isAdmin = isAdmin;
       } else if (mode === 'ban') {
-        const durationDays = parseInt(banDuration);
-        const bannedUntil = durationDays === -1
-          ? 32503680000000 // Permanent (Year 3000)
-          : Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+        let bannedUntil = 0;
+        if (banDurationType === 'preset') {
+          const durationDays = parseInt(banDuration);
+          bannedUntil = durationDays === -1
+            ? 32503680000000 // Permanent (Year 3000)
+            : Date.now() + (durationDays * 24 * 60 * 60 * 1000);
+        } else {
+          // Custom duration
+          const val = parseInt(customBanValue) || 0;
+          let multiplier = 1000; // seconds
+          if (customBanUnit === 'minutes') multiplier = 60 * 1000;
+          if (customBanUnit === 'hours') multiplier = 60 * 60 * 1000;
+          if (customBanUnit === 'days') multiplier = 24 * 60 * 60 * 1000;
+          bannedUntil = Date.now() + (val * multiplier);
+        }
         updates.bannedUntil = bannedUntil;
         updates.banReason = banReason || 'Violation of terms';
         updates.bannedBy = currentUser?.name || 'System Administrator';
@@ -205,20 +222,67 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 <p>Banning a user will prevent them from logging in and interacting with the platform.</p>
               </div>
               <div className="space-y-2">
-                <Label>Duration</Label>
-                <Select value={banDuration} onValueChange={setBanDuration}>
+                <Label>Duration Type</Label>
+                <Select 
+                  value={banDurationType} 
+                  onValueChange={(val: 'preset' | 'custom') => setBanDurationType(val)}
+                >
                   <SelectTrigger className="bg-secondary/50 border-white/10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">24 Hours</SelectItem>
-                    <SelectItem value="3">3 Days</SelectItem>
-                    <SelectItem value="7">7 Days</SelectItem>
-                    <SelectItem value="30">30 Days</SelectItem>
-                    <SelectItem value="-1">Permanent</SelectItem>
+                    <SelectItem value="preset">Standard Presets</SelectItem>
+                    <SelectItem value="custom">Custom Duration</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {banDurationType === 'preset' ? (
+                <div className="space-y-2">
+                  <Label>Duration</Label>
+                  <Select value={banDuration} onValueChange={setBanDuration}>
+                    <SelectTrigger className="bg-secondary/50 border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">24 Hours</SelectItem>
+                      <SelectItem value="3">3 Days</SelectItem>
+                      <SelectItem value="7">7 Days</SelectItem>
+                      <SelectItem value="30">30 Days</SelectItem>
+                      <SelectItem value="-1">Permanent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Value</Label>
+                    <Input 
+                      type="number" 
+                      min="1"
+                      value={customBanValue}
+                      onChange={(e) => setCustomBanValue(e.target.value)}
+                      className="bg-secondary/50 border-white/10"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Unit</Label>
+                    <Select 
+                      value={customBanUnit} 
+                      onValueChange={(val: 'seconds' | 'minutes' | 'hours' | 'days') => setCustomBanUnit(val)}
+                    >
+                      <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="seconds">Seconds</SelectItem>
+                        <SelectItem value="minutes">Minutes</SelectItem>
+                        <SelectItem value="hours">Hours</SelectItem>
+                        <SelectItem value="days">Days</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Reason</Label>
                 <Input

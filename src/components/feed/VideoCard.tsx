@@ -18,10 +18,16 @@ interface VideoCardProps {
   toggleMute: () => void;
   onDelete?: () => void;
 }
-export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: VideoCardProps) {
+export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute, onDelete }: VideoCardProps) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const toggleMute = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+    }
+    propToggleMute();
+  }, [propToggleMute]);
   // Initialize state from props
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
@@ -49,15 +55,16 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
   useEffect(() => {
     const video = videoRef.current;
     if (!video || hasError) return;
+    // Sync muted state
+    video.muted = isMuted;
     if (isActive) {
-      // Ensure muted state is set before playing to satisfy autoplay policies
-      video.muted = isMuted;
       const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
             setIsPlaying(true);
-            if (isMuted) {
+            // Show unmute hint if the video is still muted
+            if (video.muted) {
                 setShowUnmuteHint(true);
                 setTimeout(() => setShowUnmuteHint(false), 3000);
             }
@@ -81,7 +88,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
       video.currentTime = 0;
       setProgress(0);
     }
-  }, [isActive, hasError, isMuted, post.id]);
+  }, [isActive, hasError, post.id, isMuted]);
   const togglePlay = useCallback(() => {
     if (videoRef.current && !hasError) {
       if (isPlaying) {
@@ -179,6 +186,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
     }
   };
   const renderCaption = (text: string) => {
+    if (!text) return [];
     // Split by whitespace but keep delimiters to preserve formatting
     const parts = text.split(/(\s+)/);
     return parts.map((part, index) => {
@@ -201,7 +209,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
   return (
     <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video">
       {/* Video Player */}
-      <div 
+      <div
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -233,7 +241,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         )}
         {/* Unmute Hint */}
         <AnimatePresence>
-            {showUnmuteHint && isPlaying && isMuted && (
+            {/* Show unmute hint if video is playing, currently muted */}
+            {showUnmuteHint && isPlaying && videoRef.current?.muted && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -259,12 +268,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         </AnimatePresence>
       </div>
       {/* Interactive Progress Bar */}
-      <div 
+      <div
         className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
         onClick={handleSeek}
       >
         <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-           <div 
+           <div
              className="h-full bg-primary transition-all duration-100 ease-linear relative"
              style={{ width: `${progress}%` }}
            >
@@ -297,7 +306,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -306,7 +315,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsShareOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -330,7 +339,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         <div className="max-w-[80%] space-y-2 pointer-events-auto">
           <Link to={`/profile/${post.userId}`}>
             <h3 className="text-lg font-bold text-white text-shadow hover:underline cursor-pointer inline-block">
-              @{post.user?.displayName || post.user?.name || 'unknown'}
+              {post.user?.displayName || post.user?.name || 'unknown'}
             </h3>
           </Link>
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
@@ -347,16 +356,16 @@ export function VideoCard({ post, isActive, isMuted, toggleMute, onDelete }: Vid
         </div>
       </div>
       {/* Mute Toggle */}
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog 
-        open={isShareOpen} 
-        onOpenChange={setIsShareOpen} 
+      <ShareDialog
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
         postId={post.id}
       />
       {/* Comments Sheet */}
