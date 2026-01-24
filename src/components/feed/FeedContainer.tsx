@@ -70,6 +70,33 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
     elements.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [posts]);
+  // Keyboard Navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (posts.length === 0) return;
+      // Prevent default scrolling for arrow keys
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+      } else {
+        return;
+      }
+      const currentIndex = posts.findIndex(p => p.id === activeVideoId);
+      if (currentIndex === -1) return;
+      let nextIndex = currentIndex;
+      if (e.key === 'ArrowDown') {
+        nextIndex = Math.min(posts.length - 1, currentIndex + 1);
+      } else if (e.key === 'ArrowUp') {
+        nextIndex = Math.max(0, currentIndex - 1);
+      }
+      if (nextIndex !== currentIndex) {
+        const nextId = posts[nextIndex].id;
+        const element = document.querySelector(`[data-id="${nextId}"]`);
+        element?.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [posts, activeVideoId]);
   const handlePostDelete = (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
@@ -133,24 +160,26 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
       </div>
     );
   }
+  const activeIndex = posts.findIndex(p => p.id === activeVideoId);
   return (
-    <div 
+    <div
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black"
     >
-      {posts.map((post) => (
-        <div 
-            key={post.id} 
+      {posts.map((post, index) => (
+        <div
+            key={post.id}
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
-          <VideoCard 
-            post={post} 
+          <VideoCard
+            post={post}
             isActive={activeVideoId === post.id}
             isMuted={isMuted}
             toggleMute={() => setIsMuted(!isMuted)}
             onDelete={() => handlePostDelete(post.id)}
             onUpdate={handlePostUpdate}
+            shouldPreload={index === activeIndex + 1}
           />
         </div>
       ))}

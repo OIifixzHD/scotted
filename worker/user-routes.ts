@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification, Post, Report } from "@shared/types";
+import type { User, Notification, Post, Report, Comment } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- AUTHENTICATION ---
@@ -61,6 +61,32 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, safeUser);
   });
   // --- ADMIN ---
+  app.get('/api/admin/stats', async (c) => {
+    // In a real app, verify admin token here or rely on middleware
+    // Fetch all data (limit high for demo)
+    await UserEntity.ensureSeed(c.env);
+    await PostEntity.ensureSeed(c.env);
+    const [usersPage, postsPage] = await Promise.all([
+        UserEntity.list(c.env, null, 10000),
+        PostEntity.list(c.env, null, 10000)
+    ]);
+    const users = usersPage.items;
+    const posts = postsPage.items;
+    const totalUsers = users.length;
+    const totalPosts = posts.length;
+    const totalViews = posts.reduce((acc, p) => acc + (p.views || 0), 0);
+    const totalLikes = posts.reduce((acc, p) => acc + (p.likes || 0), 0);
+    const totalComments = posts.reduce((acc, p) => acc + (p.comments || 0), 0);
+    const totalEngagement = totalLikes + totalComments;
+    return ok(c, {
+        totalUsers,
+        totalPosts,
+        totalViews,
+        totalEngagement,
+        totalLikes,
+        totalComments
+    });
+  });
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
     const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle } = await c.req.json() as Partial<User>;

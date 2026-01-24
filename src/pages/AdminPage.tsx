@@ -21,18 +21,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+interface AdminStats {
+  totalUsers: number;
+  totalPosts: number;
+  totalViews: number;
+  totalEngagement: number;
+  totalLikes: number;
+  totalComments: number;
+}
 export function AdminPage() {
   const navigate = useNavigate();
   const { user: currentUser, isLoading: isAuthLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState<User[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   // Dialog State
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -50,12 +60,14 @@ export function AdminPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [usersRes, reportsRes] = await Promise.all([
+      const [usersRes, reportsRes, statsRes] = await Promise.all([
         api<{ items: User[] }>('/api/users?limit=100'),
-        api<Report[]>('/api/admin/reports')
+        api<Report[]>('/api/admin/reports'),
+        api<AdminStats>('/api/admin/stats')
       ]);
       setUsers(usersRes.items);
       setReports(reportsRes);
+      setStats(statsRes);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -112,7 +124,7 @@ export function AdminPage() {
       toast.error(`Failed to update report: ${errorMessage}`);
     }
   };
-  // Mock Data for Analytics
+  // Mock Data for Analytics (Charts)
   const userGrowthData = [
     { name: 'Mon', users: 12 },
     { name: 'Tue', users: 19 },
@@ -312,7 +324,58 @@ export function AdminPage() {
               )}
             </div>
           </TabsContent>
-          <TabsContent value="analytics" className="mt-6">
+          <TabsContent value="analytics" className="mt-6 space-y-6">
+            {/* Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.totalUsers.toLocaleString() ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Registered accounts
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
+                  <Film className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.totalPosts.toLocaleString() ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Uploaded videos
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.totalViews.toLocaleString() ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Across all content
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Engagement</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.totalEngagement.toLocaleString() ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Likes & Comments
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Growth Chart */}
               <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6">

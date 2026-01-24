@@ -18,8 +18,9 @@ interface VideoCardProps {
   toggleMute: () => void;
   onDelete?: () => void;
   onUpdate?: (post: Post) => void;
+  shouldPreload?: boolean;
 }
-export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute, onDelete, onUpdate }: VideoCardProps) {
+export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute, onDelete, onUpdate, shouldPreload }: VideoCardProps) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -194,8 +195,8 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       if (part.startsWith('#') && part.length > 1) {
         const tag = part.substring(1);
         return (
-          <Link 
-            key={index} 
+          <Link
+            key={index}
             to={`/discover?q=${encodeURIComponent(tag)}`}
             className="text-primary font-bold hover:underline hover:text-primary/80 transition-colors"
             onClick={(e) => e.stopPropagation()}
@@ -208,14 +209,14 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
     });
   };
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
       className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video"
     >
       {/* Video Player */}
-      <div 
+      <div
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -228,7 +229,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
               loop
               muted={isMuted}
               playsInline
-              preload={isActive ? "auto" : "metadata"}
+              preload={isActive || shouldPreload ? "auto" : "metadata"}
               onError={handleError}
               onTimeUpdate={handleTimeUpdate}
             />
@@ -275,12 +276,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </AnimatePresence>
       </div>
       {/* Interactive Progress Bar */}
-      <div 
+      <div
         className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
         onClick={handleSeek}
       >
         <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-           <div 
+           <div
              className="h-full bg-primary transition-all duration-100 ease-linear relative"
              style={{ width: `${progress}%` }}
            >
@@ -313,7 +314,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -322,7 +323,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsShareOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -358,7 +359,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}
           </p>
-          <Link 
+          <Link
             to={`/sound/${post.soundId || 'default-sound'}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
@@ -373,22 +374,22 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </div>
       </div>
       {/* Mute Toggle */}
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog 
-        open={isShareOpen} 
-        onOpenChange={setIsShareOpen} 
-        postId={post.id} 
+      <ShareDialog
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        postId={post.id}
       />
       {/* Comments Sheet */}
-      <CommentsSheet 
-        postId={post.id} 
-        open={isCommentsOpen} 
+      <CommentsSheet
+        postId={post.id}
+        open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
