@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import type { User } from '@shared/types';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
