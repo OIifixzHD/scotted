@@ -45,6 +45,8 @@ export interface Post {
   tags?: string[];
   createdAt: number;
   commentsList?: Comment[]; // List of comments
+  soundId?: string;
+  soundName?: string;
 }
 export interface Chat {
   id: string;

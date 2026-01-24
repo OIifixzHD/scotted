@@ -96,6 +96,7 @@ const ChartTooltipContent = React.forwardRef<
       nameKey?: string
       labelKey?: string
       payload?: any[] // Explicitly define payload as any[] to fix TS errors
+      label?: any // Explicitly define label to fix TS2339
     }
 >(
   (

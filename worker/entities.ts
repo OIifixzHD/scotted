@@ -89,7 +89,9 @@ export class PostEntity extends IndexedEntity<Post> {
     shares: 0,
     views: 0,
     createdAt: 0,
-    commentsList: []
+    commentsList: [],
+    soundId: 'default-sound',
+    soundName: 'Original Audio'
   };
   static seedData = MOCK_POSTS;
   /**

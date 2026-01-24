@@ -345,14 +345,18 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}
           </p>
-          <div className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2">
+          <Link 
+            to={`/sound/${post.soundId || 'default-sound'}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
+          >
             <Music2 className="w-3 h-3 animate-spin-slow" />
             <div className="overflow-hidden w-32">
                 <p className="animate-marquee whitespace-nowrap">
-                  Original Sound - {post.user?.displayName || post.user?.name || 'Unknown User'} • Pulse Original Audio
+                  {post.soundName || 'Original Audio'} ��� {post.user?.displayName || post.user?.name || 'Unknown User'}
                 </p>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
       {/* Mute Toggle */}

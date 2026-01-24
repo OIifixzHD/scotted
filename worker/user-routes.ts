@@ -183,6 +183,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, { items: hydratedPosts });
   });
+  // --- SOUNDS ---
+  app.get('/api/sounds/:id', async (c) => {
+    const id = c.req.param('id');
+    // Mock sound details
+    const sound = {
+        id,
+        name: id === 'default-sound' ? 'Original Audio' : `Sound Track ${id.substring(0, 4)}`,
+        playCount: 1200000,
+        artist: 'Pulse Artist'
+    };
+    // Reuse trending logic for posts to simulate videos using this sound
+    await PostEntity.ensureSeed(c.env);
+    await UserEntity.ensureSeed(c.env);
+    const page = await PostEntity.list(c.env, null, 50);
+    // Hydrate
+    const hydratedPosts = await Promise.all(page.items.map(async (post) => {
+        if (post.userId) {
+            const userEntity = new UserEntity(c.env, post.userId);
+            if (await userEntity.exists()) {
+                const userData = await userEntity.getState();
+                const { password, ...safeUser } = userData;
+                return { ...post, user: safeUser };
+            }
+        }
+        return post;
+    }));
+    return ok(c, { sound, posts: hydratedPosts });
+  });
   // --- USERS ---
   app.get('/api/users', async (c) => {
     await UserEntity.ensureSeed(c.env);
@@ -438,7 +466,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
-    const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[] };
+    const body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[]; soundName?: string };
     if (!body.videoUrl || !body.userId) {
         return bad(c, 'videoUrl and userId are required');
     }
@@ -454,7 +482,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         views: 0,
         createdAt: Date.now(),
         tags: body.tags || [],
-        commentsList: []
+        commentsList: [],
+        soundId: 'default-sound',
+        soundName: body.soundName || 'Original Audio'
     };
     const created = await PostEntity.create(c.env, newPost);
     return ok(c, created);

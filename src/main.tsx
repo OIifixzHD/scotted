@@ -21,6 +21,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { AdminPage } from '@/pages/AdminPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { SoundPage } from '@/pages/SoundPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -86,6 +87,10 @@ const router = createBrowserRouter([
                 <AdminPage />
               </ProtectedRoute>
             ),
+          },
+          {
+            path: "/sound/:id",
+            element: <SoundPage />,
           },
         ]
       },
