@@ -86,7 +86,8 @@ function runSetupCommands() {
     "bun add @radix-ui/react-slot",
     "bun add react-dropzone react-masonry-css",
     "bun add recharts",
-    "bun add @radix-ui/react-progress"
+    "bun add @radix-ui/react-progress",
+    "bun add @radix-ui/react-slider"
 ];
     
     if (commands.length === 0) {
