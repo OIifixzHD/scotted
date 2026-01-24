@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import type { Notification, Chat, ChatMessage, User } from '@shared/types';
 import { NotificationItem } from '@/components/activity/NotificationItem';
 import { cn } from '@/lib/utils';
+import { NewChatDialog } from '@/components/inbox/NewChatDialog';
 export function InboxPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('activity');
@@ -109,6 +110,7 @@ function MessagesView() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Fetch Chats
   useEffect(() => {
@@ -165,19 +167,9 @@ function MessagesView() {
       setSending(false);
     }
   };
-  const handleCreateChat = async () => {
-    const title = prompt("Enter chat title:");
-    if (!title) return;
-    try {
-        const res = await api<Chat>('/api/chats', {
-            method: 'POST',
-            body: JSON.stringify({ title })
-        });
-        setChats(prev => [res, ...prev]);
-        setSelectedChatId(res.id);
-    } catch (e) {
-        toast.error("Failed to create chat");
-    }
+  const handleChatCreated = (chat: Chat) => {
+    setChats(prev => [chat, ...prev]);
+    setSelectedChatId(chat.id);
   };
   if (!user) {
     return (
@@ -198,7 +190,7 @@ function MessagesView() {
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input placeholder="Search chats..." className="pl-8 h-9 bg-secondary/50 border-white/10" />
             </div>
-            <Button size="icon" variant="ghost" onClick={handleCreateChat}>
+            <Button size="icon" variant="ghost" onClick={() => setIsNewChatOpen(true)}>
                 <Plus className="w-5 h-5" />
             </Button>
         </div>
@@ -338,6 +330,11 @@ function MessagesView() {
           </div>
         )}
       </div>
+      <NewChatDialog
+        open={isNewChatOpen}
+        onOpenChange={setIsNewChatOpen}
+        onChatCreated={handleChatCreated}
+      />
     </div>
   );
 }

@@ -6,15 +6,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2 } from 'lucide-react';
+import { LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { User } from '@shared/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 export function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const fetchBlockedUsers = useCallback(async () => {
     if (!user) return;
     try {
@@ -41,6 +53,22 @@ export function SettingsPage() {
       fetchBlockedUsers();
     } catch (error) {
       toast.error('Failed to unblock user');
+    }
+  };
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setIsDeleting(true);
+    try {
+      await api(`/api/users/${user.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ currentUserId: user.id })
+      });
+      toast.success('Account deleted successfully');
+      logout();
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to delete account');
+      setIsDeleting(false);
     }
   };
   return (
@@ -138,6 +166,52 @@ export function SettingsPage() {
                 <LogOut className="w-4 h-4 mr-2" />
                 Log Out
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+        {/* Danger Zone */}
+        <Card className="bg-red-950/10 backdrop-blur-sm border-red-500/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-500">
+              <AlertTriangle className="w-5 h-5" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription>Irreversible actions for your account.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-red-500/10 bg-red-500/5">
+              <div className="space-y-1">
+                <p className="font-medium text-red-400">Delete Account</p>
+                <p className="text-xs text-muted-foreground">Permanently remove your account and all data.</p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-card border-white/10 text-foreground">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your account
+                      and remove your data from our servers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAccount}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Delete Account
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

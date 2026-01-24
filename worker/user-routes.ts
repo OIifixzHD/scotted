@@ -224,6 +224,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { password, ...safeUser } = updated;
     return ok(c, safeUser);
   });
+  // Delete User (Self)
+  app.delete('/api/users/:id', async (c) => {
+    const id = c.req.param('id');
+    const { currentUserId } = await c.req.json() as { currentUserId?: string };
+    if (!currentUserId) {
+        return bad(c, 'currentUserId required');
+    }
+    // Check authorization: User can delete themselves, or Admin can delete anyone
+    const requester = new UserEntity(c.env, currentUserId);
+    if (!await requester.exists()) return bad(c, 'Requester not found');
+    const requesterData = await requester.getState();
+    if (currentUserId !== id && !requesterData.isAdmin) {
+        return bad(c, 'Unauthorized');
+    }
+    const userEntity = new UserEntity(c.env, id);
+    if (!await userEntity.exists()) {
+        return notFound(c, 'User not found');
+    }
+    await UserEntity.delete(c.env, id);
+    return ok(c, { deleted: true });
+  });
   // Toggle Follow
   app.post('/api/users/:id/follow', async (c) => {
     const targetId = c.req.param('id');

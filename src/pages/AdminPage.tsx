@@ -21,11 +21,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon } from "lucide-react";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 export function AdminPage() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
@@ -96,6 +97,25 @@ export function AdminPage() {
       toast.error('Failed to update report');
     }
   };
+  // Mock Data for Analytics
+  const userGrowthData = [
+    { name: 'Mon', users: 12 },
+    { name: 'Tue', users: 19 },
+    { name: 'Wed', users: 15 },
+    { name: 'Thu', users: 25 },
+    { name: 'Fri', users: 32 },
+    { name: 'Sat', users: 45 },
+    { name: 'Sun', users: 58 },
+  ];
+  const activityData = [
+    { name: 'Mon', likes: 120, comments: 45 },
+    { name: 'Tue', likes: 150, comments: 55 },
+    { name: 'Wed', likes: 180, comments: 40 },
+    { name: 'Thu', likes: 220, comments: 70 },
+    { name: 'Fri', likes: 300, comments: 90 },
+    { name: 'Sat', likes: 450, comments: 120 },
+    { name: 'Sun', likes: 380, comments: 100 },
+  ];
   return (
     <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12 space-y-8">
@@ -115,6 +135,7 @@ export function AdminPage() {
           <TabsList className="bg-secondary/50 border border-white/10">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="mt-6">
             <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -267,6 +288,53 @@ export function AdminPage() {
                   </TableBody>
                 </Table>
               )}
+            </div>
+          </TabsContent>
+          <TabsContent value="analytics" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* User Growth Chart */}
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                  <h3 className="text-lg font-bold">New Users (Last 7 Days)</h3>
+                </div>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={userGrowthData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                      <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Bar dataKey="users" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {/* Activity Chart */}
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <BarChart3 className="w-5 h-5 text-teal-400" />
+                  <h3 className="text-lg font-bold">Platform Activity</h3>
+                </div>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={activityData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                      <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Line type="monotone" dataKey="likes" stroke="#7c3aed" strokeWidth={2} dot={{ fill: '#7c3aed' }} />
+                      <Line type="monotone" dataKey="comments" stroke="#2dd4bf" strokeWidth={2} dot={{ fill: '#2dd4bf' }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
