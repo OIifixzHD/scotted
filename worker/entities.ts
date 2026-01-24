@@ -85,6 +85,8 @@ export class PostEntity extends IndexedEntity<Post> {
     caption: "",
     likes: 0,
     likedBy: [],
+    saves: 0,
+    savedBy: [],
     comments: 0,
     shares: 0,
     views: 0,
@@ -130,6 +132,41 @@ export class PostEntity extends IndexedEntity<Post> {
       likedBy: newLikedBy
     }));
     return { likes: newLikes, isLiked: !isLiked };
+  }
+  /**
+   * Toggle save (bookmark) for a user
+   */
+  async toggleSave(userId: string): Promise<{ saves: number, isSaved: boolean }> {
+    const state = await this.getState();
+    const savedBy = state.savedBy || [];
+    const isSaved = savedBy.includes(userId);
+    let newSavedBy: string[];
+    let newSaves: number;
+    if (isSaved) {
+      // Unsave
+      newSavedBy = savedBy.filter(id => id !== userId);
+      newSaves = Math.max(0, (state.saves || 0) - 1);
+    } else {
+      // Save
+      newSavedBy = [...savedBy, userId];
+      newSaves = (state.saves || 0) + 1;
+    }
+    await this.mutate(s => ({
+      ...s,
+      saves: newSaves,
+      savedBy: newSavedBy
+    }));
+    return { saves: newSaves, isSaved: !isSaved };
+  }
+  /**
+   * Increment share count
+   */
+  async incrementShares(): Promise<number> {
+    const newState = await this.mutate(s => ({
+      ...s,
+      shares: (s.shares || 0) + 1
+    }));
+    return newState.shares || 0;
   }
   /**
    * Increment view count

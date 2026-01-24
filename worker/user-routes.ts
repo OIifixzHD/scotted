@@ -437,6 +437,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, { items: hydrated });
   });
+  // Get Saved Posts
+  app.get('/api/users/:id/saved', async (c) => {
+    const userId = c.req.param('id');
+    await PostEntity.ensureSeed(c.env);
+    const page = await PostEntity.list(c.env, null, 1000);
+    const savedPosts = page.items.filter(p => p.savedBy?.includes(userId));
+    // Hydrate
+    const hydrated = await Promise.all(savedPosts.map(async (post) => {
+        if (post.userId) {
+            const uEntity = new UserEntity(c.env, post.userId);
+            if (await uEntity.exists()) {
+                const uData = await uEntity.getState();
+                const { password, ...safe } = uData;
+                return { ...post, user: safe };
+            }
+        }
+        return post;
+    }));
+    return ok(c, { items: hydrated });
+  });
   // --- FEED / POSTS ---
   app.get('/api/feed', async (c) => {
     await PostEntity.ensureSeed(c.env);
@@ -503,6 +523,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         caption: body.caption || '',
         likes: 0,
         likedBy: [],
+        saves: 0,
+        savedBy: [],
         comments: 0,
         shares: 0,
         views: 0,
@@ -599,6 +621,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
     }
     return ok(c, result);
+  });
+  app.post('/api/posts/:id/save', async (c) => {
+    const id = c.req.param('id');
+    const { userId } = await c.req.json() as { userId?: string };
+    if (!userId) return bad(c, 'userId required');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const result = await postEntity.toggleSave(userId);
+    return ok(c, result);
+  });
+  app.post('/api/posts/:id/share', async (c) => {
+    const id = c.req.param('id');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const shares = await postEntity.incrementShares();
+    return ok(c, { shares });
   });
   app.post('/api/posts/:id/view', async (c) => {
     const id = c.req.param('id');

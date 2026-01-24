@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,7 +33,10 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
   // Initialize state from props
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveCount, setSaveCount] = useState(post.saves || 0);
   const [commentCount, setCommentCount] = useState(post.comments);
+  const [shareCount, setShareCount] = useState(post.shares || 0);
   const [viewCount, setViewCount] = useState(post.views || 0);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -44,13 +47,17 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
   const hasViewedRef = useRef(false);
   // Sync with prop updates and user auth state
   useEffect(() => {
-    if (user && post.likedBy) {
-      setIsLiked(post.likedBy.includes(user.id));
+    if (user) {
+      setIsLiked(post.likedBy?.includes(user.id) || false);
+      setIsSaved(post.savedBy?.includes(user.id) || false);
     } else {
       setIsLiked(false);
+      setIsSaved(false);
     }
     setLikeCount(post.likes);
+    setSaveCount(post.saves || 0);
     setCommentCount(post.comments);
+    setShareCount(post.shares || 0);
     setViewCount(post.views || 0);
   }, [post, user]);
   // Handle Play/Pause based on active state
@@ -149,6 +156,42 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       setIsLiked(previousLiked);
       setLikeCount(previousCount);
       toast.error('Failed to update like');
+    }
+  };
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Please log in to save posts");
+      return;
+    }
+    // Optimistic Update
+    const previousSaved = isSaved;
+    const previousCount = saveCount;
+    setIsSaved(!previousSaved);
+    setSaveCount(prev => previousSaved ? prev - 1 : prev + 1);
+    try {
+      const res = await api<{ saves: number, isSaved: boolean }>(`/api/posts/${post.id}/save`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: user.id })
+      });
+      setSaveCount(res.saves);
+      setIsSaved(res.isSaved);
+      toast.success(res.isSaved ? "Added to bookmarks" : "Removed from bookmarks");
+    } catch (error) {
+      console.error('Failed to toggle save:', error);
+      setIsSaved(previousSaved);
+      setSaveCount(previousCount);
+      toast.error('Failed to update bookmark');
+    }
+  };
+  const handleShare = async () => {
+    setIsShareOpen(true);
+    // Optimistic update
+    setShareCount(prev => prev + 1);
+    try {
+        const res = await api<{ shares: number }>(`/api/posts/${post.id}/share`, { method: 'POST' });
+        setShareCount(res.shares);
+    } catch (e) {
+        console.error("Failed to track share", e);
     }
   };
   const handleDoubleTap = () => {
@@ -324,13 +367,25 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
         <button
-          onClick={() => setIsShareOpen(true)}
+          onClick={handleSave}
+          className="flex flex-col items-center gap-1 group"
+        >
+          <div className={cn(
+            "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
+            isSaved ? "text-yellow-400" : "text-white"
+          )}>
+            <Bookmark className={cn("w-7 h-7", isSaved && "fill-current")} />
+          </div>
+          <span className="text-xs font-medium text-white text-shadow">{saveCount}</span>
+        </button>
+        <button
+          onClick={handleShare}
           className="flex flex-col items-center gap-1 group"
         >
           <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
             <Share2 className="w-7 h-7" />
           </div>
-          <span className="text-xs font-medium text-white text-shadow">{post.shares}</span>
+          <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
         </button>
         {/* View Count */}
         <div className="flex flex-col items-center gap-1 group">

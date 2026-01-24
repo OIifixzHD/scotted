@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag, Bookmark } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -302,6 +302,15 @@ export function ProfilePage() {
               >
                 Liked
               </TabsTrigger>
+              {isOwnProfile && (
+                <TabsTrigger
+                  value="saved"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base flex items-center gap-2"
+                >
+                  <Bookmark className="w-4 h-4" />
+                  Saved
+                </TabsTrigger>
+              )}
             </TabsList>
             <TabsContent value="videos" className="mt-0">
               <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
@@ -315,6 +324,11 @@ export function ProfilePage() {
                 </div>
               )}
             </TabsContent>
+            {isOwnProfile && (
+              <TabsContent value="saved" className="mt-0">
+                <SavedVideosTab userId={user.id} onVideoClick={handleVideoClick} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
@@ -365,6 +379,37 @@ function LikedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick
   }, [userId]);
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
+  return <VideoGrid posts={posts} onVideoClick={onVideoClick} />;
+}
+function SavedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick: (post: Post) => void }) {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const fetchSaved = async () => {
+      try {
+        setLoading(true);
+        const res = await api<{ items: Post[] }>(`/api/users/${userId}/saved`);
+        setPosts(res.items);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSaved();
+  }, [userId]);
+  if (loading) {
+    return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
+  if (posts.length === 0) {
+    return (
+      <div className="py-20 text-center text-muted-foreground">
+        <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-20" />
+        <p>No saved videos yet.</p>
+        <p className="text-sm">Bookmark videos to watch them later.</p>
+      </div>
+    );
   }
   return <VideoGrid posts={posts} onVideoClick={onVideoClick} />;
 }

@@ -38,6 +38,8 @@ export interface Post {
   caption: string;
   likes: number;
   likedBy?: string[]; // Track user IDs who liked the post
+  saves?: number; // Track number of bookmarks
+  savedBy?: string[]; // Track user IDs who saved the post
   comments: number;
   shares: number;
   views?: number; // Added for view tracking
