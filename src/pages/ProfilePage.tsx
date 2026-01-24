@@ -25,7 +25,7 @@ export function ProfilePage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   // Video Modal State
-  const [selectedVideo, setSelectedVideo] = useState<Post | null>(null);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
@@ -88,15 +88,34 @@ export function ProfilePage() {
     }
   };
   const handleVideoClick = (post: Post) => {
-    setSelectedVideo(post);
-    setIsVideoModalOpen(true);
+    const index = posts.findIndex(p => p.id === post.id);
+    if (index !== -1) {
+        setSelectedVideoIndex(index);
+        setIsVideoModalOpen(true);
+    }
+  };
+  const handleNext = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1) {
+        setSelectedVideoIndex(selectedVideoIndex + 1);
+    }
+  };
+  const handlePrev = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
+        setSelectedVideoIndex(selectedVideoIndex - 1);
+    }
   };
   const handlePostDelete = () => {
-    // Remove deleted post from list
-    if (selectedVideo) {
-        setPosts(prev => prev.filter(p => p.id !== selectedVideo.id));
+    if (selectedVideoIndex === null) return;
+    const newPosts = posts.filter((_, i) => i !== selectedVideoIndex);
+    setPosts(newPosts);
+    if (newPosts.length === 0) {
         setIsVideoModalOpen(false);
+        setSelectedVideoIndex(null);
+    } else if (selectedVideoIndex >= newPosts.length) {
+        // If we deleted the last item, move to the new last item
+        setSelectedVideoIndex(newPosts.length - 1);
     }
+    // If we deleted a middle item, the index now points to the next item, which is correct
   };
   if (loading) {
     return (
@@ -182,16 +201,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -200,8 +219,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button
-                            variant="destructive"
+                          <Button 
+                            variant="destructive" 
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -211,7 +230,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button
+                          <Button 
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -255,9 +274,9 @@ export function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <a
-                        href={`https://pulse.aurelia.so/${handle}`}
-                        target="_blank"
+                      <a 
+                        href={`https://pulse.aurelia.so/${handle}`} 
+                        target="_blank" 
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
@@ -290,21 +309,21 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger
-                value="videos"
+              <TabsTrigger 
+                value="videos" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger
-                value="liked"
+              <TabsTrigger 
+                value="liked" 
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
               </TabsTrigger>
               {isOwnProfile && (
-                <TabsTrigger
-                  value="saved"
+                <TabsTrigger 
+                  value="saved" 
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base flex items-center gap-2"
                 >
                   <Bookmark className="w-4 h-4" />
@@ -317,7 +336,7 @@ export function ProfilePage() {
             </TabsContent>
             <TabsContent value="liked" className="mt-0">
               {isOwnProfile ? (
-                <LikedVideosTab userId={user.id} onVideoClick={handleVideoClick} />
+                <LikedVideosTab userId={user.id} />
               ) : (
                 <div className="py-20 text-center text-muted-foreground">
                   <p>Liked videos are private.</p>
@@ -326,7 +345,7 @@ export function ProfilePage() {
             </TabsContent>
             {isOwnProfile && (
               <TabsContent value="saved" className="mt-0">
-                <SavedVideosTab userId={user.id} onVideoClick={handleVideoClick} />
+                <SavedVideosTab userId={user.id} />
               </TabsContent>
             )}
           </Tabs>
@@ -334,8 +353,8 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog
-          open={isEditDialogOpen}
+        <EditProfileDialog 
+          open={isEditDialogOpen} 
           onOpenChange={setIsEditDialogOpen}
           currentUser={currentUser}
         />
@@ -352,17 +371,23 @@ export function ProfilePage() {
       )}
       {/* Video Modal */}
       <VideoModal
-        post={selectedVideo}
+        post={selectedVideoIndex !== null ? posts[selectedVideoIndex] : null}
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
         onDelete={handlePostDelete}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        hasNext={selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1}
+        hasPrev={selectedVideoIndex !== null && selectedVideoIndex > 0}
       />
     </div>
   );
 }
-function LikedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick: (post: Post) => void }) {
+function LikedVideosTab({ userId }: { userId: string }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   useEffect(() => {
     const fetchLiked = async () => {
       try {
@@ -377,14 +402,46 @@ function LikedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick
     };
     fetchLiked();
   }, [userId]);
+  const handleVideoClick = (post: Post) => {
+    const index = posts.findIndex(p => p.id === post.id);
+    if (index !== -1) {
+        setSelectedVideoIndex(index);
+        setIsVideoModalOpen(true);
+    }
+  };
+  const handleNext = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1) {
+        setSelectedVideoIndex(selectedVideoIndex + 1);
+    }
+  };
+  const handlePrev = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
+        setSelectedVideoIndex(selectedVideoIndex - 1);
+    }
+  };
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
-  return <VideoGrid posts={posts} onVideoClick={onVideoClick} />;
+  return (
+    <>
+      <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
+      <VideoModal
+        post={selectedVideoIndex !== null ? posts[selectedVideoIndex] : null}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        hasNext={selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1}
+        hasPrev={selectedVideoIndex !== null && selectedVideoIndex > 0}
+      />
+    </>
+  );
 }
-function SavedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick: (post: Post) => void }) {
+function SavedVideosTab({ userId }: { userId: string }) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   useEffect(() => {
     const fetchSaved = async () => {
       try {
@@ -399,6 +456,23 @@ function SavedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick
     };
     fetchSaved();
   }, [userId]);
+  const handleVideoClick = (post: Post) => {
+    const index = posts.findIndex(p => p.id === post.id);
+    if (index !== -1) {
+        setSelectedVideoIndex(index);
+        setIsVideoModalOpen(true);
+    }
+  };
+  const handleNext = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1) {
+        setSelectedVideoIndex(selectedVideoIndex + 1);
+    }
+  };
+  const handlePrev = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
+        setSelectedVideoIndex(selectedVideoIndex - 1);
+    }
+  };
   if (loading) {
     return <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -411,5 +485,18 @@ function SavedVideosTab({ userId, onVideoClick }: { userId: string, onVideoClick
       </div>
     );
   }
-  return <VideoGrid posts={posts} onVideoClick={onVideoClick} />;
+  return (
+    <>
+      <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
+      <VideoModal
+        post={selectedVideoIndex !== null ? posts[selectedVideoIndex] : null}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        hasNext={selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1}
+        hasPrev={selectedVideoIndex !== null && selectedVideoIndex > 0}
+      />
+    </>
+  );
 }

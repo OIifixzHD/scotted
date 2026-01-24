@@ -17,7 +17,8 @@ export function SoundPage() {
   const [sound, setSound] = useState<SoundDetails | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedVideo, setSelectedVideo] = useState<Post | null>(null);
+  // Video Modal State
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   useEffect(() => {
     const fetchSoundData = async () => {
@@ -36,8 +37,21 @@ export function SoundPage() {
     fetchSoundData();
   }, [id]);
   const handleVideoClick = (post: Post) => {
-    setSelectedVideo(post);
-    setIsVideoModalOpen(true);
+    const index = posts.findIndex(p => p.id === post.id);
+    if (index !== -1) {
+        setSelectedVideoIndex(index);
+        setIsVideoModalOpen(true);
+    }
+  };
+  const handleNext = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1) {
+        setSelectedVideoIndex(selectedVideoIndex + 1);
+    }
+  };
+  const handlePrev = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
+        setSelectedVideoIndex(selectedVideoIndex - 1);
+    }
   };
   if (loading) {
     return (
@@ -120,9 +134,13 @@ export function SoundPage() {
       </div>
       {/* Video Modal */}
       <VideoModal
-        post={selectedVideo}
+        post={selectedVideoIndex !== null ? posts[selectedVideoIndex] : null}
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        hasNext={selectedVideoIndex !== null && selectedVideoIndex < posts.length - 1}
+        hasPrev={selectedVideoIndex !== null && selectedVideoIndex > 0}
       />
     </div>
   );

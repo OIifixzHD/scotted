@@ -547,8 +547,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    // Sort by newest first
-    hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
+    // Smart Feed Algorithm: Sort by Engagement Score
+    // Score = (Likes * 2) + (Comments * 3) + (Views * 0.5)
+    hydratedPosts.sort((a, b) => {
+        const scoreA = (a.likes * 2) + (a.comments * 3) + ((a.views || 0) * 0.5);
+        const scoreB = (b.likes * 2) + (b.comments * 3) + ((b.views || 0) * 0.5);
+        // If scores are equal, fallback to recency
+        if (scoreA === scoreB) {
+            return b.createdAt - a.createdAt;
+        }
+        return scoreB - scoreA;
+    });
     return ok(c, { ...page, items: hydratedPosts });
   });
   // Following Feed
@@ -776,6 +785,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return { ...n, actor, post };
     }));
     return ok(c, hydrated);
+  });
+  // NEW: Get Unread Notification Count
+  app.get('/api/notifications/unread-count', async (c) => {
+    const userId = c.req.query('userId');
+    if (!userId) return bad(c, 'userId required');
+    const notifications = await NotificationEntity.listForUser(c.env, userId, 100); // Check last 100
+    const count = notifications.filter(n => !n.read).length;
+    return ok(c, { count });
   });
   // --- CHATS ---
   app.get('/api/chats', async (c) => {

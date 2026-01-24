@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn, LogOut, Settings, Shield } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -14,8 +14,25 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api-client";
 export function AppSidebar(): JSX.Element {
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      try {
+        const res = await api<{ count: number }>(`/api/notifications/unread-count?userId=${user.id}`);
+        setUnreadCount(res.count);
+      } catch (e) {
+        console.error("Failed to fetch unread count", e);
+      }
+    };
+    fetchUnread();
+    // Poll every minute for updates
+    const interval = setInterval(fetchUnread, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
   return (
     <Sidebar className="border-r border-white/5 bg-sidebar/95 backdrop-blur-xl">
       <SidebarHeader className="pb-6 pt-8">
@@ -87,9 +104,16 @@ export function AppSidebar(): JSX.Element {
                     isActive={isActive}
                     className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
                   >
-                    <span className="flex items-center gap-3 cursor-pointer">
-                      <MessageCircle className="h-5 w-5" />
-                      <span>Inbox</span>
+                    <span className="flex items-center gap-3 cursor-pointer w-full">
+                      <div className="flex items-center gap-3 flex-1">
+                        <MessageCircle className="h-5 w-5" />
+                        <span>Inbox</span>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
                     </span>
                   </SidebarMenuButton>
                 )}
@@ -162,8 +186,8 @@ export function AppSidebar(): JSX.Element {
                 <span className="text-xs text-muted-foreground truncate">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
               </div>
             </div>
-            <Button
-              variant="destructive"
+            <Button 
+              variant="destructive" 
               className="w-full justify-start bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20"
               onClick={logout}
             >

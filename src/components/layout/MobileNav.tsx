@@ -1,10 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, Compass, PlusSquare, MessageCircle, User } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api-client';
 export function MobileNav() {
   const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      try {
+        const res = await api<{ count: number }>(`/api/notifications/unread-count?userId=${user.id}`);
+        setUnreadCount(res.count);
+      } catch (e) {
+        console.error("Failed to fetch unread count", e);
+      }
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
   const navItems = [
     {
       to: '/',
@@ -28,8 +44,9 @@ export function MobileNav() {
     {
       to: '/inbox',
       icon: MessageCircle,
-      label: 'Inbox', // Label remains Inbox
-      end: false
+      label: 'Inbox',
+      end: false,
+      badge: unreadCount > 0
     },
     {
       to: user ? `/profile/${user.id}` : '/login',
@@ -47,7 +64,7 @@ export function MobileNav() {
             to={item.to}
             end={item.end}
             className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors duration-200",
+              "flex flex-col items-center justify-center w-full h-full gap-1 transition-colors duration-200 relative",
               isActive ? "text-primary" : "text-muted-foreground hover:text-white",
               item.highlight && "text-white"
             )}
@@ -64,7 +81,12 @@ export function MobileNav() {
                     <item.icon className="w-6 h-6" />
                   </div>
                 ) : (
-                  <item.icon className={cn("w-6 h-6", isActive && "fill-current")} />
+                  <div className="relative">
+                    <item.icon className={cn("w-6 h-6", isActive && "fill-current")} />
+                    {item.badge && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-black" />
+                    )}
+                  </div>
                 )}
                 {!item.highlight && (
                   <span className="text-[10px] font-medium">{item.label}</span>

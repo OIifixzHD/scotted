@@ -18,7 +18,8 @@ export function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   // Video Modal State
-  const [selectedVideo, setSelectedVideo] = useState<Post | null>(null);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
+  const [activeListType, setActiveListType] = useState<'trending' | 'search'>('trending');
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   // Debounce input
   useEffect(() => {
@@ -69,10 +70,28 @@ export function DiscoverPage() {
   const handleTagClick = (tag: string) => {
     setSearchQuery(tag);
   };
-  const handleVideoClick = (post: Post) => {
-    setSelectedVideo(post);
-    setIsVideoModalOpen(true);
+  const handleVideoClick = (post: Post, type: 'trending' | 'search') => {
+    const list = type === 'trending' ? trendingPosts : searchResults.posts;
+    const index = list.findIndex(p => p.id === post.id);
+    if (index !== -1) {
+        setActiveListType(type);
+        setSelectedVideoIndex(index);
+        setIsVideoModalOpen(true);
+    }
   };
+  const handleNext = () => {
+    const list = activeListType === 'trending' ? trendingPosts : searchResults.posts;
+    if (selectedVideoIndex !== null && selectedVideoIndex < list.length - 1) {
+        setSelectedVideoIndex(selectedVideoIndex + 1);
+    }
+  };
+  const handlePrev = () => {
+    if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
+        setSelectedVideoIndex(selectedVideoIndex - 1);
+    }
+  };
+  const activeList = activeListType === 'trending' ? trendingPosts : searchResults.posts;
+  const selectedVideo = selectedVideoIndex !== null ? activeList[selectedVideoIndex] : null;
   const trendingHashtags = [
     'cyberpunk', 'neon', 'nightcity', 'future', 'tech', 'vibes', 'coding', 'ai'
   ];
@@ -84,8 +103,8 @@ export function DiscoverPage() {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between sticky top-0 z-30 bg-background/80 backdrop-blur-md py-4 -mx-4 px-4 md:mx-0 md:px-0">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search accounts, videos, or hashtags..."
+              <Input 
+                placeholder="Search accounts, videos, or hashtags..." 
                 className="pl-10 bg-secondary/50 border-white/10 h-12 rounded-xl focus-visible:ring-primary"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -108,9 +127,9 @@ export function DiscoverPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {trendingHashtags.map(tag => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
+                    <Badge 
+                      key={tag} 
+                      variant="secondary" 
                       className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition-colors"
                       onClick={() => handleTagClick(tag)}
                     >
@@ -128,7 +147,7 @@ export function DiscoverPage() {
                       <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : (
-                  <VideoGrid posts={trendingPosts} onVideoClick={handleVideoClick} />
+                  <VideoGrid posts={trendingPosts} onVideoClick={(p) => handleVideoClick(p, 'trending')} />
                 )}
               </div>
             </>
@@ -161,7 +180,7 @@ export function DiscoverPage() {
               <div className="space-y-4">
                   <h2 className="font-bold text-lg">Videos</h2>
                   {searchResults.posts.length > 0 ? (
-                      <VideoGrid posts={searchResults.posts} onVideoClick={handleVideoClick} />
+                      <VideoGrid posts={searchResults.posts} onVideoClick={(p) => handleVideoClick(p, 'search')} />
                   ) : (
                       !searching && searchResults.users.length === 0 && (
                           <div className="text-center py-12 text-muted-foreground">
@@ -179,6 +198,10 @@ export function DiscoverPage() {
         post={selectedVideo}
         isOpen={isVideoModalOpen}
         onClose={() => setIsVideoModalOpen(false)}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        hasNext={selectedVideoIndex !== null && selectedVideoIndex < activeList.length - 1}
+        hasPrev={selectedVideoIndex !== null && selectedVideoIndex > 0}
       />
     </div>
   );
