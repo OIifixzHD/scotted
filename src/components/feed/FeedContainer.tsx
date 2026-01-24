@@ -73,6 +73,9 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const handlePostDelete = (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
+  const handlePostUpdate = (updatedPost: Post) => {
+    setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
+  };
   if (loading) {
     return (
       <div className="h-full w-full bg-black py-4 md:py-8">
@@ -141,12 +144,13 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
-          <VideoCard
-            post={post}
+          <VideoCard 
+            post={post} 
             isActive={activeVideoId === post.id}
             isMuted={isMuted}
             toggleMute={() => setIsMuted(!isMuted)}
             onDelete={() => handlePostDelete(post.id)}
+            onUpdate={handlePostUpdate}
           />
         </div>
       ))}

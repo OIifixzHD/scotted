@@ -7,23 +7,27 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@shared/types";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 import { ReportDialog } from "@/components/profile/ReportDialog";
+import { EditPostDialog } from "@/components/feed/EditPostDialog";
 interface PostOptionsProps {
   post: Post;
   onDelete?: () => void;
+  onUpdate?: (post: Post) => void;
 }
-export function PostOptions({ post, onDelete }: PostOptionsProps) {
+export function PostOptions({ post, onDelete, onUpdate }: PostOptionsProps) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const isOwner = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
   const canDelete = isOwner || isAdmin;
+  const canEdit = isOwner || isAdmin;
   const handleDelete = async () => {
     if (!user) return;
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -68,6 +72,12 @@ export function PostOptions({ post, onDelete }: PostOptionsProps) {
             <LinkIcon className="w-4 h-4 mr-2" />
             Copy Link
           </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)} className="cursor-pointer">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Post
+            </DropdownMenuItem>
+          )}
           {user && !isOwner && (
             <DropdownMenuItem onClick={() => setIsReportDialogOpen(true)} className="cursor-pointer text-yellow-500 focus:text-yellow-500">
               <Flag className="w-4 h-4 mr-2" />
@@ -77,8 +87,8 @@ export function PostOptions({ post, onDelete }: PostOptionsProps) {
           {canDelete && (
             <>
               <DropdownMenuSeparator className="bg-white/10" />
-              <DropdownMenuItem 
-                onClick={handleDelete} 
+              <DropdownMenuItem
+                onClick={handleDelete}
                 disabled={isDeleting}
                 className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
               >
@@ -95,6 +105,14 @@ export function PostOptions({ post, onDelete }: PostOptionsProps) {
         targetId={post.id}
         targetType="post"
         targetName="this post"
+      />
+      <EditPostDialog
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        post={post}
+        onSuccess={(updatedPost) => {
+          onUpdate?.(updatedPost);
+        }}
       />
     </>
   );

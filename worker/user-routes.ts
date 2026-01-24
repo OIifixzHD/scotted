@@ -489,6 +489,33 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const created = await PostEntity.create(c.env, newPost);
     return ok(c, created);
   });
+  // Update Post (Caption/Tags)
+  app.put('/api/posts/:id', async (c) => {
+    const id = c.req.param('id');
+    const { userId, caption, tags } = await c.req.json() as { userId?: string; caption?: string; tags?: string[] };
+    if (!userId) return bad(c, 'userId required');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const post = await postEntity.getState();
+    // Check ownership
+    if (post.userId !== userId) {
+        // Check if admin
+        const userEntity = new UserEntity(c.env, userId);
+        if (!await userEntity.exists()) return bad(c, 'User not found');
+        const user = await userEntity.getState();
+        if (!user.isAdmin) return bad(c, 'Unauthorized');
+    }
+    const updated = await postEntity.mutate(s => ({
+        ...s,
+        caption: caption !== undefined ? caption : s.caption,
+        tags: tags !== undefined ? tags : s.tags
+    }));
+    // Hydrate user for consistency in frontend
+    const authorEntity = new UserEntity(c.env, updated.userId);
+    const authorData = await authorEntity.getState();
+    const { password, ...safeAuthor } = authorData;
+    return ok(c, { ...updated, user: safeAuthor });
+  });
   app.delete('/api/posts/:id', async (c) => {
     const id = c.req.param('id');
     const { userId } = await c.req.json() as { userId?: string };
