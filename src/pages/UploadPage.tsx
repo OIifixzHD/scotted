@@ -8,12 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Play, Pause, Wand2 } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Play, Pause, Wand2, Palette, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
 import { VIDEO_FILTERS, getFilterClass } from '@/lib/filters';
+import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
+import type { TextOverlay } from '@shared/types';
+import { v4 as uuidv4 } from 'uuid';
 const PRESET_SOUNDS = [
   { id: 'default-sound', name: 'Original Audio' },
   { id: 'cosmic-vibes', name: 'Cosmic Vibes' },
@@ -28,6 +32,9 @@ const STOCK_VIDEOS = [
   "https://assets.mixkit.co/videos/preview/mixkit-neon-lights-in-a-dark-room-41642-large.mp4",
   "https://assets.mixkit.co/videos/preview/mixkit-abstract-purple-lights-in-darkness-34432-large.mp4"
 ];
+const TEXT_COLORS = [
+  '#ffffff', '#ef4444', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#ec4899', '#000000'
+];
 export function UploadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -40,6 +47,12 @@ export function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('none');
+  // Text Overlay State
+  const [overlays, setOverlays] = useState<TextOverlay[]>([]);
+  const [activeOverlayId, setActiveOverlayId] = useState<string | null>(null);
+  const [newText, setNewText] = useState('');
+  const [newTextColor, setNewTextColor] = useState('#ffffff');
+  const [activeTab, setActiveTab] = useState('filters');
   // Sound Selection State
   const initialSoundId = searchParams.get('soundId') || 'default-sound';
   const [soundId, setSoundId] = useState(initialSoundId);
@@ -111,6 +124,21 @@ export function UploadPage() {
     setPreviewUrl('');
     setUploadProgress(0);
     setSelectedFilter('none');
+    setOverlays([]);
+  };
+  const handleAddText = () => {
+    if (!newText.trim()) return;
+    const newOverlay: TextOverlay = {
+      id: uuidv4(),
+      text: newText,
+      x: 50, // Center
+      y: 50, // Center
+      color: newTextColor,
+      style: 'bold'
+    };
+    setOverlays([...overlays, newOverlay]);
+    setNewText('');
+    setActiveOverlayId(newOverlay.id);
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +168,7 @@ export function UploadPage() {
       formData.append('soundId', soundId);
       formData.append('soundName', PRESET_SOUNDS.find(s => s.id === soundId)?.name || 'Original Audio');
       formData.append('filter', selectedFilter);
+      formData.append('overlays', JSON.stringify(overlays));
       // Smart Fallback Logic for Large Files
       // Cloudflare Workers have strict body size limits (often ~10MB for standard workers)
       // If file is larger than 9MB, we switch to simulation mode to prevent crash
@@ -182,7 +211,7 @@ export function UploadPage() {
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Form Section */}
-            <div className="space-y-6">
+            <div className="space-y-6 order-2 lg:order-1">
               <div>
                 <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
                 <p className="text-muted-foreground">Share your vibe with the world.</p>
@@ -228,7 +257,7 @@ export function UploadPage() {
                             </p>
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                 <span>Any duration</span>
-                                <span>•</span>
+                                <span>���</span>
                                 <span>Max 50MB</span>
                             </div>
                           </>
@@ -352,69 +381,147 @@ export function UploadPage() {
                 </form>
               </Card>
             </div>
-            {/* Preview Section */}
-            <div className="flex flex-col items-center justify-start space-y-6">
+            {/* Preview & Creative Tools Section */}
+            <div className="flex flex-col items-center justify-start space-y-6 order-1 lg:order-2">
               <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
                 {previewUrl ? (
-                  <video
-                    src={previewUrl}
-                    className={cn("w-full h-full object-cover transition-all duration-300", getFilterClass(selectedFilter))}
-                    controls
-                    autoPlay
-                    muted
-                    loop
-                  />
+                  <>
+                    <video
+                      src={previewUrl}
+                      className={cn("w-full h-full object-cover transition-all duration-300", getFilterClass(selectedFilter))}
+                      controls
+                      autoPlay
+                      muted
+                      loop
+                    />
+                    <OverlayCanvas 
+                      overlays={overlays} 
+                      onChange={setOverlays}
+                      activeId={activeOverlayId}
+                      onSelect={setActiveOverlayId}
+                    />
+                  </>
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-secondary/20">
                     <Film className="w-12 h-12 mb-4 opacity-20" />
                     <p className="text-sm">Preview will appear here</p>
                   </div>
                 )}
-                {/* Mock Overlay for Preview */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-                  <div className="space-y-2">
-                    <div className="h-4 w-24 bg-white/20 rounded animate-pulse" />
-                    <div className="h-3 w-48 bg-white/20 rounded animate-pulse" />
+                {/* Mock Overlay for Preview (only when no video) */}
+                {!previewUrl && (
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
+                    <div className="space-y-2">
+                      <div className="h-4 w-24 bg-white/20 rounded animate-pulse" />
+                      <div className="h-3 w-48 bg-white/20 rounded animate-pulse" />
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-              {/* Filter Selector */}
+              {/* Creative Tools */}
               {previewUrl && (
-                <div className="w-full max-w-[320px] space-y-3">
-                  <Label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Wand2 className="w-4 h-4" />
-                    Creative Filters
-                  </Label>
-                  <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
-                    {VIDEO_FILTERS.map((filter) => (
-                      <button
-                        key={filter.id}
-                        onClick={() => setSelectedFilter(filter.id)}
-                        className={cn(
-                          "flex-shrink-0 flex flex-col items-center gap-2 group snap-start",
-                          selectedFilter === filter.id ? "opacity-100" : "opacity-60 hover:opacity-100"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200",
-                          selectedFilter === filter.id ? "border-primary shadow-glow scale-105" : "border-transparent group-hover:border-white/20"
-                        )}>
-                          <div className={cn("w-full h-full bg-gray-800", filter.class)}>
-                            {/* Mini preview using the same video source would be heavy, using a colored div or static image is better for performance.
-                                For now, we just show the filter effect on a gray box or maybe a small thumbnail if we had one.
-                                Let's use a gradient to show the effect. */}
-                            <div className="w-full h-full bg-gradient-to-br from-purple-500 to-teal-500" />
+                <div className="w-full max-w-[320px] space-y-4">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="w-full bg-secondary/50 border border-white/10">
+                      <TabsTrigger value="filters" className="flex-1">
+                        <Wand2 className="w-4 h-4 mr-2" /> Filters
+                      </TabsTrigger>
+                      <TabsTrigger value="text" className="flex-1">
+                        <Type className="w-4 h-4 mr-2" /> Text
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="filters" className="mt-4">
+                      <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
+                        {VIDEO_FILTERS.map((filter) => (
+                          <button
+                            key={filter.id}
+                            onClick={() => setSelectedFilter(filter.id)}
+                            className={cn(
+                              "flex-shrink-0 flex flex-col items-center gap-2 group snap-start",
+                              selectedFilter === filter.id ? "opacity-100" : "opacity-60 hover:opacity-100"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200",
+                              selectedFilter === filter.id ? "border-primary shadow-glow scale-105" : "border-transparent group-hover:border-white/20"
+                            )}>
+                              <div className={cn("w-full h-full bg-gray-800", filter.class)}>
+                                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-teal-500" />
+                              </div>
+                            </div>
+                            <span className={cn(
+                              "text-xs font-medium transition-colors",
+                              selectedFilter === filter.id ? "text-primary" : "text-muted-foreground"
+                            )}>
+                              {filter.name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="text" className="mt-4 space-y-4">
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Add text..." 
+                          value={newText}
+                          onChange={(e) => setNewText(e.target.value)}
+                          className="bg-secondary/50 border-white/10"
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddText()}
+                        />
+                        <Button size="icon" onClick={handleAddText} className="bg-primary hover:bg-primary/90 shrink-0">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                          <Palette className="w-3 h-3" /> Color
+                        </Label>
+                        <div className="flex gap-2 flex-wrap">
+                          {TEXT_COLORS.map(color => (
+                            <button
+                              key={color}
+                              onClick={() => setNewTextColor(color)}
+                              className={cn(
+                                "w-6 h-6 rounded-full border-2 transition-all",
+                                newTextColor === color ? "border-white scale-110 shadow-glow" : "border-transparent hover:scale-105"
+                              )}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      {overlays.length > 0 && (
+                        <div className="space-y-2 pt-2 border-t border-white/10">
+                          <Label className="text-xs text-muted-foreground">Layers</Label>
+                          <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                            {overlays.map(overlay => (
+                              <div 
+                                key={overlay.id}
+                                className={cn(
+                                  "flex items-center justify-between p-2 rounded bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50",
+                                  activeOverlayId === overlay.id && "border-primary/50 bg-primary/10"
+                                )}
+                                onClick={() => setActiveOverlayId(overlay.id)}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: overlay.color }} />
+                                  <span className="text-sm truncate max-w-[150px]">{overlay.text}</span>
+                                </div>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOverlays(prev => prev.filter(o => o.id !== overlay.id));
+                                  }}
+                                  className="text-muted-foreground hover:text-red-500"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                        <span className={cn(
-                          "text-xs font-medium transition-colors",
-                          selectedFilter === filter.id ? "text-primary" : "text-muted-foreground"
-                        )}>
-                          {filter.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 </div>
               )}
               <p className="text-sm text-muted-foreground">Mobile Preview</p>

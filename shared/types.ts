@@ -37,6 +37,14 @@ export interface Comment {
   likes?: number; // Added for comment liking
   likedBy?: string[]; // Added for comment liking
 }
+export interface TextOverlay {
+  id: string;
+  text: string;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  color: string;
+  style?: string; // 'neon', 'bold', 'italic', etc.
+}
 export interface Post {
   id: string;
   userId: string;
@@ -56,6 +64,7 @@ export interface Post {
   soundId?: string;
   soundName?: string;
   filter?: string; // Video filter ID (e.g., 'cyberpunk', 'noir')
+  overlays?: TextOverlay[]; // Text overlays on the video
 }
 export interface Chat {
   id: string;

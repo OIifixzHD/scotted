@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats } from "@shared/types";
+import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- AUTHENTICATION ---
@@ -676,6 +676,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const soundId = body['soundId'] as string || 'default-sound';
         const soundName = body['soundName'] as string || 'Original Audio';
         const filter = body['filter'] as string || 'none'; // Extract filter
+        const overlaysStr = body['overlays'] as string | undefined; // Extract overlays string
         if (!userId) {
             return bad(c, 'userId required');
         }
@@ -694,6 +695,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             servedUrl = await postEntity.saveVideoBinary(videoFile.stream(), videoFile.type || 'video/mp4');
         }
         const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+        // Parse overlays
+        const overlays: TextOverlay[] = overlaysStr ? JSON.parse(overlaysStr) : [];
         const newPost = {
             id: newPostId,
             userId,
@@ -711,7 +714,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             commentsList: [],
             soundId,
             soundName,
-            filter // Save filter
+            filter, // Save filter
+            overlays // Save overlays
         };
         const created = await PostEntity.create(c.env, newPost);
         return ok(c, created);

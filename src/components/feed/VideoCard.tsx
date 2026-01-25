@@ -17,6 +17,7 @@ import { LikeExplosion } from '@/components/ui/like-explosion';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from '@/components/feed/EditPostDialog';
 import { getFilterClass } from '@/lib/filters';
+import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -338,20 +339,24 @@ export function VideoCard({
             onDoubleClick={handleDoubleTap}
           >
             {!hasError ? (
-                <video
-                  ref={videoRef}
-                  src={post.videoUrl}
-                  className={cn("w-full h-full object-cover", getFilterClass(post.filter))}
-                  loop
-                  muted={isMuted}
-                  playsInline
-                  crossOrigin="anonymous"
-                  preload={isActive || shouldPreload ? "auto" : "metadata"}
-                  onError={handleError}
-                  onTimeUpdate={handleTimeUpdate}
-                  onWaiting={() => setIsBuffering(true)}
-                  onPlaying={() => { setIsBuffering(false); setIsPlaying(true); }}
-                />
+                <>
+                  <video
+                    ref={videoRef}
+                    src={post.videoUrl}
+                    className={cn("w-full h-full object-cover", getFilterClass(post.filter))}
+                    loop
+                    muted={isMuted}
+                    playsInline
+                    crossOrigin="anonymous"
+                    preload={isActive || shouldPreload ? "auto" : "metadata"}
+                    onError={handleError}
+                    onTimeUpdate={handleTimeUpdate}
+                    onWaiting={() => setIsBuffering(true)}
+                    onPlaying={() => { setIsBuffering(false); setIsPlaying(true); }}
+                  />
+                  {/* Text Overlays */}
+                  <OverlayCanvas overlays={post.overlays || []} readOnly />
+                </>
             ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900 z-10">
                     <AlertCircle className="w-12 h-12 mb-2 opacity-50" />
