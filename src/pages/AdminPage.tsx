@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api-client';
 import type { User, Report, AdminStats } from '@shared/types';
 import {
@@ -44,7 +44,7 @@ export function AdminPage() {
   // Security Check
   useEffect(() => {
     if (!isAuthLoading) {
-      if (!currentUser || currentUser.name !== 'AdminUser001') {
+      if (!currentUser || (!currentUser.isAdmin && currentUser.name !== 'AdminUser001')) {
         toast.error('Access Denied: Unauthorized.');
         navigate('/', { replace: true });
       }
@@ -63,7 +63,7 @@ export function AdminPage() {
       setChartsReady(false);
     }
   }, [activeTab]);
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [usersRes, reportsRes, statsRes] = await Promise.all([
@@ -81,12 +81,12 @@ export function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
   useEffect(() => {
-    if (currentUser?.name === 'AdminUser001') {
+    if (currentUser?.isAdmin || currentUser?.name === 'AdminUser001') {
       fetchData();
     }
-  }, [currentUser]);
+  }, [currentUser, fetchData]);
   const handleOpenDialog = (user: User, mode: 'edit' | 'ban' | 'unban') => {
     setSelectedUser(user);
     setDialogMode(mode);
@@ -129,7 +129,7 @@ export function AdminPage() {
       toast.error(`Failed to update report: ${errorMessage}`);
     }
   };
-  if (isAuthLoading || (currentUser?.name !== 'AdminUser001')) {
+  if (isAuthLoading || (!currentUser?.isAdmin && currentUser?.name !== 'AdminUser001')) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -386,7 +386,7 @@ export function AdminPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                         <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
                           itemStyle={{ color: '#fff' }}
                         />
@@ -413,7 +413,7 @@ export function AdminPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                         <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip 
+                        <Tooltip
                           contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
                           itemStyle={{ color: '#fff' }}
                         />

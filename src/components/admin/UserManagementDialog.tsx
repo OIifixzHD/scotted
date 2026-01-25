@@ -22,7 +22,7 @@ interface UserManagementDialogProps {
   onSuccess: () => void;
 }
 export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: UserManagementDialogProps) {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   // Edit Mode State
   const [name, setName] = useState('');
@@ -96,6 +96,11 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         method: 'PUT',
         body: JSON.stringify(updates)
       });
+
+      if (currentUser && user.id === currentUser.id) {
+        await refreshUser();
+      }
+
       let successMessage = 'User updated';
       if (mode === 'ban') successMessage = 'User banned';
       if (mode === 'unban') successMessage = 'User unbanned';

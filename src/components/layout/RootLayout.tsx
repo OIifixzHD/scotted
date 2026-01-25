@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { BannedPage } from "@/pages/BannedPage";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { KeyboardShortcutsDialog } from "@/components/settings/KeyboardShortcutsDialog";
+import { GlobalContextMenu } from "./GlobalContextMenu";
 export function RootLayout() {
   const location = useLocation();
   const { user, isLoading } = useAuth();
@@ -41,13 +42,15 @@ export function RootLayout() {
     <SidebarProvider defaultOpen={true} className="h-screen w-full bg-background overflow-hidden">
       <AppSidebar />
       <SidebarInset className="flex flex-col h-full overflow-hidden relative bg-background">
-        <main className="flex-1 h-full overflow-hidden pb-16 md:pb-0">
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname}>
-              <Outlet />
-            </PageTransition>
-          </AnimatePresence>
-        </main>
+        <GlobalContextMenu>
+          <main className="flex-1 h-full overflow-hidden pb-16 md:pb-0">
+            <AnimatePresence mode="wait">
+              <PageTransition key={location.pathname}>
+                <Outlet />
+              </PageTransition>
+            </AnimatePresence>
+          </main>
+        </GlobalContextMenu>
         <MobileNav />
         <KeyboardShortcutsDialog open={showShortcuts} onOpenChange={setShowShortcuts} />
       </SidebarInset>

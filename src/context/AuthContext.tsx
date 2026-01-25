@@ -7,6 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (user: User) => void;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,13 +63,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('pulse_user');
     toast.info('Logged out successfully');
   }, []);
+
+  const refreshUser = useCallback(async () => {
+    if (!user) return;
+    try {
+      const freshUser = await api<User>(`/api/users/${user.id}`);
+      setUser(freshUser);
+      localStorage.setItem('pulse_user', JSON.stringify(freshUser));
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  }, [user]);
+
   const value = useMemo(() => ({
     user,
     isLoading,
     login,
     logout,
+    refreshUser,
     isAuthenticated: !!user
-  }), [user, isLoading, login, logout]);
+  }), [user, isLoading, login, logout, refreshUser]);
   return (
     <AuthContext.Provider value={value}>
       {children}

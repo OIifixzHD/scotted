@@ -150,8 +150,8 @@ export function AppSidebar(): JSX.Element {
                 )}
               </NavLink>
             </SidebarMenuItem>
-            {/* Admin Link - Strictly restricted to AdminUser001 */}
-            {user?.name === 'AdminUser001' && (
+            {/* Admin Link - Accessible to any admin or the seeded super-admin */}
+            {(user?.isAdmin || user?.name === 'AdminUser001') && (
               <SidebarMenuItem>
                 <NavLink to="/admin">
                   {({ isActive }) => (
