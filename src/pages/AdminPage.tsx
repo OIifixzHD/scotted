@@ -36,6 +36,7 @@ export function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chartsReady, setChartsReady] = useState(false); // New state for delayed chart rendering
   // Dialog State
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -49,6 +50,19 @@ export function AdminPage() {
       }
     }
   }, [currentUser, isAuthLoading, navigate]);
+  // Chart rendering delay effect
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      // Reset first to ensure clean mount
+      setChartsReady(false);
+      const timer = setTimeout(() => {
+        setChartsReady(true);
+      }, 300); // 300ms delay to allow tab animation/layout to settle
+      return () => clearTimeout(timer);
+    } else {
+      setChartsReady(false);
+    }
+  }, [activeTab]);
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -92,7 +106,6 @@ export function AdminPage() {
   const handleMessageUser = async (targetUser: User) => {
     if (!currentUser) return;
     try {
-      // Create a chat or find existing (simplified for demo: create new with title)
       await api<{ id: string }>('/api/chats', {
         method: 'POST',
         body: JSON.stringify({ title: `Admin Chat: ${targetUser.name}` })
@@ -126,6 +139,7 @@ export function AdminPage() {
   return (
     <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12 space-y-8">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold font-display flex items-center gap-2">
@@ -144,6 +158,7 @@ export function AdminPage() {
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
+          {/* Users Tab */}
           <TabsContent value="users" className="mt-6">
             <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm overflow-hidden">
               {loading ? (
@@ -226,8 +241,9 @@ export function AdminPage() {
               )}
             </div>
           </TabsContent>
+          {/* Reports Tab */}
           <TabsContent value="reports" className="mt-6">
-            <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm overflow-hidden">
+             <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm overflow-hidden">
               {loading ? (
                 <div className="flex justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -297,6 +313,7 @@ export function AdminPage() {
               )}
             </div>
           </TabsContent>
+          {/* Analytics Tab */}
           <TabsContent value="analytics" className="mt-6 space-y-6">
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -351,13 +368,13 @@ export function AdminPage() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Growth Chart */}
-              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6">
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <BarChart3 className="w-5 h-5 text-primary" />
                   <h3 className="text-lg font-bold">New Users (Last 7 Days)</h3>
                 </div>
-                <div className="h-[300px] w-full">
-                  {stats?.userGrowth && (
+                <div className="flex-1 w-full min-h-[250px]">
+                  {chartsReady && stats?.userGrowth ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.userGrowth}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -370,17 +387,21 @@ export function AdminPage() {
                         <Bar dataKey="users" fill="#7c3aed" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    </div>
                   )}
                 </div>
               </div>
               {/* Activity Chart */}
-              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6">
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <BarChart3 className="w-5 h-5 text-teal-400" />
                   <h3 className="text-lg font-bold">Platform Activity</h3>
                 </div>
-                <div className="h-[300px] w-full">
-                  {stats?.activity && (
+                <div className="flex-1 w-full min-h-[250px]">
+                  {chartsReady && stats?.activity ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={stats.activity}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -394,6 +415,10 @@ export function AdminPage() {
                         <Line type="monotone" dataKey="comments" stroke="#2dd4bf" strokeWidth={2} dot={{ fill: '#2dd4bf' }} />
                       </LineChart>
                     </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    </div>
                   )}
                 </div>
               </div>

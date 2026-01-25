@@ -34,6 +34,12 @@ export function UploadPage() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
+      // Validation: Check size (95MB limit)
+      const MAX_SIZE = 95 * 1024 * 1024; // 95MB
+      if (file.size > MAX_SIZE) {
+        toast.error("File too large. Maximum size is 95MB.");
+        return;
+      }
       setIsValidating(true);
       try {
         setVideoFile(file);
@@ -128,7 +134,7 @@ export function UploadPage() {
             <div className="space-y-6">
               <div>
                 <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
-                <p className="text-muted-foreground">Share your vibe with the world. No limits.</p>
+                <p className="text-muted-foreground">Share your vibe with the world.</p>
               </div>
               <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -178,7 +184,7 @@ export function UploadPage() {
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                 <span>Any duration</span>
                                 <span>•</span>
-                                <span>Any size</span>
+                                <span>Max 95MB</span>
                             </div>
                           </>
                         )}
