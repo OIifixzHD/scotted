@@ -433,11 +433,16 @@ export function VideoCard({
         {/* More Options */}
         <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
         {/* Spinning Disc */}
-        <div className="mt-4 animate-spin-slow" style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}>
+        <Link
+            to={`/sound/${post.soundId || 'default-sound'}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-4 animate-spin-slow cursor-pointer transition-transform hover:scale-110 active:scale-95"
+            style={{ animationPlayState: isPlaying ? 'running' : 'paused' }}
+        >
             <div className="w-10 h-10 rounded-full bg-black border-4 border-gray-800 flex items-center justify-center overflow-hidden">
                 <div className="w-full h-full bg-gradient-to-tr from-purple-600 to-teal-400" />
             </div>
-        </div>
+        </Link>
       </div>
       {/* Bottom Info Area */}
       <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">

@@ -336,7 +336,9 @@ export class PostEntity extends IndexedEntity<Post> {
       userId,
       text,
       createdAt: Date.now(),
-      user: userSnapshot
+      user: userSnapshot,
+      likes: 0,
+      likedBy: []
     };
     await this.mutate(state => ({
       ...state,
@@ -363,6 +365,46 @@ export class PostEntity extends IndexedEntity<Post> {
       };
     });
     return removed;
+  }
+  /**
+   * Toggle like for a comment
+   */
+  async toggleCommentLike(commentId: string, userId: string): Promise<{ likes: number, isLiked: boolean } | null> {
+    let result: { likes: number, isLiked: boolean } | null = null;
+    await this.mutate(state => {
+      const list = state.commentsList || [];
+      const commentIndex = list.findIndex(c => c.id === commentId);
+      if (commentIndex === -1) {
+        return state; // Comment not found, no change
+      }
+      const comment = list[commentIndex];
+      const likedBy = comment.likedBy || [];
+      const isLiked = likedBy.includes(userId);
+      let newLikedBy: string[];
+      let newLikes: number;
+      if (isLiked) {
+        // Unlike
+        newLikedBy = likedBy.filter(id => id !== userId);
+        newLikes = Math.max(0, (comment.likes || 0) - 1);
+      } else {
+        // Like
+        newLikedBy = [...likedBy, userId];
+        newLikes = (comment.likes || 0) + 1;
+      }
+      const updatedComment = {
+        ...comment,
+        likes: newLikes,
+        likedBy: newLikedBy
+      };
+      const newList = [...list];
+      newList[commentIndex] = updatedComment;
+      result = { likes: newLikes, isLiked: !isLiked };
+      return {
+        ...state,
+        commentsList: newList
+      };
+    });
+    return result;
   }
   /**
    * Get all comments for this post

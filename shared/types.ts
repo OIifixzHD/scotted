@@ -34,6 +34,8 @@ export interface Comment {
   text: string;
   createdAt: number;
   user?: User; // Snapshot of user data for display
+  likes?: number; // Added for comment liking
+  likedBy?: string[]; // Added for comment liking
 }
 export interface Post {
   id: string;

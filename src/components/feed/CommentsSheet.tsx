@@ -10,12 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageCircle, Trash2 } from "lucide-react";
+import { Loader2, Send, MessageCircle, Trash2, Heart } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Comment } from '@shared/types';
+import { cn } from '@/lib/utils';
 interface CommentsSheetProps {
   postId: string;
   open: boolean;
@@ -57,7 +58,9 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
       userId: user.id,
       text: text.trim(),
       createdAt: Date.now(),
-      user: user
+      user: user,
+      likes: 0,
+      likedBy: []
     };
     try {
       setSubmitting(true);
@@ -97,6 +100,35 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
         setComments(prevComments); // Revert
     }
   };
+  const handleLikeComment = async (commentId: string) => {
+    if (!user) {
+        toast.error("Please log in to like comments");
+        return;
+    }
+    // Optimistic update
+    setComments(prev => prev.map(c => {
+        if (c.id === commentId) {
+            const isLiked = c.likedBy?.includes(user.id);
+            const newLikes = isLiked ? (c.likes || 0) - 1 : (c.likes || 0) + 1;
+            const newLikedBy = isLiked
+                ? c.likedBy?.filter(id => id !== user.id)
+                : [...(c.likedBy || []), user.id];
+            return { ...c, likes: newLikes, likedBy: newLikedBy };
+        }
+        return c;
+    }));
+    try {
+        await api(`/api/posts/${postId}/comments/${commentId}/like`, {
+            method: 'POST',
+            body: JSON.stringify({ userId: user.id })
+        });
+    } catch (e) {
+        console.error(e);
+        toast.error("Failed to like comment");
+        // Revert (fetch fresh comments or undo logic)
+        fetchComments();
+    }
+  };
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md p-0 bg-card border-l border-white/10 flex flex-col h-full z-[100]">
@@ -126,17 +158,17 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
           ) : (
             <div className="space-y-6">
               {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3 animate-fade-in group">
-                  <Avatar className="w-8 h-8 border border-white/10 mt-1">
+                <div key={comment.id} className="flex items-start gap-3 animate-fade-in group w-full">
+                  <Avatar className="w-8 h-8 border border-white/10 mt-1 shrink-0">
                     <AvatarImage src={comment.user?.avatar} />
                     <AvatarFallback>{comment.user?.name?.substring(0, 2)}</AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 space-y-1">
+                  <div className="flex-1 space-y-1 min-w-0">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm font-semibold text-white">
+                      <span className="text-sm font-semibold text-white truncate">
                         {comment.user?.name || 'Unknown'}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                         {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
                       </span>
                     </div>
@@ -144,11 +176,25 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
                       {comment.text}
                     </p>
                   </div>
+                  <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
+                    <button
+                        onClick={() => handleLikeComment(comment.id)}
+                        className={cn(
+                            "text-muted-foreground hover:text-red-500 transition-colors p-1",
+                            comment.likedBy?.includes(user?.id || '') && "text-red-500"
+                        )}
+                    >
+                        <Heart className={cn("w-4 h-4", comment.likedBy?.includes(user?.id || '') && "fill-current")} />
+                    </button>
+                    {(comment.likes || 0) > 0 && (
+                        <span className="text-[10px] text-muted-foreground">{comment.likes}</span>
+                    )}
+                  </div>
                   {(user?.id === comment.userId || user?.isAdmin) && (
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                         onClick={() => handleDeleteComment(comment.id)}
                     >
                         <Trash2 className="w-3 h-3" />
@@ -173,8 +219,8 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
                 className="flex-1 bg-secondary/50 border-white/10 focus-visible:ring-primary"
                 disabled={submitting}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 size="icon"
                 disabled={!text.trim() || submitting}
                 className="bg-primary hover:bg-primary/90 shrink-0"

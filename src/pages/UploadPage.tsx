@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2 } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Play, Pause } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
 const PRESET_SOUNDS = [
@@ -35,12 +35,37 @@ export function UploadPage() {
   // Sound Selection State
   const initialSoundId = searchParams.get('soundId') || 'default-sound';
   const [soundId, setSoundId] = useState(initialSoundId);
+  // Audio Preview State
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const MOCK_AUDIO_URL = "https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/win.ogg";
   // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+  // Cleanup audio on unmount
+  useEffect(() => {
+    const audio = audioRef.current;
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    };
+  }, []);
+  const togglePreview = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
+    if (!audioRef.current) return;
+    if (isPlayingPreview) {
+        audioRef.current.pause();
+        setIsPlayingPreview(false);
+    } else {
+        audioRef.current.play().catch(console.error);
+        setIsPlayingPreview(true);
+    }
+  };
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
@@ -230,18 +255,31 @@ export function UploadPage() {
                       <Music2 className="w-4 h-4 text-primary" />
                       Soundtrack
                     </Label>
-                    <Select value={soundId} onValueChange={setSoundId} disabled={isSubmitting}>
-                      <SelectTrigger className="bg-secondary/50 border-white/10">
-                        <SelectValue placeholder="Select a sound" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRESET_SOUNDS.map((sound) => (
-                          <SelectItem key={sound.id} value={sound.id}>
-                            {sound.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                        <Select value={soundId} onValueChange={setSoundId} disabled={isSubmitting}>
+                        <SelectTrigger className="bg-secondary/50 border-white/10 flex-1">
+                            <SelectValue placeholder="Select a sound" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {PRESET_SOUNDS.map((sound) => (
+                            <SelectItem key={sound.id} value={sound.id}>
+                                {sound.name}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="border-white/10 hover:bg-white/5 shrink-0"
+                            onClick={togglePreview}
+                            title={isPlayingPreview ? "Pause Preview" : "Play Preview"}
+                        >
+                            {isPlayingPreview ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </Button>
+                        <audio ref={audioRef} src={MOCK_AUDIO_URL} onEnded={() => setIsPlayingPreview(false)} />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tags" className="flex items-center gap-2">

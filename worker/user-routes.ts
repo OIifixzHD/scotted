@@ -920,6 +920,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const deleted = await postEntity.deleteComment(commentId);
     return ok(c, { deleted });
   });
+  // Like Comment
+  app.post('/api/posts/:id/comments/:commentId/like', async (c) => {
+    const id = c.req.param('id');
+    const commentId = c.req.param('commentId');
+    const { userId } = await c.req.json() as { userId?: string };
+    if (!userId) return bad(c, 'userId required');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const result = await postEntity.toggleCommentLike(commentId, userId);
+    if (!result) return notFound(c, 'Comment not found');
+    return ok(c, result);
+  });
   // --- NOTIFICATIONS ---
   app.get('/api/notifications', async (c) => {
     const userId = c.req.query('userId');
