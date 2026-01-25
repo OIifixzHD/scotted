@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@shared/types";
-import { cn, getDecorationClass, getBadgeIcon } from "@/lib/utils";
+import { cn, getDecorationClass } from "@/lib/utils";
+import { getBadgeIcon } from "@/components/ui/badge-icons";
 interface UserManagementDialogProps {
   open: boolean;
   onClose: () => void;

@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2 } from 'lucide-react';
-import { cn, getBadgeIcon } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
