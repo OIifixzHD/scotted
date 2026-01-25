@@ -109,6 +109,77 @@ export class PostEntity extends IndexedEntity<Post> {
   };
   static seedData = MOCK_POSTS;
   /**
+   * Save a large video file by chunking it into smaller pieces in the Durable Object storage.
+   * Returns the URL where the video can be served from.
+   */
+  async saveVideo(base64String: string): Promise<string> {
+    const CHUNK_SIZE = 100 * 1024; // 100KB chunks to stay safely under 128KB limit
+    // Extract MIME type if present
+    let mimeType = 'video/mp4';
+    let data = base64String;
+    if (base64String.startsWith('data:')) {
+        const matches = base64String.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+            mimeType = matches[1];
+            data = matches[2];
+        }
+    }
+    const totalLength = data.length;
+    const chunks = Math.ceil(totalLength / CHUNK_SIZE);
+    // Save chunks
+    for (let i = 0; i < chunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, data.length);
+        const chunk = data.substring(start, end);
+        const key = `video:${this.id}:${i}`;
+        // Force put with retry for version mismatch
+        let saved = false;
+        for(let attempt=0; attempt<3; attempt++) {
+            const doc = await this.stub.getDoc<string>(key);
+            const v = doc?.v ?? 0;
+            const res = await this.stub.casPut(key, v, chunk);
+            if (res.ok) {
+                saved = true;
+                break;
+            }
+        }
+        if (!saved) throw new Error(`Failed to save chunk ${i}`);
+    }
+    // Save metadata
+    const metaKey = `video:${this.id}:meta`;
+    const meta = { count: chunks, mimeType, size: totalLength };
+    for(let attempt=0; attempt<3; attempt++) {
+        const doc = await this.stub.getDoc(metaKey);
+        const v = doc?.v ?? 0;
+        const res = await this.stub.casPut(metaKey, v, meta);
+        if (res.ok) break;
+    }
+    return `/api/content/video/${this.id}`;
+  }
+  /**
+   * Retrieve and reassemble video chunks.
+   */
+  async getVideoData(): Promise<{ data: Uint8Array, mimeType: string } | null> {
+    const metaKey = `video:${this.id}:meta`;
+    const metaDoc = await this.stub.getDoc<{ count: number, mimeType: string }>(metaKey);
+    if (!metaDoc) return null;
+    const { count, mimeType } = metaDoc.data;
+    const chunks: string[] = [];
+    for (let i = 0; i < count; i++) {
+        const key = `video:${this.id}:${i}`;
+        const doc = await this.stub.getDoc<string>(key);
+        if (doc) chunks.push(doc.data);
+    }
+    const fullBase64 = chunks.join('');
+    // Convert base64 to Uint8Array
+    const binaryString = atob(fullBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return { data: bytes, mimeType };
+  }
+  /**
    * Search posts by caption or tags
    */
   static async search(env: Env, query: string): Promise<Post[]> {

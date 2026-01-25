@@ -635,10 +635,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!body.videoUrl || !body.userId) {
         return bad(c, 'videoUrl and userId are required');
     }
+    const newPostId = crypto.randomUUID();
+    // Save video chunks first
+    const postEntity = new PostEntity(c.env, newPostId);
+    let servedUrl = body.videoUrl;
+    // If it's a base64 string, save it as chunks
+    if (body.videoUrl.startsWith('data:')) {
+        try {
+            servedUrl = await postEntity.saveVideo(body.videoUrl);
+        } catch (e) {
+            console.error("Failed to save video chunks", e);
+            return bad(c, 'Failed to process video file');
+        }
+    }
     const newPost = {
-        id: crypto.randomUUID(),
+        id: newPostId,
         userId: body.userId,
-        videoUrl: body.videoUrl,
+        videoUrl: servedUrl,
         caption: body.caption || '',
         likes: 0,
         likedBy: [],
@@ -655,6 +668,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     const created = await PostEntity.create(c.env, newPost);
     return ok(c, created);
+  });
+  // Serve Video Content
+  app.get('/api/content/video/:id', async (c) => {
+    const id = c.req.param('id');
+    const postEntity = new PostEntity(c.env, id);
+    try {
+        const videoData = await postEntity.getVideoData();
+        if (!videoData) {
+            return notFound(c, 'Video content not found');
+        }
+        return c.body(videoData.data, 200, {
+            'Content-Type': videoData.mimeType,
+            'Cache-Control': 'public, max-age=31536000'
+        });
+    } catch (e) {
+        console.error("Failed to serve video", e);
+        return c.json({ success: false, error: 'Failed to load video' }, 500);
+    }
   });
   // Update Post (Caption/Tags)
   app.put('/api/posts/:id', async (c) => {

@@ -9,22 +9,9 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, AlertTriangle, Clock, Zap, Info, Music2 } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
-const PLACEHOLDER_VIDEOS = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
-];
-// Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
-// Lowered to 1MB to ensure reliability in demo environment with Worker limits
-const DEMO_MODE_THRESHOLD = 1 * 1024 * 1024;
-const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -35,7 +22,6 @@ export function UploadPage() {
   const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [isDemoUpload, setIsDemoUpload] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const soundId = searchParams.get('soundId');
   const soundName = searchParams.get('soundName');
@@ -45,48 +31,16 @@ export function UploadPage() {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
-  const validateVideo = (file: File): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = function() {
-        window.URL.revokeObjectURL(video.src);
-        const duration = video.duration;
-        if (duration > MAX_DURATION_SECONDS) {
-          reject(new Error(`Video exceeds 5 minutes limit (Current: ${Math.floor(duration / 60)}m ${Math.floor(duration % 60)}s)`));
-        } else {
-          resolve();
-        }
-      };
-      video.onerror = function() {
-        window.URL.revokeObjectURL(video.src);
-        reject(new Error("Invalid video file or format not supported"));
-      };
-      video.src = URL.createObjectURL(file);
-    });
-  };
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
       setIsValidating(true);
       try {
-        // 1. Validate Duration
-        await validateVideo(file);
-        // 2. Check for Demo Mode trigger
-        if (file.size > DEMO_MODE_THRESHOLD) {
-          setIsDemoUpload(true);
-          toast.info('Large file detected. Switching to High-Speed Demo Mode.', {
-            duration: 5000,
-            icon: <Zap className="w-4 h-4 text-yellow-500" />
-          });
-        } else {
-          setIsDemoUpload(false);
-        }
         setVideoFile(file);
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to validate video");
+        toast.error(error instanceof Error ? error.message : "Failed to process video");
         console.error("Validation error:", error);
       } finally {
         setIsValidating(false);
@@ -96,7 +50,7 @@ export function UploadPage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'video/*': ['.mp4', '.webm', '.ogg']
+      'video/*': ['.mp4', '.webm', '.ogg', '.mov']
     },
     maxFiles: 1,
     multiple: false,
@@ -106,7 +60,6 @@ export function UploadPage() {
     setVideoFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
-    setIsDemoUpload(false);
     setUploadProgress(0);
   };
   const convertToBase64 = (file: File): Promise<string> => {
@@ -131,26 +84,17 @@ export function UploadPage() {
     try {
       setIsSubmitting(true);
       setUploadProgress(0);
-      // Simulate progress for better UX
+      // Simulate progress for better UX while converting/uploading
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) return prev;
-          return prev + Math.random() * 10;
+          return prev + Math.random() * 5;
         });
-      }, 200);
-      let finalVideoUrl = '';
-      if (isDemoUpload) {
-        // Demo Mode: Use a random placeholder video
-        finalVideoUrl = PLACEHOLDER_VIDEOS[Math.floor(Math.random() * PLACEHOLDER_VIDEOS.length)];
-        // Simulate upload delay for realism based on file size (capped at 2s for speed)
-        await new Promise(resolve => setTimeout(resolve, 1500));
-      } else {
-        // Real Upload: Convert to Base64
-        // This can be slow, so we do it while progress bar is running
-        finalVideoUrl = await convertToBase64(videoFile);
-      }
+      }, 500);
+      // Convert to Base64 - this might take a moment for large files
+      const finalVideoUrl = await convertToBase64(videoFile);
       clearInterval(progressInterval);
-      setUploadProgress(100);
+      setUploadProgress(90);
       // Parse tags
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
       await api('/api/posts', {
@@ -163,17 +107,13 @@ export function UploadPage() {
           soundName: soundName || undefined,
         }),
       });
-      toast.success(isDemoUpload ? 'Pulse posted (High-Speed Mode)!' : 'Pulse posted successfully!');
+      setUploadProgress(100);
+      toast.success('Pulse posted successfully!');
       navigate(`/profile/${user.id}`);
     } catch (error) {
       console.error("Upload failed:", error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      // Check for common payload size errors if not in demo mode
-      if (!isDemoUpload && videoFile.size > 1024 * 1024) {
-         toast.error(`Upload failed: File might be too large. Try a smaller file or use Demo Mode. (${errorMessage})`);
-      } else {
-         toast.error(`Failed to post pulse: ${errorMessage}`);
-      }
+      toast.error(`Failed to post pulse: ${errorMessage}`);
       setUploadProgress(0);
     } finally {
       setIsSubmitting(false);
@@ -188,7 +128,7 @@ export function UploadPage() {
             <div className="space-y-6">
               <div>
                 <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
-                <p className="text-muted-foreground">Share your vibe with the world.</p>
+                <p className="text-muted-foreground">Share your vibe with the world. No limits.</p>
               </div>
               <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -218,7 +158,7 @@ export function UploadPage() {
                         {isValidating ? (
                           <div className="flex flex-col items-center animate-pulse">
                             <Sparkles className="w-8 h-8 text-primary mb-4 animate-spin" />
-                            <p className="text-sm font-medium">Validating video...</p>
+                            <p className="text-sm font-medium">Processing video...</p>
                           </div>
                         ) : (
                           <>
@@ -236,14 +176,9 @@ export function UploadPage() {
                               {isDragActive ? "Drop video here" : "Drag & drop or click to upload"}
                             </p>
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                    <Clock className="w-3 h-3" /> Max 5 mins
-                                </span>
+                                <span>Any duration</span>
                                 <span>•</span>
                                 <span>Any size</span>
-                            </div>
-                            <div className="mt-2 text-[10px] text-yellow-500/80 text-center max-w-[200px]">
-                                Demo Environment: Files larger than 1MB will use high-quality sample videos to ensure smooth playback.
                             </div>
                           </>
                         )}
@@ -273,18 +208,6 @@ export function UploadPage() {
                             <X className="w-4 h-4" />
                           </Button>
                         </div>
-                        {isDemoUpload && (
-                          <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-sm">
-                            <Zap className="w-5 h-5 shrink-0 mt-0.5" />
-                            <div>
-                              <p className="font-bold">High-Speed Demo Mode Active</p>
-                              <p className="text-yellow-500/80 text-xs mt-1">
-                                This file ({formatBytes(videoFile.size)}) exceeds the 1MB limit for direct storage in this demo.
-                                A high-quality placeholder video will be used instead to ensure instant upload performance and reliable playback.
-                              </p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
