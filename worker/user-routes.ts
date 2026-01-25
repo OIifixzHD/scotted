@@ -891,6 +891,31 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return ok(c, comment);
   });
+  app.delete('/api/posts/:id/comments/:commentId', async (c) => {
+    const postId = c.req.param('id');
+    const commentId = c.req.param('commentId');
+    const { userId } = await c.req.json() as { userId?: string };
+    if (!userId) return bad(c, 'userId required');
+    const postEntity = new PostEntity(c.env, postId);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const post = await postEntity.getState();
+    const comment = post.commentsList?.find(c => c.id === commentId);
+    if (!comment) return notFound(c, 'Comment not found');
+    // Authorization: Comment Author OR Post Author OR Admin
+    let isAuthorized = false;
+    if (comment.userId === userId) isAuthorized = true;
+    else if (post.userId === userId) isAuthorized = true;
+    else {
+        const userEntity = new UserEntity(c.env, userId);
+        if (await userEntity.exists()) {
+            const user = await userEntity.getState();
+            if (user.isAdmin) isAuthorized = true;
+        }
+    }
+    if (!isAuthorized) return bad(c, 'Unauthorized');
+    const deleted = await postEntity.deleteComment(commentId);
+    return ok(c, { deleted });
+  });
   // --- NOTIFICATIONS ---
   app.get('/api/notifications', async (c) => {
     const userId = c.req.query('userId');

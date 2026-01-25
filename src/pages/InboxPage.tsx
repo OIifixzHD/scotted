@@ -13,6 +13,7 @@ import { NotificationItem } from '@/components/activity/NotificationItem';
 import { cn } from '@/lib/utils';
 import { NewChatDialog } from '@/components/inbox/NewChatDialog';
 import { ChatListSkeleton } from '@/components/skeletons/ChatListSkeleton';
+import { TypingIndicator } from '@/components/ui/typing-indicator';
 export function InboxPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('activity');
@@ -22,14 +23,14 @@ export function InboxPage() {
         <h1 className="text-2xl font-bold font-display mb-4 px-2">Inbox</h1>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start bg-transparent border-b border-transparent p-0 h-auto gap-6">
-            <TabsTrigger
-              value="activity"
+            <TabsTrigger 
+              value="activity" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-2 py-3 text-base font-medium transition-all"
             >
               Activity
             </TabsTrigger>
-            <TabsTrigger
-              value="messages"
+            <TabsTrigger 
+              value="messages" 
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-2 py-3 text-base font-medium transition-all"
             >
               Messages
@@ -112,6 +113,7 @@ function MessagesView() {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Fetch Chats
   useEffect(() => {
@@ -171,7 +173,7 @@ function MessagesView() {
   // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedChatId || !user) return;
@@ -183,6 +185,13 @@ function MessagesView() {
       });
       setMessages(prev => [...prev, res]);
       setNewMessage('');
+      // Simulate typing response
+      setTimeout(() => {
+        setIsTyping(true);
+      }, 1000);
+      setTimeout(() => {
+        setIsTyping(false);
+      }, 4000);
     } catch (error) {
       console.error(error);
       toast.error('Failed to send message');
@@ -262,9 +271,9 @@ function MessagesView() {
           <>
             {/* Chat Header */}
             <div className="h-16 border-b border-white/10 flex items-center px-4 bg-card/30 backdrop-blur-sm">
-              <Button
-                variant="ghost"
-                size="sm"
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 className="md:hidden mr-2 -ml-2"
                 onClick={() => setSelectedChatId(null)}
               >
@@ -316,6 +325,11 @@ function MessagesView() {
                       </div>
                     );
                   })}
+                  {isTyping && (
+                    <div className="flex w-full justify-start mb-4">
+                        <TypingIndicator />
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -330,8 +344,8 @@ function MessagesView() {
                   className="flex-1 bg-secondary/50 border-white/10 focus-visible:ring-primary"
                   disabled={sending}
                 />
-                <Button
-                  type="submit"
+                <Button 
+                  type="submit" 
                   size="icon"
                   disabled={!newMessage.trim() || sending}
                   className="bg-primary hover:bg-primary/90 shrink-0"
@@ -351,8 +365,8 @@ function MessagesView() {
           </div>
         )}
       </div>
-      <NewChatDialog
-        open={isNewChatOpen}
+      <NewChatDialog 
+        open={isNewChatOpen} 
         onOpenChange={setIsNewChatOpen}
         onChatCreated={handleChatCreated}
       />

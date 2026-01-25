@@ -10,7 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageCircle } from "lucide-react";
+import { Loader2, Send, MessageCircle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/context/AuthContext';
@@ -80,6 +80,23 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
       setSubmitting(false);
     }
   };
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user) return;
+    // Optimistic update
+    const prevComments = comments;
+    setComments(prev => prev.filter(c => c.id !== commentId));
+    try {
+        await api(`/api/posts/${postId}/comments/${commentId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ userId: user.id })
+        });
+        toast.success('Comment deleted');
+    } catch (e) {
+        console.error(e);
+        toast.error('Failed to delete comment');
+        setComments(prevComments); // Revert
+    }
+  };
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md p-0 bg-card border-l border-white/10 flex flex-col h-full z-[100]">
@@ -109,7 +126,7 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
           ) : (
             <div className="space-y-6">
               {comments.map((comment) => (
-                <div key={comment.id} className="flex gap-3 animate-fade-in">
+                <div key={comment.id} className="flex gap-3 animate-fade-in group">
                   <Avatar className="w-8 h-8 border border-white/10 mt-1">
                     <AvatarImage src={comment.user?.avatar} />
                     <AvatarFallback>{comment.user?.name?.substring(0, 2)}</AvatarFallback>
@@ -127,6 +144,16 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
                       {comment.text}
                     </p>
                   </div>
+                  {(user?.id === comment.userId || user?.isAdmin) && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteComment(comment.id)}
+                    >
+                        <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -148,7 +175,7 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
               />
               <Button 
                 type="submit" 
-                size="icon" 
+                size="icon"
                 disabled={!text.trim() || submitting}
                 className="bg-primary hover:bg-primary/90 shrink-0"
               >

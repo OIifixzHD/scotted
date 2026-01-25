@@ -190,7 +190,7 @@ export class PostEntity extends IndexedEntity<Post> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return posts.filter(p =>
+    return posts.filter(p => 
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );
@@ -283,6 +283,25 @@ export class PostEntity extends IndexedEntity<Post> {
       commentsList: [...(state.commentsList || []), newComment]
     }));
     return newComment;
+  }
+  /**
+   * Delete a comment from the post
+   */
+  async deleteComment(commentId: string): Promise<boolean> {
+    let removed = false;
+    await this.mutate(state => {
+      const list = state.commentsList || [];
+      const newList = list.filter(c => c.id !== commentId);
+      if (newList.length !== list.length) {
+        removed = true;
+      }
+      return {
+        ...state,
+        commentsList: newList,
+        comments: newList.length
+      };
+    });
+    return removed;
   }
   /**
    * Get all comments for this post
