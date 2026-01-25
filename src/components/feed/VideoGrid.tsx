@@ -3,6 +3,7 @@ import Masonry from 'react-masonry-css';
 import { Play, Heart, Eye } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
+import { getFilterClass } from '@/lib/filters';
 interface VideoGridProps {
   posts: Post[];
   className?: string;
@@ -57,7 +58,7 @@ function GridItem({ post, onClick }: { post: Post, onClick?: () => void }) {
       <video
         ref={videoRef}
         src={post.videoUrl}
-        className="w-full h-full object-cover"
+        className={cn("w-full h-full object-cover", getFilterClass(post.filter))}
         muted
         loop
         playsInline

@@ -109,7 +109,8 @@ export class PostEntity extends IndexedEntity<Post> {
     createdAt: 0,
     commentsList: [],
     soundId: 'default-sound',
-    soundName: 'Original Audio'
+    soundName: 'Original Audio',
+    filter: 'none'
   };
   static seedData = MOCK_POSTS;
   /**
@@ -170,21 +171,17 @@ export class PostEntity extends IndexedEntity<Post> {
     let totalLength = 0;
     let buffer = new Uint8Array(0);
     const reader = stream.getReader();
-
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
         const newBuffer = new Uint8Array(buffer.length + value.length);
         newBuffer.set(buffer);
         newBuffer.set(value, buffer.length);
         buffer = newBuffer;
-
         while (buffer.length >= CHUNK_SIZE) {
           const chunk = buffer.slice(0, CHUNK_SIZE);
           buffer = buffer.slice(CHUNK_SIZE);
-          
           const key = `video:${this.id}:${chunkIndex}`;
           let saved = false;
           for(let attempt=0; attempt<3; attempt++) {
@@ -197,12 +194,10 @@ export class PostEntity extends IndexedEntity<Post> {
               }
           }
           if (!saved) throw new Error(`Failed to save chunk ${chunkIndex}`);
-          
           chunkIndex++;
           totalLength += chunk.length;
         }
       }
-
       if (buffer.length > 0) {
         const key = `video:${this.id}:${chunkIndex}`;
         let saved = false;
@@ -222,7 +217,6 @@ export class PostEntity extends IndexedEntity<Post> {
     } finally {
       reader.releaseLock();
     }
-
     // Save metadata with format indicator
     const metaKey = `video:${this.id}:meta`;
     const meta = { count: chunkIndex, mimeType, size: totalLength, format: 'binary' };

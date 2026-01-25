@@ -10,9 +10,10 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Play, Pause } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Play, Pause, Wand2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
+import { VIDEO_FILTERS, getFilterClass } from '@/lib/filters';
 const PRESET_SOUNDS = [
   { id: 'default-sound', name: 'Original Audio' },
   { id: 'cosmic-vibes', name: 'Cosmic Vibes' },
@@ -38,6 +39,7 @@ export function UploadPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('none');
   // Sound Selection State
   const initialSoundId = searchParams.get('soundId') || 'default-sound';
   const [soundId, setSoundId] = useState(initialSoundId);
@@ -108,6 +110,7 @@ export function UploadPage() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
     setUploadProgress(0);
+    setSelectedFilter('none');
   };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +139,7 @@ export function UploadPage() {
       formData.append('tags', tags); // Send as string, backend splits it
       formData.append('soundId', soundId);
       formData.append('soundName', PRESET_SOUNDS.find(s => s.id === soundId)?.name || 'Original Audio');
+      formData.append('filter', selectedFilter);
       // Smart Fallback Logic for Large Files
       // Cloudflare Workers have strict body size limits (often ~10MB for standard workers)
       // If file is larger than 9MB, we switch to simulation mode to prevent crash
@@ -349,12 +353,12 @@ export function UploadPage() {
               </Card>
             </div>
             {/* Preview Section */}
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-start space-y-6">
               <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
                 {previewUrl ? (
                   <video
                     src={previewUrl}
-                    className="w-full h-full object-cover"
+                    className={cn("w-full h-full object-cover transition-all duration-300", getFilterClass(selectedFilter))}
                     controls
                     autoPlay
                     muted
@@ -374,7 +378,46 @@ export function UploadPage() {
                   </div>
                 </div>
               </div>
-              <p className="mt-4 text-sm text-muted-foreground">Mobile Preview</p>
+              {/* Filter Selector */}
+              {previewUrl && (
+                <div className="w-full max-w-[320px] space-y-3">
+                  <Label className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Wand2 className="w-4 h-4" />
+                    Creative Filters
+                  </Label>
+                  <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
+                    {VIDEO_FILTERS.map((filter) => (
+                      <button
+                        key={filter.id}
+                        onClick={() => setSelectedFilter(filter.id)}
+                        className={cn(
+                          "flex-shrink-0 flex flex-col items-center gap-2 group snap-start",
+                          selectedFilter === filter.id ? "opacity-100" : "opacity-60 hover:opacity-100"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200",
+                          selectedFilter === filter.id ? "border-primary shadow-glow scale-105" : "border-transparent group-hover:border-white/20"
+                        )}>
+                          <div className={cn("w-full h-full bg-gray-800", filter.class)}>
+                            {/* Mini preview using the same video source would be heavy, using a colored div or static image is better for performance.
+                                For now, we just show the filter effect on a gray box or maybe a small thumbnail if we had one.
+                                Let's use a gradient to show the effect. */}
+                            <div className="w-full h-full bg-gradient-to-br from-purple-500 to-teal-500" />
+                          </div>
+                        </div>
+                        <span className={cn(
+                          "text-xs font-medium transition-colors",
+                          selectedFilter === filter.id ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          {filter.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground">Mobile Preview</p>
             </div>
           </div>
         </div>

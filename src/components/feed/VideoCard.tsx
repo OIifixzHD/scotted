@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from '@/components/feed/EditPostDialog';
+import { getFilterClass } from '@/lib/filters';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -340,7 +341,7 @@ export function VideoCard({
                 <video
                   ref={videoRef}
                   src={post.videoUrl}
-                  className="w-full h-full object-cover"
+                  className={cn("w-full h-full object-cover", getFilterClass(post.filter))}
                   loop
                   muted={isMuted}
                   playsInline

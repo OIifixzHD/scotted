@@ -55,6 +55,7 @@ export interface Post {
   commentsList?: Comment[]; // List of comments
   soundId?: string;
   soundName?: string;
+  filter?: string; // Video filter ID (e.g., 'cyberpunk', 'noir')
 }
 export interface Chat {
   id: string;

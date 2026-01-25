@@ -675,6 +675,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const userId = body['userId'] as string;
         const soundId = body['soundId'] as string || 'default-sound';
         const soundName = body['soundName'] as string || 'Original Audio';
+        const filter = body['filter'] as string || 'none'; // Extract filter
         if (!userId) {
             return bad(c, 'userId required');
         }
@@ -709,7 +710,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             tags,
             commentsList: [],
             soundId,
-            soundName
+            soundName,
+            filter // Save filter
         };
         const created = await PostEntity.create(c.env, newPost);
         return ok(c, created);
