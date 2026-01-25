@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, AlertTriangle, Shield, Sparkles } from "lucide-react";
+import { Loader2, AlertTriangle, Shield, Sparkles, Info } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -108,6 +108,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
     { value: 'rainbow-ring', label: 'Rainbow Ring' },
     { value: 'cyber-glitch', label: 'Cyber Glitch' },
     { value: 'verified-pro', label: 'Verified Pro' },
+    { value: 'owner', label: 'Owner (Gold)' },
+    { value: 'ultra-verified', label: 'Ultra Verified (Cyan)' },
   ];
   if (!user) return null;
   return (
@@ -193,7 +195,12 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
               <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-secondary/20 mt-2">
                 <div className="space-y-0.5">
                   <Label>Verified Status</Label>
-                  <p className="text-xs text-muted-foreground">Grant blue checkmark</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs text-muted-foreground">Grant blue checkmark</p>
+                    <span className="text-[10px] text-muted-foreground/70 bg-white/5 px-1.5 py-0.5 rounded">
+                      Auto-threshold: &gt; 5 followers
+                    </span>
+                  </div>
                 </div>
                 <Switch
                   checked={isVerified}
@@ -223,8 +230,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
               </div>
               <div className="space-y-2">
                 <Label>Duration Type</Label>
-                <Select 
-                  value={banDurationType} 
+                <Select
+                  value={banDurationType}
                   onValueChange={(val: 'preset' | 'custom') => setBanDurationType(val)}
                 >
                   <SelectTrigger className="bg-secondary/50 border-white/10">
@@ -256,8 +263,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Value</Label>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       min="1"
                       value={customBanValue}
                       onChange={(e) => setCustomBanValue(e.target.value)}
@@ -266,8 +273,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                   </div>
                   <div className="space-y-2">
                     <Label>Unit</Label>
-                    <Select 
-                      value={customBanUnit} 
+                    <Select
+                      value={customBanUnit}
                       onValueChange={(val: 'seconds' | 'minutes' | 'hours' | 'days') => setCustomBanUnit(val)}
                     >
                       <SelectTrigger className="bg-secondary/50 border-white/10">

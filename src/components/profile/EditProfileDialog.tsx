@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Camera, Sparkles, Lock, Palette } from "lucide-react";
+import { Loader2, Camera, Sparkles, Lock, Palette, Info } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -91,6 +91,8 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     { value: 'rainbow-ring', label: 'Rainbow Ring' },
     { value: 'cyber-glitch', label: 'Cyber Glitch' },
     { value: 'verified-pro', label: 'Verified Pro' },
+    { value: 'owner', label: 'Owner (Gold)' },
+    { value: 'ultra-verified', label: 'Ultra Verified (Cyan)' },
   ];
   const bannerStyles = [
     { value: 'default', label: 'Default (Purple/Indigo)' },
@@ -112,10 +114,10 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 flex justify-center">
-              <ImageCropper 
-                imageSrc={tempImage} 
-                onCropComplete={handleCropComplete} 
-                onCancel={handleCropCancel} 
+              <ImageCropper
+                imageSrc={tempImage}
+                onCropComplete={handleCropComplete}
+                onCancel={handleCropCancel}
               />
             </div>
           </>
@@ -199,6 +201,12 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
                             ))}
                         </SelectContent>
                     </Select>
+                    <div className="flex items-start gap-1.5 mt-1.5">
+                      <Info className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Standard verification typically requires &gt; 5 followers.
+                      </p>
+                    </div>
                 </div>
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2">
