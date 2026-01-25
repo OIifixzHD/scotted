@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2,
-  AlertTriangle, Bell, Eye, Keyboard
+import { 
+  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2, 
+  AlertTriangle, Bell, Eye, Keyboard 
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
@@ -380,11 +380,6 @@ export function SettingsPage() {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Build</span>
               <span className="font-mono text-white">Production</span>
-            </div>
-            <div className="pt-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
-              <span>Built with ❤️ by Aurelia</span>
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span>Your AI Co-founder</span>
             </div>
           </CardContent>
         </Card>

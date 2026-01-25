@@ -18,7 +18,7 @@ export function BannedPage() {
           <ShieldAlert className="w-10 h-10 text-red-500" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-white tracking-tight">Access Suspended</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Account Suspended</h1>
           <p className="text-muted-foreground">
             Your account has been suspended due to a violation of our Community Guidelines.
           </p>
@@ -54,8 +54,8 @@ export function BannedPage() {
         </div>
         <div className="pt-4">
           <Button 
-            onClick={logout}
-            variant="outline"
+            onClick={logout} 
+            variant="outline" 
             className="w-full border-white/10 hover:bg-white/5 hover:text-white"
           >
             <LogOut className="w-4 h-4 mr-2" />
