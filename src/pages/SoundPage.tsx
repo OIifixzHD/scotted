@@ -1,22 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api-client';
 import type { Post } from '@shared/types';
-import { Loader2, Music2, Play, Plus } from 'lucide-react';
+import { Loader2, Music2, Play, Pause, Plus, Volume2 } from 'lucide-react';
 import { VideoModal } from '@/components/feed/VideoModal';
+import { cn } from '@/lib/utils';
 interface SoundDetails {
   id: string;
   name: string;
   playCount: number;
   artist: string;
 }
+// Mock audio URL for preview purposes
+const MOCK_AUDIO_URL = "https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/win.ogg";
 export function SoundPage() {
   const { id } = useParams<{ id: string }>();
   const [sound, setSound] = useState<SoundDetails | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  // Audio Playback State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   // Video Modal State
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -36,7 +42,37 @@ export function SoundPage() {
     };
     fetchSoundData();
   }, [id]);
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, []);
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().catch(e => console.error("Audio play failed", e));
+      setIsPlaying(true);
+    }
+  };
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+    if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+    }
+  };
   const handleVideoClick = (post: Post) => {
+    // Pause audio if playing when opening a video
+    if (isPlaying && audioRef.current) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+    }
     const index = posts.findIndex(p => p.id === post.id);
     if (index !== -1) {
         setSelectedVideoIndex(index);
@@ -80,24 +116,54 @@ export function SoundPage() {
     <div className="h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
         <div className="space-y-8">
+          {/* Hidden Audio Element */}
+          <audio 
+            ref={audioRef} 
+            src={MOCK_AUDIO_URL} 
+            onEnded={handleAudioEnded}
+          />
           {/* Sound Header */}
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
             {/* Album Art / Icon */}
-            <div className="relative group">
-              <div className="w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-purple-600 to-teal-400 flex items-center justify-center shadow-glow animate-pulse-slow">
-                <Music2 className="w-16 h-16 text-white" />
+            <div 
+                className="relative group cursor-pointer"
+                onClick={togglePlay}
+            >
+              <div className={cn(
+                  "w-32 h-32 md:w-40 md:h-40 rounded-2xl bg-gradient-to-br from-purple-600 to-teal-400 flex items-center justify-center shadow-glow transition-all duration-500",
+                  isPlaying ? "animate-pulse-slow scale-105" : "hover:scale-105"
+              )}>
+                {isPlaying ? (
+                    <Volume2 className="w-16 h-16 text-white animate-pulse" />
+                ) : (
+                    <Music2 className="w-16 h-16 text-white" />
+                )}
               </div>
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
-                    <Play className="w-6 h-6 text-white fill-white ml-1" />
+              {/* Play/Pause Overlay */}
+              <div className={cn(
+                  "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+                  isPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}>
+                <div className="w-12 h-12 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20">
+                    {isPlaying ? (
+                        <Pause className="w-6 h-6 text-white fill-white" />
+                    ) : (
+                        <Play className="w-6 h-6 text-white fill-white ml-1" />
+                    )}
                 </div>
               </div>
             </div>
             {/* Info */}
             <div className="flex-1 text-center md:text-left space-y-4">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold font-display text-white mb-2">
+                <h1 className="text-3xl md:text-4xl font-bold font-display text-white mb-2 flex items-center justify-center md:justify-start gap-3">
                   {sound.name}
+                  {isPlaying && (
+                      <span className="flex h-3 w-3 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                      </span>
+                  )}
                 </h1>
                 <p className="text-xl text-muted-foreground">{sound.artist}</p>
               </div>

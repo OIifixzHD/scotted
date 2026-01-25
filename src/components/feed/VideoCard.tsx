@@ -12,6 +12,7 @@ import { CommentsSheet } from './CommentsSheet';
 import { useAuth } from '@/context/AuthContext';
 import { PostOptions } from './PostOptions';
 import { Button } from '@/components/ui/button';
+import { LikeExplosion } from '@/components/ui/like-explosion';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -39,6 +40,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
   const [shareCount, setShareCount] = useState(post.shares || 0);
   const [viewCount, setViewCount] = useState(post.views || 0);
   const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+  const [showExplosion, setShowExplosion] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -133,6 +135,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isActive, togglePlay, toggleMute]);
+  const triggerLikeEffects = () => {
+    setShowHeartAnimation(true);
+    setShowExplosion(true);
+    setTimeout(() => setShowHeartAnimation(false), 800);
+    setTimeout(() => setShowExplosion(false), 1000);
+  };
   const handleLike = async () => {
     if (!user) {
       toast.error("Please log in to like posts");
@@ -144,8 +152,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
     setIsLiked(!previousLiked);
     setLikeCount(prev => previousLiked ? prev - 1 : prev + 1);
     if (!previousLiked) {
-      setShowHeartAnimation(true);
-      setTimeout(() => setShowHeartAnimation(false), 800);
+      triggerLikeEffects();
     }
     try {
       const res = await api<{ likes: number, isLiked: boolean }>(`/api/posts/${post.id}/like`, {
@@ -179,11 +186,9 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         toast.error("Please log in to like posts");
         return;
     }
+    triggerLikeEffects();
     if (!isLiked) {
         handleLike();
-    } else {
-        setShowHeartAnimation(true);
-        setTimeout(() => setShowHeartAnimation(false), 800);
     }
   };
   const handleError = () => {
@@ -239,7 +244,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video"
     >
       {/* Video Player */}
-      <div
+      <div 
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -293,6 +298,10 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
                 </motion.div>
             )}
         </AnimatePresence>
+        {/* Like Explosion Effect */}
+        <AnimatePresence>
+          {showExplosion && <LikeExplosion />}
+        </AnimatePresence>
         {/* Big Heart Animation */}
         <AnimatePresence>
           {showHeartAnimation && (
@@ -300,7 +309,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
               initial={{ scale: 0, opacity: 0, rotate: -45 }}
               animate={{ scale: 1.5, opacity: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0, rotate: 45 }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              className="absolute inset-0 flex items-center justify-center pointer-events-none z-40"
             >
               <Heart className="w-32 h-32 text-red-500 fill-red-500 drop-shadow-glow" />
             </motion.div>
@@ -308,12 +317,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </AnimatePresence>
       </div>
       {/* Interactive Progress Bar */}
-      <div
+      <div 
         className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
         onClick={handleSeek}
       >
         <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-           <div
+           <div 
              className="h-full bg-primary transition-all duration-100 ease-linear relative"
              style={{ width: `${progress}%` }}
            >
@@ -337,7 +346,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
                 </div>
             </Link>
         </div>
-        <button
+        <button 
           onClick={handleLike}
           className="flex flex-col items-center gap-1 group"
         >
@@ -349,7 +358,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button
+        <button 
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -358,7 +367,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button
+        <button 
           onClick={handleShare}
           className="flex flex-col items-center gap-1 group"
         >
@@ -394,7 +403,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}
           </p>
-          <Link
+          <Link 
             to={`/sound/${post.soundId || 'default-sound'}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
@@ -409,22 +418,22 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </div>
       </div>
       {/* Mute Toggle */}
-      <button
+      <button 
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog
-        open={isShareOpen}
-        onOpenChange={setIsShareOpen}
-        postId={post.id}
+      <ShareDialog 
+        open={isShareOpen} 
+        onOpenChange={setIsShareOpen} 
+        postId={post.id} 
       />
       {/* Comments Sheet */}
-      <CommentsSheet
-        postId={post.id}
-        open={isCommentsOpen}
+      <CommentsSheet 
+        postId={post.id} 
+        open={isCommentsOpen} 
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
