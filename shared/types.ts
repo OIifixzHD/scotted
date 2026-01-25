@@ -13,11 +13,12 @@ export interface User {
   followers?: number;
   following?: number;
   followingIds?: string[]; // Added for social graph
-  avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc.
+  avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc. (Ring)
+  badge?: string; // 'verified-pro', 'owner', 'crystal', etc. (Icon)
   bannerStyle?: string; // 'default', 'cosmic', 'neon', 'sunset', 'ocean', 'midnight'
   isAdmin?: boolean;
   // Phase 2: Governance & Security
-  isVerified?: boolean;
+  isVerified?: boolean; // Legacy boolean, prefer 'badge' for visual
   bannedUntil?: number; // Timestamp
   banReason?: string;
   bannedBy?: string; // Admin who issued the ban

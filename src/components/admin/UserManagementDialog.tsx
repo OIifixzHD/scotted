@@ -7,12 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, AlertTriangle, Shield, Sparkles, Info } from "lucide-react";
+import { Loader2, AlertTriangle, Shield, Sparkles, Award } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@shared/types";
-import { cn, getDecorationClass } from "@/lib/utils";
+import { cn, getDecorationClass, getBadgeIcon } from "@/lib/utils";
 interface UserManagementDialogProps {
   open: boolean;
   onClose: () => void;
@@ -29,7 +29,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
   const [avatar, setAvatar] = useState('');
   const [followers, setFollowers] = useState(0);
   const [avatarDecoration, setAvatarDecoration] = useState('none');
-  const [isVerified, setIsVerified] = useState(false);
+  const [badge, setBadge] = useState('none');
   const [isAdmin, setIsAdmin] = useState(false);
   // Ban Mode State
   const [banDurationType, setBanDurationType] = useState<'preset' | 'custom'>('preset');
@@ -44,7 +44,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
       setAvatar(user.avatar || '');
       setFollowers(user.followers || 0);
       setAvatarDecoration(user.avatarDecoration || 'none');
-      setIsVerified(user.isVerified || false);
+      setBadge(user.badge || 'none');
       setIsAdmin(user.isAdmin || false);
       setBanReason('');
       setBanDuration('1');
@@ -64,7 +64,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         updates.avatar = avatar;
         updates.followers = followers;
         updates.avatarDecoration = avatarDecoration;
-        updates.isVerified = isVerified;
+        updates.badge = badge;
         updates.isAdmin = isAdmin;
       } else if (mode === 'ban') {
         let bannedUntil = 0;
@@ -107,15 +107,17 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
     { value: 'blue-fire', label: 'Blue Fire' },
     { value: 'rainbow-ring', label: 'Rainbow Ring' },
     { value: 'cyber-glitch', label: 'Cyber Glitch' },
-    { value: 'verified-pro', label: 'Verified Pro' },
-    { value: 'owner', label: 'Owner (Gold)' },
-    { value: 'ultra-verified', label: 'Ultra Verified (Cyan)' },
-    // New Badges
-    { value: 'crystal', label: 'Crystal' },
-    { value: 'magma', label: 'Magma' },
-    { value: 'holographic', label: 'Holographic' },
-    { value: 'steampunk', label: 'Steampunk' },
-    { value: 'phantom', label: 'Phantom' },
+  ];
+  const badges = [
+    { value: 'none', label: 'None' },
+    { value: 'verified-pro', label: 'Verified Pro (Blue Check)' },
+    { value: 'owner', label: 'Owner (Gold Shield)' },
+    { value: 'ultra-verified', label: 'Ultra Verified (Cyan Zap)' },
+    { value: 'crystal', label: 'Crystal (Indigo Gem)' },
+    { value: 'magma', label: 'Magma (Orange Flame)' },
+    { value: 'holographic', label: 'Holographic (Pink Sparkles)' },
+    { value: 'steampunk', label: 'Steampunk (Amber CPU)' },
+    { value: 'phantom', label: 'Phantom (Slate Ghost)' },
   ];
   if (!user) return null;
   return (
@@ -145,12 +147,15 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="name">Display Name</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="bg-secondary/50 border-white/10"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="bg-secondary/50 border-white/10"
+                    />
+                    {getBadgeIcon(badge)}
+                  </div>
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="avatar">Avatar URL</Label>
@@ -175,7 +180,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Sparkles className="w-3 h-3 text-primary" />
-                    Decoration
+                    Avatar Ring
                   </Label>
                   <Select value={avatarDecoration} onValueChange={setAvatarDecoration}>
                     <SelectTrigger className="bg-secondary/50 border-white/10">
@@ -184,6 +189,27 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                     <SelectContent>
                       {decorations.map((d) => (
                         <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label className="flex items-center gap-2">
+                    <Award className="w-3 h-3 text-primary" />
+                    Badge Icon
+                  </Label>
+                  <Select value={badge} onValueChange={setBadge}>
+                    <SelectTrigger className="bg-secondary/50 border-white/10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {badges.map((b) => (
+                        <SelectItem key={b.value} value={b.value}>
+                          <div className="flex items-center gap-2">
+                            {getBadgeIcon(b.value)}
+                            <span>{b.label}</span>
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -198,22 +224,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-secondary/20 mt-2">
-                <div className="space-y-0.5">
-                  <Label>Verified Status</Label>
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs text-muted-foreground">Grant blue checkmark</p>
-                    <span className="text-[10px] text-muted-foreground/70 bg-white/5 px-1.5 py-0.5 rounded">
-                      Auto-threshold: &gt; 5 followers
-                    </span>
-                  </div>
-                </div>
-                <Switch
-                  checked={isVerified}
-                  onCheckedChange={setIsVerified}
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg border border-purple-500/20 bg-purple-500/10">
+              <div className="flex items-center justify-between p-3 rounded-lg border border-purple-500/20 bg-purple-500/10 mt-2">
                 <div className="space-y-0.5">
                   <Label className="flex items-center gap-2 text-purple-300">
                     <Shield className="w-4 h-4" />

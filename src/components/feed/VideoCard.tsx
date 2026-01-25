@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, getBadgeIcon } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
@@ -414,10 +414,11 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       {/* Bottom Info Area */}
       <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
         <div className="max-w-[80%] space-y-2 pointer-events-auto">
-          <Link to={`/profile/${post.userId}`}>
-            <h3 className="text-lg font-bold text-white text-shadow hover:underline cursor-pointer inline-block">
+          <Link to={`/profile/${post.userId}`} className="flex items-center gap-2 group/name">
+            <h3 className="text-lg font-bold text-white text-shadow group-hover/name:underline cursor-pointer">
               {post.user?.displayName || post.user?.name || 'unknown'}
             </h3>
+            {getBadgeIcon(post.user?.badge)}
           </Link>
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}

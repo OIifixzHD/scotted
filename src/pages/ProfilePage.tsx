@@ -7,12 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag, Share2 } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import { ReportDialog } from '@/components/profile/ReportDialog';
-import { cn, getDecorationClass, getBannerStyle } from '@/lib/utils';
+import { cn, getDecorationClass, getBannerStyle, getBadgeIcon } from '@/lib/utils';
 import { VideoModal } from '@/components/feed/VideoModal';
 import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ProfileShareDialog } from '@/components/profile/ProfileShareDialog';
@@ -187,9 +187,7 @@ export function ProfilePage() {
                     <div>
                       <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         {user.displayName || user.name}
-                        {user.isVerified && (
-                          <CheckCircle2 className="w-6 h-6 text-blue-400 fill-blue-400/20" />
-                        )}
+                        {getBadgeIcon(user.badge, "w-6 h-6")}
                       </h1>
                       <p className="text-muted-foreground">@{handle}</p>
                     </div>

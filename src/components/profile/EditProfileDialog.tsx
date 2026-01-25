@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Camera, Sparkles, Lock, Palette, Info } from "lucide-react";
+import { Loader2, Camera, Palette, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -23,7 +23,6 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
   const [displayName, setDisplayName] = useState(currentUser.displayName || currentUser.name);
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
-  const [avatarDecoration, setAvatarDecoration] = useState(currentUser.avatarDecoration || 'none');
   const [bannerStyle, setBannerStyle] = useState(currentUser.bannerStyle || 'default');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Cropper State
@@ -33,7 +32,6 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
       setDisplayName(currentUser.displayName || currentUser.name);
       setBio(currentUser.bio || '');
       setAvatar(currentUser.avatar || '');
-      setAvatarDecoration(currentUser.avatarDecoration || 'none');
       setBannerStyle(currentUser.bannerStyle || 'default');
       setTempImage(null);
     }
@@ -50,7 +48,6 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
         setTempImage(reader.result as string);
       };
       reader.readAsDataURL(file);
-      // Reset input value so same file can be selected again if needed
       e.target.value = '';
     }
   };
@@ -69,9 +66,10 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     }
     setIsSubmitting(true);
     try {
+      // Only send user-editable fields. Badges and decorations are admin-only.
       const updatedUser = await api<User>(`/api/users/${currentUser.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ displayName, bio, avatar, avatarDecoration, bannerStyle })
+        body: JSON.stringify({ displayName, bio, avatar, bannerStyle })
       });
       login(updatedUser);
       toast.success("Profile updated successfully");
@@ -83,23 +81,6 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
       setIsSubmitting(false);
     }
   };
-  const decorations = [
-    { value: 'none', label: 'None' },
-    { value: 'gold-border', label: 'Gold Border' },
-    { value: 'neon-glow', label: 'Neon Glow' },
-    { value: 'blue-fire', label: 'Blue Fire' },
-    { value: 'rainbow-ring', label: 'Rainbow Ring' },
-    { value: 'cyber-glitch', label: 'Cyber Glitch' },
-    { value: 'verified-pro', label: 'Verified Pro' },
-    { value: 'owner', label: 'Owner (Gold)' },
-    { value: 'ultra-verified', label: 'Ultra Verified (Cyan)' },
-    // New Badges
-    { value: 'crystal', label: 'Crystal' },
-    { value: 'magma', label: 'Magma' },
-    { value: 'holographic', label: 'Holographic' },
-    { value: 'steampunk', label: 'Steampunk' },
-    { value: 'phantom', label: 'Phantom' },
-  ];
   const bannerStyles = [
     { value: 'default', label: 'Default (Purple/Indigo)' },
     { value: 'cosmic', label: 'Cosmic (Dark/Purple)' },
@@ -138,7 +119,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
             <form onSubmit={handleSubmit} className="space-y-6 py-4">
               <div className="flex flex-col items-center gap-4">
                 <div className="relative group cursor-pointer">
-                  <div className={cn("rounded-full transition-all duration-300", getDecorationClass(avatarDecoration))}>
+                  <div className={cn("rounded-full transition-all duration-300", getDecorationClass(currentUser.avatarDecoration))}>
                     <Avatar className="w-24 h-24 border-2 border-white/10 group-hover:border-primary transition-colors">
                         <AvatarImage src={avatar} />
                         <AvatarFallback>{displayName.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -189,49 +170,23 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
                   className="bg-secondary/50 border-white/10 min-h-[100px]"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" />
-                        Profile Badge
-                    </Label>
-                    <Select value={avatarDecoration} onValueChange={setAvatarDecoration}>
-                        <SelectTrigger className="bg-secondary/50 border-white/10">
-                            <SelectValue placeholder="Select a badge" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {decorations.map((decoration) => (
-                                <SelectItem key={decoration.value} value={decoration.value}>
-                                    {decoration.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <div className="flex items-start gap-1.5 mt-1.5">
-                      <Info className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
-                      <p className="text-[10px] text-muted-foreground leading-tight">
-                        Standard verification typically requires &gt; 5 followers.
-                      </p>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                        <Palette className="w-4 h-4 text-primary" />
-                        Banner Theme
-                    </Label>
-                    <Select value={bannerStyle} onValueChange={setBannerStyle}>
-                        <SelectTrigger className="bg-secondary/50 border-white/10">
-                            <SelectValue placeholder="Select a theme" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {bannerStyles.map((style) => (
-                                <SelectItem key={style.value} value={style.value}>
-                                    {style.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-primary" />
+                    Banner Theme
+                </Label>
+                <Select value={bannerStyle} onValueChange={setBannerStyle}>
+                    <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectValue placeholder="Select a theme" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {bannerStyles.map((style) => (
+                            <SelectItem key={style.value} value={style.value}>
+                                {style.label}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
               </div>
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

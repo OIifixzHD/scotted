@@ -22,7 +22,9 @@ export class UserEntity extends IndexedEntity<User> {
     blockedUserIds: [],
     bannerStyle: "default",
     notInterestedPostIds: [],
-    createdAt: 0
+    createdAt: 0,
+    avatarDecoration: "none",
+    badge: "none"
   };
   static seedData = MOCK_USERS;
   /**

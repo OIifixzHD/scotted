@@ -26,6 +26,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       following: 0,
       followingIds: [],
       avatarDecoration: 'none',
+      badge: 'none',
       bannerStyle: 'default',
       isAdmin: false,
       isVerified: false,
@@ -139,7 +140,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { followers, avatarDecoration, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle } = await c.req.json() as Partial<User>;
+    const { followers, avatarDecoration, badge, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle } = await c.req.json() as Partial<User>;
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
@@ -147,6 +148,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const updates: Partial<User> = {};
     if (followers !== undefined) updates.followers = followers;
     if (avatarDecoration !== undefined) updates.avatarDecoration = avatarDecoration;
+    if (badge !== undefined) updates.badge = badge;
     if (bannerStyle !== undefined) updates.bannerStyle = bannerStyle;
     if (isVerified !== undefined) updates.isVerified = isVerified;
     if (bannedUntil !== undefined) updates.bannedUntil = bannedUntil;
@@ -369,7 +371,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
     // We do NOT extract 'name' here to prevent username changes
-    const { displayName, bio, avatar, avatarDecoration, bannerStyle } = await c.req.json() as { displayName?: string; bio?: string; avatar?: string; avatarDecoration?: string; bannerStyle?: string };
+    // REMOVED avatarDecoration from allowed fields for user self-update
+    const { displayName, bio, avatar, bannerStyle } = await c.req.json() as { displayName?: string; bio?: string; avatar?: string; bannerStyle?: string };
     if (displayName !== undefined && !displayName.trim()) {
       return bad(c, 'Display Name cannot be empty');
     }
@@ -382,7 +385,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       displayName: displayName?.trim() || s.displayName || s.name, // Update display name
       bio: bio?.trim() ?? s.bio,
       avatar: avatar || s.avatar, // Keep existing if not provided
-      avatarDecoration: avatarDecoration || s.avatarDecoration,
       bannerStyle: bannerStyle || s.bannerStyle
     }));
     const { password, ...safeUser } = updated;
