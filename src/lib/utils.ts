@@ -14,6 +14,11 @@ export const getDecorationClass = (decoration?: string) => {
     // New Badges
     case 'owner': return 'ring-4 ring-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.6)] border-2 border-amber-200';
     case 'ultra-verified': return 'ring-4 ring-cyan-500 shadow-[0_0_25px_rgba(6,182,212,0.8)] border-2 border-white';
+    case 'crystal': return 'ring-4 ring-cyan-300/50 shadow-[0_0_20px_rgba(103,232,249,0.5)] border-2 border-white/80';
+    case 'magma': return 'ring-4 ring-orange-600 shadow-[0_0_20px_rgba(234,88,12,0.8)] border-2 border-red-900 animate-pulse';
+    case 'holographic': return 'ring-4 ring-transparent bg-gradient-to-tr from-pink-300 via-purple-300 to-cyan-300 bg-[length:200%_200%] animate-gradient-xy p-[2px] shadow-lg';
+    case 'steampunk': return 'ring-4 ring-amber-700 shadow-[0_0_10px_rgba(120,53,15,0.8)] border-2 border-amber-900 border-dashed';
+    case 'phantom': return 'ring-4 ring-white/20 shadow-[0_0_30px_rgba(255,255,255,0.4)]';
     default: return 'border-4 border-background';
   }
 };

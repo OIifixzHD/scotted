@@ -93,6 +93,12 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     { value: 'verified-pro', label: 'Verified Pro' },
     { value: 'owner', label: 'Owner (Gold)' },
     { value: 'ultra-verified', label: 'Ultra Verified (Cyan)' },
+    // New Badges
+    { value: 'crystal', label: 'Crystal' },
+    { value: 'magma', label: 'Magma' },
+    { value: 'holographic', label: 'Holographic' },
+    { value: 'steampunk', label: 'Steampunk' },
+    { value: 'phantom', label: 'Phantom' },
   ];
   const bannerStyles = [
     { value: 'default', label: 'Default (Purple/Indigo)' },

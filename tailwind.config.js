@@ -113,6 +113,16 @@ export default {
             'spin-slow': {
                 '0%': { transform: 'rotate(0deg)' },
                 '100%': { transform: 'rotate(360deg)' }
+            },
+            'gradient-xy': {
+                '0%, 100%': {
+                    'background-size': '400% 400%',
+                    'background-position': 'left center'
+                },
+                '50%': {
+                    'background-size': '200% 200%',
+                    'background-position': 'right center'
+                }
             }
   		},
   		animation: {
@@ -122,7 +132,8 @@ export default {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
             'marquee': 'marquee 10s linear infinite',
-            'spin-slow': 'spin-slow 3s linear infinite'
+            'spin-slow': 'spin-slow 3s linear infinite',
+            'gradient-xy': 'gradient-xy 15s ease infinite',
   		},
   		backgroundImage: {
   			'gradient-primary': 'linear-gradient(135deg, #7c3aed, #2dd4bf)',
