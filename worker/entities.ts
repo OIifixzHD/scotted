@@ -5,6 +5,8 @@ import { IndexedEntity, Index } from "./core-utils";
 import type { Env } from "./core-utils";
 import type { User, Chat, ChatMessage, Post, Comment, Notification, Report } from "@shared/types";
 import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/mock-data";
+// Helper type matching the one in core-utils (which isn't exported)
+type Doc<T> = { v: number; data: T };
 // USER ENTITY
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
@@ -135,7 +137,7 @@ export class PostEntity extends IndexedEntity<Post> {
         // Force put with retry for version mismatch
         let saved = false;
         for(let attempt=0; attempt<3; attempt++) {
-            const doc = await this.stub.getDoc<string>(key);
+            const doc = (await this.stub.getDoc(key)) as Doc<string> | null;
             const v = doc?.v ?? 0;
             const res = await this.stub.casPut(key, v, chunk);
             if (res.ok) {
@@ -149,7 +151,7 @@ export class PostEntity extends IndexedEntity<Post> {
     const metaKey = `video:${this.id}:meta`;
     const meta = { count: chunks, mimeType, size: totalLength };
     for(let attempt=0; attempt<3; attempt++) {
-        const doc = await this.stub.getDoc(metaKey);
+        const doc = (await this.stub.getDoc(metaKey)) as Doc<typeof meta> | null;
         const v = doc?.v ?? 0;
         const res = await this.stub.casPut(metaKey, v, meta);
         if (res.ok) break;
@@ -161,13 +163,13 @@ export class PostEntity extends IndexedEntity<Post> {
    */
   async getVideoData(): Promise<{ data: Uint8Array, mimeType: string } | null> {
     const metaKey = `video:${this.id}:meta`;
-    const metaDoc = await this.stub.getDoc<{ count: number, mimeType: string }>(metaKey);
+    const metaDoc = (await this.stub.getDoc(metaKey)) as Doc<{ count: number, mimeType: string }> | null;
     if (!metaDoc) return null;
     const { count, mimeType } = metaDoc.data;
     const chunks: string[] = [];
     for (let i = 0; i < count; i++) {
         const key = `video:${this.id}:${i}`;
-        const doc = await this.stub.getDoc<string>(key);
+        const doc = (await this.stub.getDoc(key)) as Doc<string> | null;
         if (doc) chunks.push(doc.data);
     }
     const fullBase64 = chunks.join('');

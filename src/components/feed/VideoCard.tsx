@@ -261,6 +261,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
               loop
               muted={isMuted}
               playsInline
+              crossOrigin="anonymous"
               preload={isActive || shouldPreload ? "auto" : "metadata"}
               onError={handleError}
               onTimeUpdate={handleTimeUpdate}
@@ -294,6 +295,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         {isBuffering && isPlaying && !hasError && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                 <Loader2 className="w-12 h-12 text-white/70 animate-spin drop-shadow-lg" />
+            </div>
+        )}
+        {/* HD Badge */}
+        {!hasError && !isBuffering && (
+            <div className="absolute top-4 left-4 z-20 px-2 py-1 bg-black/40 backdrop-blur-md rounded border border-white/10 text-[10px] font-bold text-white/80 pointer-events-none">
+                HD
             </div>
         )}
         {/* Unmute Hint */}

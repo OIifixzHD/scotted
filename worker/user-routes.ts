@@ -678,10 +678,30 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         if (!videoData) {
             return notFound(c, 'Video content not found');
         }
-        return c.body(videoData.data, 200, {
-            'Content-Type': videoData.mimeType,
-            'Cache-Control': 'public, max-age=31536000'
-        });
+        const { data, mimeType } = videoData;
+        const total = data.length;
+        const range = c.req.header('Range');
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+            const chunksize = (end - start) + 1;
+            const file = data.slice(start, end + 1);
+            return c.body(file, 206, {
+                'Content-Range': `bytes ${start}-${end}/${total}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunksize.toString(),
+                'Content-Type': mimeType,
+                'Cache-Control': 'public, max-age=31536000'
+            });
+        } else {
+            return c.body(data, 200, {
+                'Content-Length': total.toString(),
+                'Content-Type': mimeType,
+                'Accept-Ranges': 'bytes',
+                'Cache-Control': 'public, max-age=31536000'
+            });
+        }
     } catch (e) {
         console.error("Failed to serve video", e);
         return c.json({ success: false, error: 'Failed to load video' }, 500);
