@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { 
+  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2, 
+  AlertTriangle, Bell, Eye, Volume2, Smartphone, Zap
+} from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { User } from '@shared/types';
@@ -27,17 +30,49 @@ export function SettingsPage() {
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Settings State (Persisted to localStorage)
+  const [autoplayEnabled, setAutoplayEnabled] = useState(() => localStorage.getItem('pulse_autoplay') !== 'false');
+  const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('pulse_reduced_motion') === 'true');
+  const [pauseNotifications, setPauseNotifications] = useState(() => localStorage.getItem('pulse_pause_notifs') === 'true');
+  const [privateAccount, setPrivateAccount] = useState(false); // Mocked for now
+  // Mounted Ref to prevent state updates on unmounted component
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  // Persist settings effects
+  useEffect(() => {
+    localStorage.setItem('pulse_autoplay', String(autoplayEnabled));
+  }, [autoplayEnabled]);
+  useEffect(() => {
+    localStorage.setItem('pulse_reduced_motion', String(reducedMotion));
+    if (reducedMotion) {
+      document.documentElement.classList.add('motion-reduce');
+    } else {
+      document.documentElement.classList.remove('motion-reduce');
+    }
+  }, [reducedMotion]);
+  useEffect(() => {
+    localStorage.setItem('pulse_pause_notifs', String(pauseNotifications));
+  }, [pauseNotifications]);
   const fetchBlockedUsers = useCallback(async () => {
     if (!user) return;
     try {
       setLoadingBlocked(true);
       const res = await api<User[]>(`/api/users/blocked?userId=${user.id}`);
-      setBlockedUsers(res);
+      if (isMounted.current) {
+        setBlockedUsers(res);
+      }
     } catch (error) {
       console.error(error);
-      // Silent fail for blocked users fetch, just log it
+      // Silent fail for blocked users fetch
     } finally {
-      setLoadingBlocked(false);
+      if (isMounted.current) {
+        setLoadingBlocked(false);
+      }
     }
   }, [user]);
   useEffect(() => {
@@ -71,7 +106,15 @@ export function SettingsPage() {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       toast.error(`Failed to delete account: ${errorMessage}`);
-      setIsDeleting(false);
+      if (isMounted.current) {
+        setIsDeleting(false);
+      }
+    }
+  };
+  const handlePrivateToggle = (checked: boolean) => {
+    setPrivateAccount(checked);
+    if (checked) {
+      toast.info("Private account mode enabled (Simulation)");
     }
   };
   return (
@@ -81,28 +124,128 @@ export function SettingsPage() {
           <h1 className="text-3xl font-bold font-display mb-2">Settings</h1>
           <p className="text-muted-foreground">Manage your preferences and account.</p>
         </div>
-        {/* Appearance */}
+        {/* Account Overview */}
         <Card className="bg-card/50 backdrop-blur-sm border-white/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {isDark ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-              Appearance
+              <Shield className="w-5 h-5 text-primary" />
+              Account
             </CardTitle>
-            <CardDescription>Customize how Pulse looks on your device.</CardDescription>
+            <CardDescription>Manage your session and identity.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20 border border-white/5">
+              <div className="flex items-center gap-3">
+                <Avatar className="w-10 h-10 border border-white/10">
+                  <AvatarImage src={user?.avatar} />
+                  <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() ?? '??'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-white">{user?.displayName || user?.name}</p>
+                  <p className="text-xs text-muted-foreground">@{user?.name?.toLowerCase().replace(/\s/g, '')}</p>
+                </div>
+              </div>
+              <Button variant="destructive" size="sm" onClick={logout} className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20">
+                <LogOut className="w-4 h-4 mr-2" />
+                Log Out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        {/* Content & Display */}
+        <Card className="bg-card/50 backdrop-blur-sm border-white/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-teal-400" />
+              Content & Display
+            </CardTitle>
+            <CardDescription>Customize your viewing experience.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="theme-mode">Dark Mode</Label>
+                <Label htmlFor="theme-mode" className="text-base">Dark Mode</Label>
                 <p className="text-sm text-muted-foreground">
-                  Enable dark mode for a better viewing experience at night.
+                  Toggle between light and dark themes.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isDark ? <Moon className="w-4 h-4 text-purple-400" /> : <Sun className="w-4 h-4 text-orange-400" />}
+                <Switch
+                  id="theme-mode"
+                  checked={isDark}
+                  onCheckedChange={toggleTheme}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="autoplay" className="text-base">Autoplay Videos</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically play videos when they appear in the feed.
                 </p>
               </div>
               <Switch
-                id="theme-mode"
-                checked={isDark}
-                onCheckedChange={toggleTheme}
+                id="autoplay"
+                checked={autoplayEnabled}
+                onCheckedChange={setAutoplayEnabled}
               />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="reduced-motion" className="text-base">Reduced Motion</Label>
+                <p className="text-sm text-muted-foreground">
+                  Minimize animations for a calmer experience.
+                </p>
+              </div>
+              <Switch
+                id="reduced-motion"
+                checked={reducedMotion}
+                onCheckedChange={setReducedMotion}
+              />
+            </div>
+          </CardContent>
+        </Card>
+        {/* Notifications */}
+        <Card className="bg-card/50 backdrop-blur-sm border-white/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-purple-400" />
+              Notifications
+            </CardTitle>
+            <CardDescription>Control how you receive alerts.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="pause-notifs" className="text-base">Pause All</Label>
+                <p className="text-sm text-muted-foreground">
+                  Temporarily silence all notifications.
+                </p>
+              </div>
+              <Switch
+                id="pause-notifs"
+                checked={pauseNotifications}
+                onCheckedChange={setPauseNotifications}
+              />
+            </div>
+            <div className="flex items-center justify-between opacity-80">
+              <div className="space-y-0.5">
+                <Label className="text-base">New Followers</Label>
+                <p className="text-sm text-muted-foreground">
+                  Notify me when someone follows my profile.
+                </p>
+              </div>
+              <Switch checked={!pauseNotifications} disabled={pauseNotifications} />
+            </div>
+            <div className="flex items-center justify-between opacity-80">
+              <div className="space-y-0.5">
+                <Label className="text-base">Interactions</Label>
+                <p className="text-sm text-muted-foreground">
+                  Likes, comments, and mentions.
+                </p>
+              </div>
+              <Switch checked={!pauseNotifications} disabled={pauseNotifications} />
             </div>
           </CardContent>
         </Card>
@@ -110,20 +253,35 @@ export function SettingsPage() {
         <Card className="bg-card/50 backdrop-blur-sm border-white/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5" />
+              <Lock className="w-5 h-5 text-rose-400" />
               Privacy & Security
             </CardTitle>
-            <CardDescription>Manage blocked users and security settings.</CardDescription>
+            <CardDescription>Manage blocked users and visibility.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <Label>Blocked Users</Label>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="private-account" className="text-base">Private Account</Label>
+                <p className="text-sm text-muted-foreground">
+                  Only approved followers can see your posts.
+                </p>
+              </div>
+              <Switch
+                id="private-account"
+                checked={privateAccount}
+                onCheckedChange={handlePrivateToggle}
+              />
+            </div>
+            <div className="space-y-4 pt-2">
+              <Label className="text-base">Blocked Users</Label>
               {loadingBlocked ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
               ) : blockedUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic">You haven't blocked anyone yet.</p>
+                <div className="p-4 rounded-lg border border-dashed border-white/10 text-center text-sm text-muted-foreground">
+                  You haven't blocked anyone yet.
+                </div>
               ) : (
                 <div className="space-y-2">
                   {blockedUsers.map(u => (
@@ -133,7 +291,7 @@ export function SettingsPage() {
                           <AvatarImage src={u.avatar} />
                           <AvatarFallback>{u.name.substring(0, 2)}</AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-medium">{u.name}</span>
+                        <span className="text-sm font-medium text-white">{u.name}</span>
                       </div>
                       <Button size="sm" variant="ghost" onClick={() => handleUnblock(u.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
                         <UserX className="w-4 h-4 mr-2" /> Unblock
@@ -142,33 +300,6 @@ export function SettingsPage() {
                   ))}
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
-        {/* Account */}
-        <Card className="bg-card/50 backdrop-blur-sm border-white/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Account
-            </CardTitle>
-            <CardDescription>Manage your session and security.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/20 border border-white/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                  {user?.name?.substring(0, 2).toUpperCase() ?? '??'}
-                </div>
-                <div>
-                  <p className="font-medium">{user?.name}</p>
-                  <p className="text-xs text-muted-foreground">@{user?.name?.toLowerCase().replace(/\s/g, '')}</p>
-                </div>
-              </div>
-              <Button variant="destructive" size="sm" onClick={logout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Log Out
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -230,14 +361,16 @@ export function SettingsPage() {
           <CardContent className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Version</span>
-              <span className="font-mono">v1.1.0-security</span>
+              <span className="font-mono text-white">v1.2.0-beta</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Build</span>
-              <span className="font-mono">Production</span>
+              <span className="font-mono text-white">Production</span>
             </div>
-            <div className="pt-4 text-center text-xs text-muted-foreground">
-              Built with ❤️ by Aurelia
+            <div className="pt-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+              <span>Built with ❤️ by Aurelia</span>
+              <span className="w-1 h-1 rounded-full bg-white/20" />
+              <span>Your AI Co-founder</span>
             </div>
           </CardContent>
         </Card>

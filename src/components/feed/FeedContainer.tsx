@@ -21,6 +21,11 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
     const saved = localStorage.getItem('pulse_mute_preference');
     return saved !== null ? saved === 'true' : true;
   });
+  // Initialize autoplay state from localStorage
+  const [autoplayEnabled] = useState(() => {
+    const saved = localStorage.getItem('pulse_autoplay');
+    return saved !== 'false'; // Default to true if not set
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   // Persist mute preference
@@ -168,13 +173,13 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   }
   const activeIndex = posts.findIndex(p => p.id === activeVideoId);
   return (
-    <div
+    <div 
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black"
     >
       {posts.map((post, index) => (
-        <div
-            key={post.id}
+        <div 
+            key={post.id} 
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
@@ -187,6 +192,7 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
             onUpdate={handlePostUpdate}
             onHide={() => handlePostHide(post.id)}
             shouldPreload={index === activeIndex + 1}
+            autoplayEnabled={autoplayEnabled}
           />
         </div>
       ))}
