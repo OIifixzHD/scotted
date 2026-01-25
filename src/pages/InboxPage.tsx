@@ -12,6 +12,7 @@ import type { Notification, Chat, ChatMessage, User } from '@shared/types';
 import { NotificationItem } from '@/components/activity/NotificationItem';
 import { cn } from '@/lib/utils';
 import { NewChatDialog } from '@/components/inbox/NewChatDialog';
+import { ChatListSkeleton } from '@/components/skeletons/ChatListSkeleton';
 export function InboxPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('activity');
@@ -218,9 +219,7 @@ function MessagesView() {
         </div>
         <ScrollArea className="flex-1">
           {loadingChats ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
+            <ChatListSkeleton />
           ) : chats.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
               No chats yet. Start a new conversation!

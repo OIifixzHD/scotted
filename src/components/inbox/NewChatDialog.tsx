@@ -21,24 +21,24 @@ export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDial
   const [isCreating, setIsCreating] = useState(false);
   useEffect(() => {
     if (open) {
+      const fetchUsers = async () => {
+        setIsLoading(true);
+        try {
+          // Fetch users to select from (limit 100 for better selection pool)
+          const res = await api<{ items: User[] }>('/api/users?limit=100');
+          // Filter out current user
+          setUsers(res.items.filter(u => u.id !== currentUser?.id));
+        } catch (error) {
+          console.error(error);
+          toast.error('Failed to load users');
+        } finally {
+          setIsLoading(false);
+        }
+      };
       fetchUsers();
       setSearchQuery('');
     }
-  }, [open]);
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      // Fetch users to select from (limit 100 for better selection pool)
-      const res = await api<{ items: User[] }>('/api/users?limit=100');
-      // Filter out current user
-      setUsers(res.items.filter(u => u.id !== currentUser?.id));
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to load users');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [open, currentUser]);
   const filteredUsers = users.filter(u =>
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (u.displayName && u.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
