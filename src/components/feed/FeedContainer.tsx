@@ -16,9 +16,17 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const [error, setError] = useState<string | null>(null);
   // Track which video is currently in view
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
+  // Initialize mute state from localStorage
+  const [isMuted, setIsMuted] = useState(() => {
+    const saved = localStorage.getItem('pulse_mute_preference');
+    return saved !== null ? saved === 'true' : true;
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  // Persist mute preference
+  useEffect(() => {
+    localStorage.setItem('pulse_mute_preference', String(isMuted));
+  }, [isMuted]);
   useEffect(() => {
     const fetchFeed = async () => {
       try {
