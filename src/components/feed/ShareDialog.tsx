@@ -21,6 +21,8 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
   // In a real app, this would be the actual public URL
   const shareUrl = `${window.location.origin}/post/${postId}`;
   const shareText = "Check out this amazing video on Pulse!";
+  // Generate QR Code URL (Dark theme compatible)
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}&bgcolor=0f0f16&color=7c3aed&margin=10`;
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -78,75 +80,90 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
             Share this vibe with your friends on social media or copy the link.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex items-center space-x-2">
-          <div className="grid flex-1 gap-2">
-            <Label htmlFor="link" className="sr-only">
-              Link
-            </Label>
-            <Input
-              id="link"
-              defaultValue={shareUrl}
-              readOnly
-              className="bg-secondary/50 border-white/10"
-            />
+        <div className="flex flex-col items-center space-y-6 py-2">
+          {/* QR Code */}
+          <div className="relative group">
+            <div className="w-40 h-40 rounded-xl overflow-hidden border-4 border-white/10 bg-[#0f0f16] shadow-glow transition-transform hover:scale-105">
+              <img
+                src={qrCodeUrl}
+                alt="Video QR Code"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-primary text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg border border-white/20">
+              SCAN ME
+            </div>
           </div>
-          <Button type="button" size="sm" className="px-3" onClick={handleCopy}>
-            {copied ? (
-              <Check className="h-4 w-4 text-green-500" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            <span className="sr-only">Copy</span>
-          </Button>
-        </div>
-        <div className="flex justify-center gap-4 pt-4">
-            {hasNativeShare && (
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full border-white/10 hover:bg-white/5 text-primary"
-                    onClick={handleNativeShare}
-                    title="Share via System"
-                >
-                    <Share className="h-4 w-4" />
-                </Button>
-            )}
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="rounded-full border-white/10 hover:bg-white/5 hover:text-[#1DA1F2]" 
-              onClick={() => openSocialShare('twitter')}
-              title="Share on Twitter"
-            >
-                <Twitter className="h-4 w-4" />
+          <div className="flex items-center space-x-2 w-full">
+            <div className="grid flex-1 gap-2">
+              <Label htmlFor="link" className="sr-only">
+                Link
+              </Label>
+              <Input
+                id="link"
+                defaultValue={shareUrl}
+                readOnly
+                className="bg-secondary/50 border-white/10"
+              />
+            </div>
+            <Button type="button" size="sm" className="px-3" onClick={handleCopy}>
+              {copied ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              <span className="sr-only">Copy</span>
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="rounded-full border-white/10 hover:bg-white/5 hover:text-[#4267B2]" 
-              onClick={() => openSocialShare('facebook')}
-              title="Share on Facebook"
-            >
-                <Facebook className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="rounded-full border-white/10 hover:bg-white/5 hover:text-[#0077b5]" 
-              onClick={() => openSocialShare('linkedin')}
-              title="Share on LinkedIn"
-            >
-                <Linkedin className="h-4 w-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="rounded-full border-white/10 hover:bg-white/5 hover:text-red-500" 
-              onClick={() => openSocialShare('email')}
-              title="Share via Email"
-            >
-                <Mail className="h-4 w-4" />
-            </Button>
+          </div>
+          <div className="flex justify-center gap-4 w-full">
+              {hasNativeShare && (
+                  <Button
+                      variant="outline"
+                      size="icon"
+                      className="rounded-full border-white/10 hover:bg-white/5 text-primary"
+                      onClick={handleNativeShare}
+                      title="Share via System"
+                  >
+                      <Share className="h-4 w-4" />
+                  </Button>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full border-white/10 hover:bg-white/5 hover:text-[#1DA1F2]"
+                onClick={() => openSocialShare('twitter')}
+                title="Share on Twitter"
+              >
+                  <Twitter className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full border-white/10 hover:bg-white/5 hover:text-[#4267B2]"
+                onClick={() => openSocialShare('facebook')}
+                title="Share on Facebook"
+              >
+                  <Facebook className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full border-white/10 hover:bg-white/5 hover:text-[#0077b5]"
+                onClick={() => openSocialShare('linkedin')}
+                title="Share on LinkedIn"
+              >
+                  <Linkedin className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full border-white/10 hover:bg-white/5 hover:text-red-500"
+                onClick={() => openSocialShare('email')}
+                title="Share via Email"
+              >
+                  <Mail className="h-4 w-4" />
+              </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

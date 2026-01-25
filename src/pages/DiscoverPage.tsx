@@ -6,13 +6,19 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
 import type { Post, User } from '@shared/types';
-import { Search, TrendingUp, Hash, Loader2, User as UserIcon, Sparkles } from 'lucide-react';
+import { Search, TrendingUp, Hash, Loader2, User as UserIcon, Sparkles, Music2 } from 'lucide-react';
 import { VideoModal } from '@/components/feed/VideoModal';
 import { useAuth } from '@/context/AuthContext';
 import { SuggestedUserCard } from '@/components/discover/SuggestedUserCard';
+import { TrendingSoundCard } from '@/components/discover/TrendingSoundCard';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { GridSkeleton } from '@/components/skeletons/GridSkeleton';
+interface TrendingSound {
+  id: string;
+  name: string;
+  count: number;
+}
 export function DiscoverPage() {
   const { user: currentUser, login } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,6 +27,7 @@ export function DiscoverPage() {
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+  const [trendingSounds, setTrendingSounds] = useState<TrendingSound[]>([]);
   const [searchResults, setSearchResults] = useState<{ users: User[], posts: Post[] }>({ users: [], posts: [] });
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -49,13 +56,15 @@ export function DiscoverPage() {
       try {
         setLoading(true);
         const promises: Promise<any>[] = [
-          api<{ items: Post[] }>('/api/feed/trending')
+          api<{ items: Post[] }>('/api/feed/trending'),
+          api<TrendingSound[]>('/api/sounds/trending')
         ];
         // Fetch suggestions if logged in, or generic ones if not
         const userIdParam = currentUser ? `?userId=${currentUser.id}` : '';
         promises.push(api<User[]>(`/api/users/suggested${userIdParam}`));
-        const [trendingRes, suggestedRes] = await Promise.all(promises);
+        const [trendingRes, soundsRes, suggestedRes] = await Promise.all(promises);
         setTrendingPosts(trendingRes.items);
+        setTrendingSounds(soundsRes);
         setSuggestedUsers(suggestedRes);
       } catch (e) {
         console.error(e);
@@ -171,6 +180,24 @@ export function DiscoverPage() {
                         />
                       ))}
                     </AnimatePresence>
+                  </div>
+                </div>
+              )}
+              {/* Trending Sounds */}
+              {trendingSounds.length > 0 && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Music2 className="w-5 h-5" />
+                    <h2 className="font-bold text-lg">Trending Sounds</h2>
+                  </div>
+                  <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x">
+                    {trendingSounds.map((sound, index) => (
+                      <TrendingSoundCard
+                        key={sound.id}
+                        sound={sound}
+                        index={index}
+                      />
+                    ))}
                   </div>
                 </div>
               )}

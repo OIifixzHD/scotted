@@ -260,6 +260,29 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydratedPosts });
   });
   // --- SOUNDS ---
+  app.get('/api/sounds/trending', async (c) => {
+    await PostEntity.ensureSeed(c.env);
+    // Fetch a batch of recent posts to aggregate sound usage
+    const page = await PostEntity.list(c.env, null, 500);
+    const posts = page.items;
+    // Aggregate counts
+    const soundCounts = new Map<string, { id: string; name: string; count: number }>();
+    for (const post of posts) {
+        const soundId = post.soundId || 'default-sound';
+        const soundName = post.soundName || 'Original Audio';
+        if (soundCounts.has(soundId)) {
+            const entry = soundCounts.get(soundId)!;
+            entry.count++;
+        } else {
+            soundCounts.set(soundId, { id: soundId, name: soundName, count: 1 });
+        }
+    }
+    // Convert to array and sort by count descending
+    const trendingSounds = Array.from(soundCounts.values())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10); // Top 10
+    return ok(c, trendingSounds);
+  });
   app.get('/api/sounds/:id', async (c) => {
     const id = c.req.param('id');
     // Mock sound details
