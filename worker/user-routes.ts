@@ -668,25 +668,30 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.post('/api/posts', async (c) => {
     try {
         const body = await c.req.parseBody();
+        const demoUrl = body['demoUrl'] as string | undefined;
         const videoFile = body['videoFile'];
         const caption = body['caption'] as string || '';
         const tagsStr = body['tags'] as string || '';
         const userId = body['userId'] as string;
         const soundId = body['soundId'] as string || 'default-sound';
         const soundName = body['soundName'] as string || 'Original Audio';
-        if (!videoFile || !(videoFile instanceof File)) {
-            return bad(c, 'videoFile required and must be a file');
-        }
         if (!userId) {
             return bad(c, 'userId required');
         }
         const newPostId = crypto.randomUUID();
-        const postEntity = new PostEntity(c.env, newPostId);
-        // Convert File to Uint8Array
-        const arrayBuffer = await videoFile.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        // Save binary
-        const servedUrl = await postEntity.saveVideoBinary(uint8Array, videoFile.type || 'video/mp4');
+        let servedUrl = '';
+        // Simulation Mode: Use provided URL if present (bypasses file upload)
+        if (demoUrl && typeof demoUrl === 'string' && demoUrl.length > 0) {
+            servedUrl = demoUrl;
+        } else {
+            // Standard Mode: Process file upload
+            if (!videoFile || !(videoFile instanceof File)) {
+                return bad(c, 'videoFile required and must be a file');
+            }
+            const postEntity = new PostEntity(c.env, newPostId);
+            // Save binary directly from stream
+            servedUrl = await postEntity.saveVideoBinary(videoFile.stream(), videoFile.type || 'video/mp4');
+        }
         const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
         const newPost = {
             id: newPostId,

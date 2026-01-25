@@ -162,36 +162,73 @@ export class PostEntity extends IndexedEntity<Post> {
     return `/api/content/video/${this.id}`;
   }
   /**
-   * Save video data as binary chunks (Uint8Array) to avoid Base64 overhead.
+   * Save video data as binary chunks from a stream to avoid memory overhead.
    */
-  async saveVideoBinary(data: Uint8Array, mimeType: string): Promise<string> {
+  async saveVideoBinary(stream: ReadableStream<Uint8Array>, mimeType: string): Promise<string> {
     const CHUNK_SIZE = 128 * 1024; // 128KB chunks (DO limit)
-    const totalLength = data.length;
-    const chunks = Math.ceil(totalLength / CHUNK_SIZE);
-    // Save chunks
-    for (let i = 0; i < chunks; i++) {
-        const start = i * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, totalLength);
-        const chunk = data.subarray(start, end);
-        const key = `video:${this.id}:${i}`;
+    let chunkIndex = 0;
+    let totalLength = 0;
+    let buffer = new Uint8Array(0);
+    const reader = stream.getReader();
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const newBuffer = new Uint8Array(buffer.length + value.length);
+        newBuffer.set(buffer);
+        newBuffer.set(value, buffer.length);
+        buffer = newBuffer;
+
+        while (buffer.length >= CHUNK_SIZE) {
+          const chunk = buffer.slice(0, CHUNK_SIZE);
+          buffer = buffer.slice(CHUNK_SIZE);
+          
+          const key = `video:${this.id}:${chunkIndex}`;
+          let saved = false;
+          for(let attempt=0; attempt<3; attempt++) {
+              const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
+              const v = doc ? doc.v : 0;
+              const res = await this.stub.casPut(key, v, chunk);
+              if (res.ok) {
+                  saved = true;
+                  break;
+              }
+          }
+          if (!saved) throw new Error(`Failed to save chunk ${chunkIndex}`);
+          
+          chunkIndex++;
+          totalLength += chunk.length;
+        }
+      }
+
+      if (buffer.length > 0) {
+        const key = `video:${this.id}:${chunkIndex}`;
         let saved = false;
         for(let attempt=0; attempt<3; attempt++) {
             const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
-            const v = doc?.v ?? 0;
-            const res = await this.stub.casPut(key, v, chunk);
+            const v = doc ? doc.v : 0;
+            const res = await this.stub.casPut(key, v, buffer);
             if (res.ok) {
                 saved = true;
                 break;
             }
         }
-        if (!saved) throw new Error(`Failed to save chunk ${i}`);
+        if (!saved) throw new Error(`Failed to save chunk ${chunkIndex}`);
+        chunkIndex++;
+        totalLength += buffer.length;
+      }
+    } finally {
+      reader.releaseLock();
     }
+
     // Save metadata with format indicator
     const metaKey = `video:${this.id}:meta`;
-    const meta = { count: chunks, mimeType, size: totalLength, format: 'binary' };
+    const meta = { count: chunkIndex, mimeType, size: totalLength, format: 'binary' };
     for(let attempt=0; attempt<3; attempt++) {
         const doc = (await this.stub.getDoc(metaKey)) as Doc<typeof meta> | null;
-        const v = doc?.v ?? 0;
+        const v = doc ? doc.v : 0;
         const res = await this.stub.casPut(metaKey, v, meta);
         if (res.ok) break;
     }

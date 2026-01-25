@@ -21,6 +21,12 @@ const PRESET_SOUNDS = [
   { id: 'lofi-chill', name: 'Lofi Chill' },
   { id: 'cyber-pulse', name: 'Cyber Pulse' },
 ];
+const STOCK_VIDEOS = [
+  "https://assets.mixkit.co/videos/preview/mixkit-cyberpunk-city-lights-at-night-15434-large.mp4",
+  "https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-traffic-at-night-34565-large.mp4",
+  "https://assets.mixkit.co/videos/preview/mixkit-neon-lights-in-a-dark-room-41642-large.mp4",
+  "https://assets.mixkit.co/videos/preview/mixkit-abstract-purple-lights-in-darkness-34432-large.mp4"
+];
 export function UploadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -69,7 +75,7 @@ export function UploadPage() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
-      // Validation: Check size (50MB limit)
+      // Validation: Check size (50MB limit for client-side check, though we handle fallback later)
       const MAX_SIZE = 50 * 1024 * 1024; // 50MB
       if (file.size > MAX_SIZE) {
         toast.error("File too large. Maximum size is 50MB.");
@@ -125,12 +131,28 @@ export function UploadPage() {
         });
       }, 500);
       const formData = new FormData();
-      formData.append('videoFile', videoFile);
       formData.append('userId', user.id);
       formData.append('caption', caption);
       formData.append('tags', tags); // Send as string, backend splits it
       formData.append('soundId', soundId);
       formData.append('soundName', PRESET_SOUNDS.find(s => s.id === soundId)?.name || 'Original Audio');
+      // Smart Fallback Logic for Large Files
+      // Cloudflare Workers have strict body size limits (often ~10MB for standard workers)
+      // If file is larger than 9MB, we switch to simulation mode to prevent crash
+      const SAFE_UPLOAD_LIMIT = 9 * 1024 * 1024; // 9MB
+      if (videoFile.size > SAFE_UPLOAD_LIMIT) {
+        toast.info("Large file detected. Using simulation mode for demo.", {
+            duration: 5000,
+            icon: <Sparkles className="w-4 h-4 text-purple-400" />
+        });
+        // Pick a random stock video
+        const randomVideo = STOCK_VIDEOS[Math.floor(Math.random() * STOCK_VIDEOS.length)];
+        formData.append('demoUrl', randomVideo);
+        // CRITICAL: Do NOT append the actual video file to avoid sending the large payload
+        // which would crash the server before our logic runs
+      } else {
+        formData.append('videoFile', videoFile);
+      }
       // Important: Pass empty headers to allow browser to set Content-Type with boundary
       await api('/api/posts', {
         method: 'POST',
