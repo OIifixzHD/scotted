@@ -4,9 +4,10 @@ import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api-client';
 import type { Post, User } from '@shared/types';
-import { Search, TrendingUp, Hash, Loader2, User as UserIcon, Sparkles, Music2 } from 'lucide-react';
+import { Search, TrendingUp, Hash, Loader2, User as UserIcon, Sparkles, Music2, Clock, X } from 'lucide-react';
 import { VideoModal } from '@/components/feed/VideoModal';
 import { useAuth } from '@/context/AuthContext';
 import { SuggestedUserCard } from '@/components/discover/SuggestedUserCard';
@@ -31,6 +32,11 @@ export function DiscoverPage() {
   const [searchResults, setSearchResults] = useState<{ users: User[], posts: Post[] }>({ users: [], posts: [] });
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  // Search History State
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pulse_recent_searches');
+    return saved ? JSON.parse(saved) : [];
+  });
   // Video Modal State
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [activeListType, setActiveListType] = useState<'trending' | 'search'>('trending');
@@ -50,6 +56,27 @@ export function DiscoverPage() {
       setSearchParams({});
     }
   }, [debouncedQuery, setSearchParams]);
+  // Search History Helpers
+  const addToHistory = (term: string) => {
+    if (!term.trim()) return;
+    setRecentSearches(prev => {
+      const newHistory = [term, ...prev.filter(t => t !== term)].slice(0, 5);
+      localStorage.setItem('pulse_recent_searches', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+  const clearHistory = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('pulse_recent_searches');
+  };
+  const removeFromHistory = (term: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRecentSearches(prev => {
+      const newHistory = prev.filter(t => t !== term);
+      localStorage.setItem('pulse_recent_searches', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
   // Fetch Trending & Suggestions on mount
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -82,6 +109,10 @@ export function DiscoverPage() {
         setSearching(true);
         const res = await api<{ users: User[], posts: Post[] }>(`/api/search?q=${encodeURIComponent(debouncedQuery)}`);
         setSearchResults(res);
+        // Add to history if results found
+        if (res.users.length > 0 || res.posts.length > 0) {
+            addToHistory(debouncedQuery);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -163,6 +194,36 @@ export function DiscoverPage() {
           {!debouncedQuery ? (
             /* Trending View */
             <>
+              {/* Recent Searches */}
+              {recentSearches.length > 0 && (
+                <div className="space-y-4 animate-fade-in">
+                    <div className="flex items-center justify-between text-primary">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-5 h-5" />
+                            <h2 className="font-bold text-lg">Recent Searches</h2>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={clearHistory} className="h-auto p-0 text-xs text-muted-foreground hover:text-white">
+                            Clear
+                        </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {recentSearches.map(term => (
+                            <Badge
+                                key={term}
+                                variant="outline"
+                                className="px-3 py-1.5 text-sm cursor-pointer hover:bg-white/10 transition-colors flex items-center gap-2 border-white/10"
+                                onClick={() => setSearchQuery(term)}
+                            >
+                                {term}
+                                <X
+                                    className="w-3 h-3 text-muted-foreground hover:text-white"
+                                    onClick={(e) => removeFromHistory(term, e)}
+                                />
+                            </Badge>
+                        ))}
+                    </div>
+                </div>
+              )}
               {/* Suggested Users (Who to Follow) */}
               {suggestedUsers.length > 0 && (
                 <div className="space-y-4 animate-fade-in">

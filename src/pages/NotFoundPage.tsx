@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Home, AlertTriangle } from 'lucide-react';
+import { GlitchText } from '@/components/ui/glitch-text';
 export function NotFoundPage() {
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-black relative overflow-hidden p-4">
@@ -10,9 +11,7 @@ export function NotFoundPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[128px] pointer-events-none" />
       <div className="relative z-10 text-center space-y-8 max-w-md mx-auto">
         <div className="relative inline-block">
-          <h1 className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-white/10 tracking-tighter select-none">
-            404
-          </h1>
+          <GlitchText text="404" className="text-9xl font-black tracking-tighter select-none" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-2 bg-primary/50 blur-xl" />
         </div>
         <div className="space-y-4">

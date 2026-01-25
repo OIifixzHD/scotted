@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api-client";
+import { GlitchText } from "@/components/ui/glitch-text";
 export function AppSidebar(): JSX.Element {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -40,9 +41,7 @@ export function AppSidebar(): JSX.Element {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-teal-400 shadow-glow">
             <Zap className="h-6 w-6 text-white fill-white" />
           </div>
-          <span className="text-2xl font-display font-bold tracking-tight text-white">
-            Pulse
-          </span>
+          <GlitchText text="Pulse" className="text-2xl font-display tracking-tight" />
         </div>
       </SidebarHeader>
       <SidebarContent className="px-2">
@@ -186,8 +185,8 @@ export function AppSidebar(): JSX.Element {
                 <span className="text-xs text-muted-foreground truncate">@{user.name.toLowerCase().replace(/\s/g, '')}</span>
               </div>
             </div>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               className="w-full justify-start bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20"
               onClick={logout}
             >
