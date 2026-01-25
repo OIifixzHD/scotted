@@ -22,7 +22,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity } from "lucide-react";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { useNavigate } from 'react-router-dom';
@@ -36,11 +36,11 @@ export function AdminPage() {
   const [reports, setReports] = useState<Report[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [chartsReady, setChartsReady] = useState(false); // New state for delayed chart rendering
+  const [chartsReady, setChartsReady] = useState(false);
   // Dialog State
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [dialogMode, setDialogMode] = useState<'edit' | 'ban'>('edit');
+  const [dialogMode, setDialogMode] = useState<'edit' | 'ban' | 'unban'>('edit');
   // Security Check
   useEffect(() => {
     if (!isAuthLoading) {
@@ -87,7 +87,7 @@ export function AdminPage() {
       fetchData();
     }
   }, [currentUser]);
-  const handleOpenDialog = (user: User, mode: 'edit' | 'ban') => {
+  const handleOpenDialog = (user: User, mode: 'edit' | 'ban' | 'unban') => {
     setSelectedUser(user);
     setDialogMode(mode);
     setDialogOpen(true);
@@ -224,9 +224,15 @@ export function AdminPage() {
                                   <MessageSquare className="mr-2 h-4 w-4" /> Message
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-white/10" />
-                                <DropdownMenuItem onClick={() => handleOpenDialog(user, 'ban')} className="text-red-400 focus:text-red-400">
-                                  <Ban className="mr-2 h-4 w-4" /> Ban User
-                                </DropdownMenuItem>
+                                {isBanned ? (
+                                  <DropdownMenuItem onClick={() => handleOpenDialog(user, 'unban')} className="text-green-400 focus:text-green-400">
+                                    <ShieldCheck className="mr-2 h-4 w-4" /> Unban User
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={() => handleOpenDialog(user, 'ban')} className="text-red-400 focus:text-red-400">
+                                    <Ban className="mr-2 h-4 w-4" /> Ban User
+                                  </DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-red-400 focus:text-red-400">
                                   <Trash2 className="mr-2 h-4 w-4" /> Delete Account
                                 </DropdownMenuItem>
@@ -380,7 +386,7 @@ export function AdminPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                         <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                        <Tooltip
+                        <Tooltip 
                           contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
                           itemStyle={{ color: '#fff' }}
                         />
@@ -407,7 +413,7 @@ export function AdminPage() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                         <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
                         <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip
+                        <Tooltip 
                           contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
                           itemStyle={{ color: '#fff' }}
                         />
