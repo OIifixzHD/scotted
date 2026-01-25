@@ -666,48 +666,52 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
-    let body;
     try {
-      body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[]; soundName?: string; soundId?: string };
-    } catch (e) {
-      return bad(c, 'Invalid JSON or payload too large');
-    }
-    if (!body.videoUrl || !body.userId) {
-        return bad(c, 'videoUrl and userId are required');
-    }
-    const newPostId = crypto.randomUUID();
-    // Save video chunks first
-    const postEntity = new PostEntity(c.env, newPostId);
-    let servedUrl = body.videoUrl;
-    // If it's a base64 string, save it as chunks
-    if (body.videoUrl.startsWith('data:')) {
-        try {
-            servedUrl = await postEntity.saveVideo(body.videoUrl);
-        } catch (e) {
-            console.error("Failed to save video chunks", e);
-            return bad(c, 'Failed to process video file');
+        const body = await c.req.parseBody();
+        const videoFile = body['videoFile'];
+        const caption = body['caption'] as string || '';
+        const tagsStr = body['tags'] as string || '';
+        const userId = body['userId'] as string;
+        const soundId = body['soundId'] as string || 'default-sound';
+        const soundName = body['soundName'] as string || 'Original Audio';
+        if (!videoFile || !(videoFile instanceof File)) {
+            return bad(c, 'videoFile required and must be a file');
         }
+        if (!userId) {
+            return bad(c, 'userId required');
+        }
+        const newPostId = crypto.randomUUID();
+        const postEntity = new PostEntity(c.env, newPostId);
+        // Convert File to Uint8Array
+        const arrayBuffer = await videoFile.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        // Save binary
+        const servedUrl = await postEntity.saveVideoBinary(uint8Array, videoFile.type || 'video/mp4');
+        const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+        const newPost = {
+            id: newPostId,
+            userId,
+            videoUrl: servedUrl,
+            caption,
+            likes: 0,
+            likedBy: [],
+            saves: 0,
+            savedBy: [],
+            comments: 0,
+            shares: 0,
+            views: 0,
+            createdAt: Date.now(),
+            tags,
+            commentsList: [],
+            soundId,
+            soundName
+        };
+        const created = await PostEntity.create(c.env, newPost);
+        return ok(c, created);
+    } catch (e) {
+        console.error("Upload error:", e);
+        return bad(c, 'Failed to process upload: ' + (e instanceof Error ? e.message : String(e)));
     }
-    const newPost = {
-        id: newPostId,
-        userId: body.userId,
-        videoUrl: servedUrl,
-        caption: body.caption || '',
-        likes: 0,
-        likedBy: [],
-        saves: 0,
-        savedBy: [],
-        comments: 0,
-        shares: 0,
-        views: 0,
-        createdAt: Date.now(),
-        tags: body.tags || [],
-        commentsList: [],
-        soundId: body.soundId || 'default-sound',
-        soundName: body.soundName || 'Original Audio'
-    };
-    const created = await PostEntity.create(c.env, newPost);
-    return ok(c, created);
   });
   // Serve Video Content
   app.get('/api/content/video/:id', async (c) => {

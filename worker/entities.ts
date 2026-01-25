@@ -115,6 +115,7 @@ export class PostEntity extends IndexedEntity<Post> {
   /**
    * Save a large video file by chunking it into smaller pieces in the Durable Object storage.
    * Returns the URL where the video can be served from.
+   * @deprecated Use saveVideoBinary for better performance
    */
   async saveVideo(base64String: string): Promise<string> {
     const CHUNK_SIZE = 100 * 1024; // 100KB chunks to stay safely under 128KB limit
@@ -161,27 +162,87 @@ export class PostEntity extends IndexedEntity<Post> {
     return `/api/content/video/${this.id}`;
   }
   /**
+   * Save video data as binary chunks (Uint8Array) to avoid Base64 overhead.
+   */
+  async saveVideoBinary(data: Uint8Array, mimeType: string): Promise<string> {
+    const CHUNK_SIZE = 128 * 1024; // 128KB chunks (DO limit)
+    const totalLength = data.length;
+    const chunks = Math.ceil(totalLength / CHUNK_SIZE);
+    // Save chunks
+    for (let i = 0; i < chunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, totalLength);
+        const chunk = data.subarray(start, end);
+        const key = `video:${this.id}:${i}`;
+        let saved = false;
+        for(let attempt=0; attempt<3; attempt++) {
+            const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
+            const v = doc?.v ?? 0;
+            const res = await this.stub.casPut(key, v, chunk);
+            if (res.ok) {
+                saved = true;
+                break;
+            }
+        }
+        if (!saved) throw new Error(`Failed to save chunk ${i}`);
+    }
+    // Save metadata with format indicator
+    const metaKey = `video:${this.id}:meta`;
+    const meta = { count: chunks, mimeType, size: totalLength, format: 'binary' };
+    for(let attempt=0; attempt<3; attempt++) {
+        const doc = (await this.stub.getDoc(metaKey)) as Doc<typeof meta> | null;
+        const v = doc?.v ?? 0;
+        const res = await this.stub.casPut(metaKey, v, meta);
+        if (res.ok) break;
+    }
+    return `/api/content/video/${this.id}`;
+  }
+  /**
    * Retrieve and reassemble video chunks.
+   * Handles both legacy Base64 chunks and new binary chunks.
    */
   async getVideoData(): Promise<{ data: Uint8Array, mimeType: string } | null> {
     const metaKey = `video:${this.id}:meta`;
-    const metaDoc = (await this.stub.getDoc(metaKey)) as Doc<{ count: number, mimeType: string }> | null;
+    const metaDoc = (await this.stub.getDoc(metaKey)) as Doc<{ count: number, mimeType: string, format?: string }> | null;
     if (!metaDoc) return null;
-    const { count, mimeType } = metaDoc.data;
-    const chunks: string[] = [];
-    for (let i = 0; i < count; i++) {
-        const key = `video:${this.id}:${i}`;
-        const doc = (await this.stub.getDoc(key)) as Doc<string> | null;
-        if (doc) chunks.push(doc.data);
+    const { count, mimeType, format } = metaDoc.data;
+    if (format === 'binary') {
+        // Handle new binary format
+        const chunks: Uint8Array[] = [];
+        let totalLength = 0;
+        for (let i = 0; i < count; i++) {
+            const key = `video:${this.id}:${i}`;
+            const doc = (await this.stub.getDoc(key)) as Doc<Uint8Array> | null;
+            if (doc && doc.data) {
+                chunks.push(doc.data);
+                totalLength += doc.data.length;
+            }
+        }
+        // Concatenate chunks
+        const combined = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+            combined.set(chunk, offset);
+            offset += chunk.length;
+        }
+        return { data: combined, mimeType };
+    } else {
+        // Handle legacy Base64 format
+        const chunks: string[] = [];
+        for (let i = 0; i < count; i++) {
+            const key = `video:${this.id}:${i}`;
+            const doc = (await this.stub.getDoc(key)) as Doc<string> | null;
+            if (doc) chunks.push(doc.data);
+        }
+        const fullBase64 = chunks.join('');
+        // Convert base64 to Uint8Array
+        const binaryString = atob(fullBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return { data: bytes, mimeType };
     }
-    const fullBase64 = chunks.join('');
-    // Convert base64 to Uint8Array
-    const binaryString = atob(fullBase64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return { data: bytes, mimeType };
   }
   /**
    * Search posts by caption or tags
@@ -190,7 +251,7 @@ export class PostEntity extends IndexedEntity<Post> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return posts.filter(p => 
+    return posts.filter(p =>
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );

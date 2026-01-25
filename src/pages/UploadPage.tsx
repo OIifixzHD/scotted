@@ -78,14 +78,6 @@ export function UploadPage() {
     setPreviewUrl('');
     setUploadProgress(0);
   };
-  const convertToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!videoFile) {
@@ -107,26 +99,20 @@ export function UploadPage() {
           return prev + Math.random() * 5;
         });
       }, 500);
-      // Convert to Base64 - this might take a moment for large files
-      const finalVideoUrl = await convertToBase64(videoFile);
-      clearInterval(progressInterval);
-      setUploadProgress(90);
-      // Parse tags
-      const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-      // Find sound name
-      const selectedSound = PRESET_SOUNDS.find(s => s.id === soundId);
-      const soundName = selectedSound ? selectedSound.name : 'Original Audio';
+      const formData = new FormData();
+      formData.append('videoFile', videoFile);
+      formData.append('userId', user.id);
+      formData.append('caption', caption);
+      formData.append('tags', tags); // Send as string, backend splits it
+      formData.append('soundId', soundId);
+      formData.append('soundName', PRESET_SOUNDS.find(s => s.id === soundId)?.name || 'Original Audio');
+      // Important: Pass empty headers to allow browser to set Content-Type with boundary
       await api('/api/posts', {
         method: 'POST',
-        body: JSON.stringify({
-          videoUrl: finalVideoUrl,
-          caption,
-          tags: tagList,
-          userId: user.id,
-          soundId,
-          soundName,
-        }),
+        body: formData,
+        headers: {} // This overrides the default 'application/json'
       });
+      clearInterval(progressInterval);
       setUploadProgress(100);
       toast.success('Pulse posted successfully!');
       navigate(`/profile/${user.id}`);

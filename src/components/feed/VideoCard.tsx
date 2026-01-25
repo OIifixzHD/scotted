@@ -144,13 +144,13 @@ export function VideoCard({
         if (isActive && autoplayEnabled) videoRef.current.play().catch(console.warn);
     }
   };
-  const triggerLikeEffects = () => {
+  const triggerLikeEffects = useCallback(() => {
     setShowHeartAnimation(true);
     setShowExplosion(true);
     setTimeout(() => setShowHeartAnimation(false), 800);
     setTimeout(() => setShowExplosion(false), 1000);
-  };
-  const handleLike = async () => {
+  }, []);
+  const handleLike = useCallback(async () => {
     if (!user) {
       toast.error("Please log in to like posts");
       return;
@@ -178,7 +178,7 @@ export function VideoCard({
       setLikeCount(previousCount);
       toast.error('Failed to update like');
     }
-  };
+  }, [user, isLiked, likeCount, post.id, triggerLikeEffects]);
   // Keyboard Shortcuts
   useEffect(() => {
     if (!isActive) return;
@@ -200,7 +200,7 @@ export function VideoCard({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, togglePlay, toggleMute, handleLike]); // Added handleLike to dependencies
+  }, [isActive, togglePlay, toggleMute, handleLike]);
   const handleShare = async () => {
     setIsShareOpen(true);
     // Optimistic update
