@@ -668,7 +668,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.post('/api/posts', async (c) => {
     let body;
     try {
-      body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[]; soundName?: string };
+      body = await c.req.json() as { videoUrl?: string; caption?: string; userId?: string; tags?: string[]; soundName?: string; soundId?: string };
     } catch (e) {
       return bad(c, 'Invalid JSON or payload too large');
     }
@@ -703,7 +703,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         createdAt: Date.now(),
         tags: body.tags || [],
         commentsList: [],
-        soundId: 'default-sound',
+        soundId: body.soundId || 'default-sound',
         soundName: body.soundName || 'Original Audio'
     };
     const created = await PostEntity.create(c.env, newPost);

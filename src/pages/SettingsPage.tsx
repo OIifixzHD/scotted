@@ -6,9 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2, 
-  AlertTriangle, Bell, Eye, Volume2, Smartphone, Zap
+import {
+  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2,
+  AlertTriangle, Bell, Eye, Keyboard
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
@@ -24,12 +24,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { KeyboardShortcutsDialog } from '@/components/settings/KeyboardShortcutsDialog';
 export function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   // Settings State (Persisted to localStorage)
   const [autoplayEnabled, setAutoplayEnabled] = useState(() => localStorage.getItem('pulse_autoplay') !== 'false');
   const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('pulse_reduced_motion') === 'true');
@@ -204,6 +206,18 @@ export function SettingsPage() {
                 onCheckedChange={setReducedMotion}
               />
             </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Keyboard Shortcuts</Label>
+                <p className="text-sm text-muted-foreground">
+                  View available hotkeys for navigation.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowShortcuts(true)} className="border-white/10 hover:bg-white/5">
+                <Keyboard className="w-4 h-4 mr-2" />
+                View Shortcuts
+              </Button>
+            </div>
           </CardContent>
         </Card>
         {/* Notifications */}
@@ -375,6 +389,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+      <KeyboardShortcutsDialog open={showShortcuts} onOpenChange={setShowShortcuts} />
     </div>
   );
 }

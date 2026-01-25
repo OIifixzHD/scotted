@@ -7,11 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
+const PRESET_SOUNDS = [
+  { id: 'default-sound', name: 'Original Audio' },
+  { id: 'cosmic-vibes', name: 'Cosmic Vibes' },
+  { id: 'neon-dreams', name: 'Neon Dreams' },
+  { id: 'urban-beat', name: 'Urban Beat' },
+  { id: 'lofi-chill', name: 'Lofi Chill' },
+  { id: 'cyber-pulse', name: 'Cyber Pulse' },
+];
 export function UploadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -23,8 +32,9 @@ export function UploadPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isValidating, setIsValidating] = useState(false);
-  const soundId = searchParams.get('soundId');
-  const soundName = searchParams.get('soundName');
+  // Sound Selection State
+  const initialSoundId = searchParams.get('soundId') || 'default-sound';
+  const [soundId, setSoundId] = useState(initialSoundId);
   // Cleanup preview URL on unmount
   useEffect(() => {
     return () => {
@@ -34,10 +44,10 @@ export function UploadPage() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
-      // Validation: Check size (95MB limit)
-      const MAX_SIZE = 95 * 1024 * 1024; // 95MB
+      // Validation: Check size (50MB limit)
+      const MAX_SIZE = 50 * 1024 * 1024; // 50MB
       if (file.size > MAX_SIZE) {
-        toast.error("File too large. Maximum size is 95MB.");
+        toast.error("File too large. Maximum size is 50MB.");
         return;
       }
       setIsValidating(true);
@@ -103,6 +113,9 @@ export function UploadPage() {
       setUploadProgress(90);
       // Parse tags
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+      // Find sound name
+      const selectedSound = PRESET_SOUNDS.find(s => s.id === soundId);
+      const soundName = selectedSound ? selectedSound.name : 'Original Audio';
       await api('/api/posts', {
         method: 'POST',
         body: JSON.stringify({
@@ -110,7 +123,8 @@ export function UploadPage() {
           caption,
           tags: tagList,
           userId: user.id,
-          soundName: soundName || undefined,
+          soundId,
+          soundName,
         }),
       });
       setUploadProgress(100);
@@ -138,12 +152,6 @@ export function UploadPage() {
               </div>
               <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {soundName && (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary">
-                      <Music2 className="w-4 h-4" />
-                      <span className="text-sm font-medium">Using Sound: {soundName}</span>
-                    </div>
-                  )}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Film className="w-4 h-4 text-primary" />
@@ -184,7 +192,7 @@ export function UploadPage() {
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                 <span>Any duration</span>
                                 <span>•</span>
-                                <span>Max 95MB</span>
+                                <span>Max 50MB</span>
                             </div>
                           </>
                         )}
@@ -230,6 +238,24 @@ export function UploadPage() {
                       className="bg-secondary/50 border-white/10 min-h-[100px]"
                       disabled={isSubmitting}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sound" className="flex items-center gap-2">
+                      <Music2 className="w-4 h-4 text-primary" />
+                      Soundtrack
+                    </Label>
+                    <Select value={soundId} onValueChange={setSoundId} disabled={isSubmitting}>
+                      <SelectTrigger className="bg-secondary/50 border-white/10">
+                        <SelectValue placeholder="Select a sound" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRESET_SOUNDS.map((sound) => (
+                          <SelectItem key={sound.id} value={sound.id}>
+                            {sound.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tags" className="flex items-center gap-2">

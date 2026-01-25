@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -8,9 +8,25 @@ import { AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { BannedPage } from "@/pages/BannedPage";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { KeyboardShortcutsDialog } from "@/components/settings/KeyboardShortcutsDialog";
 export function RootLayout() {
   const location = useLocation();
   const { user, isLoading } = useAuth();
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  // Global Keyboard Shortcut Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isInput = ['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable;
+      if (e.key === '?' && !isInput) {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   // Show loading screen while auth is initializing
   // This prevents the "flash of unauthenticated content"
   if (isLoading) {
@@ -33,6 +49,7 @@ export function RootLayout() {
           </AnimatePresence>
         </main>
         <MobileNav />
+        <KeyboardShortcutsDialog open={showShortcuts} onOpenChange={setShowShortcuts} />
       </SidebarInset>
     </SidebarProvider>
   );
