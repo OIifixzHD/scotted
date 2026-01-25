@@ -128,7 +128,7 @@ function MessagesView() {
     };
     fetchChats();
   }, []);
-  // Fetch Messages when chat selected
+  // Initial Message Load
   useEffect(() => {
     if (!selectedChatId) return;
     const fetchMessages = async () => {
@@ -144,6 +144,28 @@ function MessagesView() {
       }
     };
     fetchMessages();
+  }, [selectedChatId]);
+  // Real-time Polling for Messages
+  useEffect(() => {
+    if (!selectedChatId) return;
+    const pollMessages = async () => {
+      try {
+        const res = await api<ChatMessage[]>(`/api/chats/${selectedChatId}/messages`);
+        setMessages(prev => {
+          // Only update if we have new messages to avoid unnecessary re-renders/scrolls
+          if (res.length !== prev.length) return res;
+          // Deep check last message ID if lengths are same (edge case)
+          if (res.length > 0 && prev.length > 0 && res[res.length - 1].id !== prev[prev.length - 1].id) return res;
+          return prev;
+        });
+      } catch (error) {
+        console.error("Polling failed", error);
+        // Silent fail on polling to avoid spamming user
+      }
+    };
+    // Poll every 3 seconds
+    const intervalId = setInterval(pollMessages, 3000);
+    return () => clearInterval(intervalId);
   }, [selectedChatId]);
   // Scroll to bottom
   useEffect(() => {

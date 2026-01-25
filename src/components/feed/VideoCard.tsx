@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +11,7 @@ import { ShareDialog } from './ShareDialog';
 import { CommentsSheet } from './CommentsSheet';
 import { useAuth } from '@/context/AuthContext';
 import { PostOptions } from './PostOptions';
+import { Button } from '@/components/ui/button';
 interface VideoCardProps {
   post: Post;
   isActive: boolean;
@@ -105,6 +106,14 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       }
     }
   }, [isPlaying, hasError]);
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHasError(false);
+    if (videoRef.current) {
+        videoRef.current.load();
+        if (isActive) videoRef.current.play().catch(console.warn);
+    }
+  };
   // Keyboard Shortcuts
   useEffect(() => {
     if (!isActive) return;
@@ -230,7 +239,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
       className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video"
     >
       {/* Video Player */}
-      <div 
+      <div
         className="absolute inset-0 cursor-pointer bg-gray-900"
         onClick={togglePlay}
         onDoubleClick={handleDoubleTap}
@@ -248,9 +257,18 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
               onTimeUpdate={handleTimeUpdate}
             />
         ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900 z-10">
                 <AlertCircle className="w-12 h-12 mb-2 opacity-50" />
-                <p className="text-sm">Video unavailable</p>
+                <p className="text-sm mb-4">Video unavailable</p>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleRetry}
+                    className="border-white/10 hover:bg-white/5"
+                >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry
+                </Button>
             </div>
         )}
         {/* Gradient Overlay */}
@@ -290,12 +308,12 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </AnimatePresence>
       </div>
       {/* Interactive Progress Bar */}
-      <div 
+      <div
         className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
         onClick={handleSeek}
       >
         <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-           <div 
+           <div
              className="h-full bg-primary transition-all duration-100 ease-linear relative"
              style={{ width: `${progress}%` }}
            >
@@ -319,7 +337,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
                 </div>
             </Link>
         </div>
-        <button 
+        <button
           onClick={handleLike}
           className="flex flex-col items-center gap-1 group"
         >
@@ -331,7 +349,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
         </button>
-        <button 
+        <button
           onClick={() => setIsCommentsOpen(true)}
           className="flex flex-col items-center gap-1 group"
         >
@@ -340,7 +358,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           </div>
           <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
         </button>
-        <button 
+        <button
           onClick={handleShare}
           className="flex flex-col items-center gap-1 group"
         >
@@ -376,7 +394,7 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
           <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
             {renderCaption(post.caption)}
           </p>
-          <Link 
+          <Link
             to={`/sound/${post.soundId || 'default-sound'}`}
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
@@ -391,22 +409,22 @@ export function VideoCard({ post, isActive, isMuted, toggleMute: propToggleMute,
         </div>
       </div>
       {/* Mute Toggle */}
-      <button 
+      <button
         onClick={(e) => { e.stopPropagation(); toggleMute(); }}
         className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
       >
         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>
       {/* Share Dialog */}
-      <ShareDialog 
-        open={isShareOpen} 
-        onOpenChange={setIsShareOpen} 
-        postId={post.id} 
+      <ShareDialog
+        open={isShareOpen}
+        onOpenChange={setIsShareOpen}
+        postId={post.id}
       />
       {/* Comments Sheet */}
-      <CommentsSheet 
-        postId={post.id} 
-        open={isCommentsOpen} 
+      <CommentsSheet
+        postId={post.id}
+        open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />

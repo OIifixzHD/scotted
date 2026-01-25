@@ -22,8 +22,8 @@ const PLACEHOLDER_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4'
 ];
 // Threshold for switching to "Demo Mode" upload (avoiding browser crash on huge Base64)
-// Lowered to 5MB to ensure reliability in demo environment with Worker limits
-const DEMO_MODE_THRESHOLD = 5 * 1024 * 1024;
+// Lowered to 1MB to ensure reliability in demo environment with Worker limits
+const DEMO_MODE_THRESHOLD = 1 * 1024 * 1024;
 const MAX_DURATION_SECONDS = 300; // 5 minutes
 export function UploadPage() {
   const navigate = useNavigate();
@@ -242,6 +242,9 @@ export function UploadPage() {
                                 <span>•</span>
                                 <span>Any size</span>
                             </div>
+                            <div className="mt-2 text-[10px] text-yellow-500/80 text-center max-w-[200px]">
+                                Demo Environment: Files larger than 1MB will use high-quality sample videos to ensure smooth playback.
+                            </div>
                           </>
                         )}
                       </div>
@@ -276,8 +279,8 @@ export function UploadPage() {
                             <div>
                               <p className="font-bold">High-Speed Demo Mode Active</p>
                               <p className="text-yellow-500/80 text-xs mt-1">
-                                This file ({formatBytes(videoFile.size)}) exceeds the 5MB limit for direct storage. 
-                                A high-quality placeholder video will be used instead to ensure instant upload performance.
+                                This file ({formatBytes(videoFile.size)}) exceeds the 1MB limit for direct storage in this demo.
+                                A high-quality placeholder video will be used instead to ensure instant upload performance and reliable playback.
                               </p>
                             </div>
                           </div>
