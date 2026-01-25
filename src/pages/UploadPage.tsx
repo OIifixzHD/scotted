@@ -90,12 +90,7 @@ export function UploadPage() {
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
-      // Validation: Check size (50MB limit for client-side check, though we handle fallback later)
-      const MAX_SIZE = 50 * 1024 * 1024; // 50MB
-      if (file.size > MAX_SIZE) {
-        toast.error("File too large. Maximum size is 50MB.");
-        return;
-      }
+      // Removed client-side size validation to allow larger uploads (e.g. 70MB)
       setIsValidating(true);
       try {
         setVideoFile(file);
@@ -170,11 +165,10 @@ export function UploadPage() {
       formData.append('filter', selectedFilter);
       formData.append('overlays', JSON.stringify(overlays));
       // Smart Fallback Logic for Large Files
-      // Cloudflare Workers have strict body size limits (often ~10MB for standard workers)
-      // If file is larger than 9MB, we switch to simulation mode to prevent crash
-      const SAFE_UPLOAD_LIMIT = 9 * 1024 * 1024; // 9MB
+      // Increased limit to 100MB to allow direct uploads for larger files
+      const SAFE_UPLOAD_LIMIT = 100 * 1024 * 1024; // 100MB
       if (videoFile.size > SAFE_UPLOAD_LIMIT) {
-        toast.info("Large file detected. Using simulation mode for demo.", {
+        toast.info("Very large file detected. Using simulation mode for demo.", {
             duration: 5000,
             icon: <Sparkles className="w-4 h-4 text-purple-400" />
         });
@@ -257,8 +251,8 @@ export function UploadPage() {
                             </p>
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                 <span>Any duration</span>
-                                <span>���</span>
-                                <span>Max 50MB</span>
+                                <span>•</span>
+                                <span>Max 100MB</span>
                             </div>
                           </>
                         )}
@@ -394,8 +388,8 @@ export function UploadPage() {
                       muted
                       loop
                     />
-                    <OverlayCanvas 
-                      overlays={overlays} 
+                    <OverlayCanvas
+                      overlays={overlays}
                       onChange={setOverlays}
                       activeId={activeOverlayId}
                       onSelect={setActiveOverlayId}
@@ -460,8 +454,8 @@ export function UploadPage() {
                     </TabsContent>
                     <TabsContent value="text" className="mt-4 space-y-4">
                       <div className="flex gap-2">
-                        <Input 
-                          placeholder="Add text..." 
+                        <Input
+                          placeholder="Add text..."
                           value={newText}
                           onChange={(e) => setNewText(e.target.value)}
                           className="bg-secondary/50 border-white/10"
@@ -494,7 +488,7 @@ export function UploadPage() {
                           <Label className="text-xs text-muted-foreground">Layers</Label>
                           <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
                             {overlays.map(overlay => (
-                              <div 
+                              <div
                                 key={overlay.id}
                                 className={cn(
                                   "flex items-center justify-between p-2 rounded bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50",
@@ -506,7 +500,7 @@ export function UploadPage() {
                                   <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: overlay.color }} />
                                   <span className="text-sm truncate max-w-[150px]">{overlay.text}</span>
                                 </div>
-                                <button 
+                                <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOverlays(prev => prev.filter(o => o.id !== overlay.id));
