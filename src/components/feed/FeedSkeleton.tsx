@@ -5,7 +5,7 @@ export function FeedSkeleton() {
       {/* Video Placeholder Background */}
       <div className="absolute inset-0 bg-white/5" />
       {/* Right Sidebar Actions */}
-      <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
+      <div className="absolute right-4 bottom-12 flex flex-col items-center gap-6 z-20">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 rounded-full bg-white/10" />

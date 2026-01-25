@@ -379,7 +379,7 @@ export function VideoCard({
         </div>
       </div>
       {/* Right Sidebar Actions */}
-      <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
+      <div className="absolute right-4 bottom-12 flex flex-col items-center gap-6 z-20">
         <div className="flex flex-col items-center gap-1">
             <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
                 <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
