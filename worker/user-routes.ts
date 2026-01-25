@@ -446,9 +446,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await targetUserEntity.mutate(user => {
         const isFollowingNow = updatedCurrentUser.followingIds?.includes(targetId);
         const change = isFollowingNow ? 1 : -1;
+        const newFollowers = Math.max(0, (user.followers || 0) + change);
+        // Automatic Verification Logic
+        let newBadge = user.badge;
+        if (newFollowers > 5) {
+            // Only upgrade if they have no badge or 'none'
+            if (!user.badge || user.badge === 'none') {
+                newBadge = 'verified-pro';
+            }
+        } else {
+            // Downgrade only if they were verified-pro (don't remove admin/owner badges)
+            if (user.badge === 'verified-pro') {
+                newBadge = 'none';
+            }
+        }
         return {
             ...user,
-            followers: Math.max(0, (user.followers || 0) + change)
+            followers: newFollowers,
+            badge: newBadge
         };
     });
     // Create Notification if followed
