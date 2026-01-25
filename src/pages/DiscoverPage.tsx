@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { SuggestedUserCard } from '@/components/discover/SuggestedUserCard';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { GridSkeleton } from '@/components/skeletons/GridSkeleton';
 export function DiscoverPage() {
   const { user: currentUser, login } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,7 +52,6 @@ export function DiscoverPage() {
           api<{ items: Post[] }>('/api/feed/trending')
         ];
         // Fetch suggestions if logged in, or generic ones if not
-        // The endpoint handles both cases (userId param is optional)
         const userIdParam = currentUser ? `?userId=${currentUser.id}` : '';
         promises.push(api<User[]>(`/api/users/suggested${userIdParam}`));
         const [trendingRes, suggestedRes] = await Promise.all(promises);
@@ -164,10 +164,10 @@ export function DiscoverPage() {
                   <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x">
                     <AnimatePresence mode="popLayout">
                       {suggestedUsers.map(user => (
-                        <SuggestedUserCard 
-                          key={user.id} 
-                          user={user} 
-                          onFollow={handleFollowUser} 
+                        <SuggestedUserCard
+                          key={user.id}
+                          user={user}
+                          onFollow={handleFollowUser}
                         />
                       ))}
                     </AnimatePresence>
@@ -198,9 +198,7 @@ export function DiscoverPage() {
               <div className="space-y-4">
                 <h2 className="font-bold text-lg">Popular Videos</h2>
                 {loading ? (
-                  <div className="flex justify-center py-12">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
+                  <GridSkeleton count={8} />
                 ) : (
                   <VideoGrid posts={trendingPosts} onVideoClick={(p) => handleVideoClick(p, 'trending')} />
                 )}
@@ -234,7 +232,9 @@ export function DiscoverPage() {
               {/* Videos Section */}
               <div className="space-y-4">
                   <h2 className="font-bold text-lg">Videos</h2>
-                  {searchResults.posts.length > 0 ? (
+                  {searching ? (
+                    <GridSkeleton count={4} />
+                  ) : searchResults.posts.length > 0 ? (
                       <VideoGrid posts={searchResults.posts} onVideoClick={(p) => handleVideoClick(p, 'search')} />
                   ) : (
                       !searching && searchResults.users.length === 0 && (

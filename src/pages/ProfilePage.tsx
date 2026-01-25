@@ -7,13 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, CheckCircle2, MoreVertical, Ban, Flag, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { cn, getDecorationClass, getBannerStyle } from '@/lib/utils';
 import { VideoModal } from '@/components/feed/VideoModal';
+import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
+import { ProfileShareDialog } from '@/components/profile/ProfileShareDialog';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, logout, login } = useAuth();
@@ -23,6 +25,7 @@ export function ProfilePage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   // Video Modal State
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
@@ -118,15 +121,7 @@ export function ProfilePage() {
     // If we deleted a middle item, the index now points to the next item, which is correct
   };
   if (loading) {
-    return (
-      <div className="h-full overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
-          <div className="flex h-[50vh] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
   if (!user) {
     return (
@@ -201,16 +196,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -219,8 +214,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -230,7 +225,7 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button 
+                          <Button
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
@@ -239,6 +234,14 @@ export function ProfilePage() {
                           </Button>
                           <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
                             Message
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="border border-white/10 text-white hover:bg-white/5"
+                            onClick={() => setIsShareDialogOpen(true)}
+                          >
+                            <Share2 className="w-4 h-4" />
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -257,6 +260,16 @@ export function ProfilePage() {
                           </DropdownMenu>
                         </>
                       )}
+                      {isOwnProfile && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="border border-white/10 text-white hover:bg-white/5"
+                          onClick={() => setIsShareDialogOpen(true)}
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -274,9 +287,9 @@ export function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <a 
-                        href={`https://pulse.aurelia.so/${handle}`} 
-                        target="_blank" 
+                      <a
+                        href={`https://pulse.aurelia.so/${handle}`}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
@@ -309,14 +322,14 @@ export function ProfilePage() {
           {/* Content Tabs */}
           <Tabs defaultValue="videos" className="w-full">
             <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger 
-                value="videos" 
+              <TabsTrigger
+                value="videos"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Videos
               </TabsTrigger>
-              <TabsTrigger 
-                value="liked" 
+              <TabsTrigger
+                value="liked"
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
               >
                 Liked
@@ -339,10 +352,10 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog 
-          open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen} 
-          currentUser={currentUser} 
+        <EditProfileDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          currentUser={currentUser}
         />
       )}
       {/* Report Dialog */}
@@ -353,6 +366,15 @@ export function ProfilePage() {
           targetId={user.id}
           targetType="user"
           targetName={user.name}
+        />
+      )}
+      {/* Share Dialog */}
+      {user && (
+        <ProfileShareDialog
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          profileId={user.id}
+          profileName={user.displayName || user.name}
         />
       )}
       {/* Video Modal */}
