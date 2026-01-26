@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, MessageCircle, Bell, Search, Plus } from 'lucide-react';
+import { Loader2, Send, MessageCircle, Bell, Search, Plus, Image as ImageIcon, Check, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -14,23 +14,31 @@ import { cn } from '@/lib/utils';
 import { NewChatDialog } from '@/components/inbox/NewChatDialog';
 import { ChatListSkeleton } from '@/components/skeletons/ChatListSkeleton';
 import { TypingIndicator } from '@/components/ui/typing-indicator';
+import { useSearchParams } from 'react-router-dom';
 export function InboxPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('activity');
+  const [searchParams] = useSearchParams();
+  const chatIdParam = searchParams.get('chatId');
+  useEffect(() => {
+    if (chatIdParam) {
+      setActiveTab('messages');
+    }
+  }, [chatIdParam]);
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="border-b border-white/10 px-4 pt-4 pb-0">
         <h1 className="text-2xl font-bold font-display mb-4 px-2">Inbox</h1>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start bg-transparent border-b border-transparent p-0 h-auto gap-6">
-            <TabsTrigger 
-              value="activity" 
+            <TabsTrigger
+              value="activity"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-2 py-3 text-base font-medium transition-all"
             >
               Activity
             </TabsTrigger>
-            <TabsTrigger 
-              value="messages" 
+            <TabsTrigger
+              value="messages"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-2 py-3 text-base font-medium transition-all"
             >
               Messages
@@ -42,7 +50,7 @@ export function InboxPage() {
         {activeTab === 'activity' ? (
           <ActivityView />
         ) : (
-          <MessagesView />
+          <MessagesView initialChatId={chatIdParam} />
         )}
       </div>
     </div>
@@ -103,10 +111,10 @@ function ActivityView() {
     </ScrollArea>
   );
 }
-function MessagesView() {
+function MessagesView({ initialChatId }: { initialChatId: string | null }) {
   const { user } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(initialChatId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -115,13 +123,17 @@ function MessagesView() {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Fetch Chats
   useEffect(() => {
+    if (!user) return;
     const fetchChats = async () => {
       try {
         setLoadingChats(true);
-        const res = await api<{ items: Chat[] }>('/api/chats');
-        setChats(res.items);
+        const res = await api<{ items: Chat[] }>(`/api/chats?userId=${user.id}`);
+        // Sort by updatedAt desc
+        const sorted = res.items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        setChats(sorted);
       } catch (error) {
         console.error(error);
         toast.error('Failed to load chats');
@@ -130,7 +142,7 @@ function MessagesView() {
       }
     };
     fetchChats();
-  }, []);
+  }, [user]);
   // Initial Message Load
   useEffect(() => {
     if (!selectedChatId) return;
@@ -155,18 +167,14 @@ function MessagesView() {
       try {
         const res = await api<ChatMessage[]>(`/api/chats/${selectedChatId}/messages`);
         setMessages(prev => {
-          // Only update if we have new messages to avoid unnecessary re-renders/scrolls
           if (res.length !== prev.length) return res;
-          // Deep check last message ID if lengths are same (edge case)
           if (res.length > 0 && prev.length > 0 && res[res.length - 1].id !== prev[prev.length - 1].id) return res;
           return prev;
         });
       } catch (error) {
         console.error("Polling failed", error);
-        // Silent fail on polling to avoid spamming user
       }
     };
-    // Poll every 3 seconds
     const intervalId = setInterval(pollMessages, 3000);
     return () => clearInterval(intervalId);
   }, [selectedChatId]);
@@ -174,17 +182,28 @@ function MessagesView() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !selectedChatId || !user) return;
+  const handleSendMessage = async (e?: React.FormEvent, mediaUrl?: string, mediaType?: 'image' | 'video') => {
+    e?.preventDefault();
+    if ((!newMessage.trim() && !mediaUrl) || !selectedChatId || !user) return;
     try {
       setSending(true);
       const res = await api<ChatMessage>(`/api/chats/${selectedChatId}/messages`, {
         method: 'POST',
-        body: JSON.stringify({ userId: user.id, text: newMessage.trim() })
+        body: JSON.stringify({
+          userId: user.id,
+          text: newMessage.trim(),
+          mediaUrl,
+          mediaType
+        })
       });
       setMessages(prev => [...prev, res]);
       setNewMessage('');
+      // Update chat list preview
+      setChats(prev => prev.map(c =>
+        c.id === selectedChatId
+          ? { ...c, lastMessage: res, updatedAt: res.ts }
+          : c
+      ).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
       // Simulate typing response
       setTimeout(() => {
         setIsTyping(true);
@@ -198,6 +217,22 @@ function MessagesView() {
     } finally {
       setSending(false);
     }
+  };
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { // 500KB limit for demo
+      toast.error("Image too large (max 500KB for demo)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      handleSendMessage(undefined, base64, 'image');
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    e.target.value = '';
   };
   const handleChatCreated = (chat: Chat) => {
     setChats(prev => [chat, ...prev]);
@@ -250,10 +285,22 @@ function MessagesView() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-baseline">
                       <span className="font-medium text-white truncate">{chat.title}</span>
-                      <span className="text-[10px] text-muted-foreground">12:30 PM</span>
+                      {chat.updatedAt && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(chat.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      Click to view messages
+                      {chat.lastMessage ? (
+                        chat.lastMessage.mediaUrl ? (
+                          <span className="flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Image</span>
+                        ) : (
+                          chat.lastMessage.text
+                        )
+                      ) : (
+                        "No messages yet"
+                      )}
                     </p>
                   </div>
                 </button>
@@ -271,9 +318,9 @@ function MessagesView() {
           <>
             {/* Chat Header */}
             <div className="h-16 border-b border-white/10 flex items-center px-4 bg-card/30 backdrop-blur-sm">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 className="md:hidden mr-2 -ml-2"
                 onClick={() => setSelectedChatId(null)}
               >
@@ -314,13 +361,26 @@ function MessagesView() {
                       >
                         <div
                           className={cn(
-                            "max-w-[75%] px-4 py-2 rounded-2xl text-sm",
+                            "max-w-[75%] px-4 py-2 rounded-2xl text-sm space-y-2",
                             isMe
                               ? "bg-primary text-white rounded-br-none"
                               : "bg-secondary text-white rounded-bl-none"
                           )}
                         >
-                          {msg.text}
+                          {msg.mediaUrl && (
+                            <img
+                              src={msg.mediaUrl}
+                              alt="Attachment"
+                              className="rounded-lg max-w-full max-h-60 object-cover"
+                            />
+                          )}
+                          {msg.text && <p>{msg.text}</p>}
+                          <div className={cn("flex justify-end items-center gap-1 text-[10px] opacity-70", isMe ? "text-white" : "text-muted-foreground")}>
+                            <span>{new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {isMe && (
+                                msg.status === 'read' ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -336,7 +396,24 @@ function MessagesView() {
             </ScrollArea>
             {/* Input Area */}
             <div className="p-4 border-t border-white/10 bg-card/30">
-              <form onSubmit={handleSendMessage} className="flex gap-2">
+              <form onSubmit={(e) => handleSendMessage(e)} className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-white"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sending}
+                >
+                  <ImageIcon className="w-5 h-5" />
+                </Button>
                 <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
@@ -344,8 +421,8 @@ function MessagesView() {
                   className="flex-1 bg-secondary/50 border-white/10 focus-visible:ring-primary"
                   disabled={sending}
                 />
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   size="icon"
                   disabled={!newMessage.trim() || sending}
                   className="bg-primary hover:bg-primary/90 shrink-0"
@@ -365,8 +442,8 @@ function MessagesView() {
           </div>
         )}
       </div>
-      <NewChatDialog 
-        open={isNewChatOpen} 
+      <NewChatDialog
+        open={isNewChatOpen}
         onOpenChange={setIsNewChatOpen}
         onChatCreated={handleChatCreated}
       />

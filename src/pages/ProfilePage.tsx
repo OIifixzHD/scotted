@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2 } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -19,6 +19,7 @@ import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ProfileShareDialog } from '@/components/profile/ProfileShareDialog';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user: currentUser, logout, login } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -28,6 +29,7 @@ export function ProfilePage() {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const [isMessageLoading, setIsMessageLoading] = useState(false);
   // Video Modal State
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -77,6 +79,29 @@ export function ProfilePage() {
         toast.error('Failed to update follow status');
     } finally {
         setIsFollowLoading(false);
+    }
+  };
+  const handleMessage = async () => {
+    if (!currentUser) {
+      toast.error("Please log in to message");
+      return;
+    }
+    if (!user) return;
+    try {
+      setIsMessageLoading(true);
+      const res = await api<{ id: string }>('/api/chats/direct', {
+        method: 'POST',
+        body: JSON.stringify({
+          currentUserId: currentUser.id,
+          targetUserId: user.id
+        })
+      });
+      navigate(`/inbox?chatId=${res.id}`);
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      toast.error('Failed to start chat');
+    } finally {
+      setIsMessageLoading(false);
     }
   };
   const handleBlock = async () => {
@@ -231,7 +256,13 @@ export function ProfilePage() {
                           >
                             {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                           </Button>
-                          <Button variant="outline" className="border-white/10 text-white hover:bg-white/5">
+                          <Button
+                            variant="outline"
+                            className="border-white/10 text-white hover:bg-white/5 gap-2"
+                            onClick={handleMessage}
+                            disabled={isMessageLoading}
+                          >
+                            {isMessageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
                             Message
                           </Button>
                           <Button

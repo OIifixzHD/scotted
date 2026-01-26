@@ -26,6 +26,7 @@ export interface User {
   // Phase 4: Personalization
   notInterestedPostIds?: string[];
   createdAt?: number; // Added for analytics
+  directMessages?: Record<string, string>; // targetUserId -> chatId
 }
 export interface Comment {
   id: string;
@@ -69,6 +70,10 @@ export interface Post {
 export interface Chat {
   id: string;
   title: string;
+  participants?: string[];
+  type?: 'dm' | 'group';
+  lastMessage?: ChatMessage;
+  updatedAt?: number;
 }
 export interface ChatMessage {
   id: string;
@@ -76,6 +81,9 @@ export interface ChatMessage {
   userId: string;
   text: string;
   ts: number; // epoch millis
+  status?: 'sent' | 'delivered' | 'read';
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
 }
 export interface Notification {
   id: string;

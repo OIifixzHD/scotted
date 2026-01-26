@@ -24,7 +24,8 @@ export class UserEntity extends IndexedEntity<User> {
     notInterestedPostIds: [],
     createdAt: 0,
     avatarDecoration: "none",
-    badge: "none"
+    badge: "none",
+    directMessages: {}
   };
   static seedData = MOCK_USERS;
   /**
@@ -88,6 +89,15 @@ export class UserEntity extends IndexedEntity<User> {
         if (current.includes(postId)) return s;
         return { ...s, notInterestedPostIds: [...current, postId] };
     });
+  }
+  /**
+   * Add a direct message mapping
+   */
+  async addDirectMessage(targetId: string, chatId: string): Promise<void> {
+    await this.mutate(s => ({
+      ...s,
+      directMessages: { ...(s.directMessages || {}), [targetId]: chatId }
+    }));
   }
 }
 // POST ENTITY
@@ -455,15 +465,36 @@ const SEED_CHAT_BOARDS: ChatBoardState[] = MOCK_CHATS.map(c => ({
 export class ChatBoardEntity extends IndexedEntity<ChatBoardState> {
   static readonly entityName = "chat";
   static readonly indexName = "chats";
-  static readonly initialState: ChatBoardState = { id: "", title: "", messages: [] };
+  static readonly initialState: ChatBoardState = {
+    id: "",
+    title: "",
+    messages: [],
+    participants: [],
+    type: 'group',
+    updatedAt: Date.now()
+  };
   static seedData = SEED_CHAT_BOARDS;
   async listMessages(): Promise<ChatMessage[]> {
     const { messages } = await this.getState();
     return messages;
   }
-  async sendMessage(userId: string, text: string): Promise<ChatMessage> {
-    const msg: ChatMessage = { id: crypto.randomUUID(), chatId: this.id, userId, text, ts: Date.now() };
-    await this.mutate(s => ({ ...s, messages: [...s.messages, msg] }));
+  async sendMessage(userId: string, text: string, mediaUrl?: string, mediaType?: 'image' | 'video'): Promise<ChatMessage> {
+    const msg: ChatMessage = {
+      id: crypto.randomUUID(),
+      chatId: this.id,
+      userId,
+      text,
+      ts: Date.now(),
+      status: 'sent',
+      mediaUrl,
+      mediaType
+    };
+    await this.mutate(s => ({
+      ...s,
+      messages: [...s.messages, msg],
+      lastMessage: msg,
+      updatedAt: msg.ts
+    }));
     return msg;
   }
 }

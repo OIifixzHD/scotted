@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay } from "@shared/types";
+import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay, Chat } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- AUTHENTICATION ---
@@ -35,7 +35,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       bannedBy: "",
       blockedUserIds: [],
       notInterestedPostIds: [],
-      createdAt: Date.now() // Track creation time for analytics
+      createdAt: Date.now(), // Track creation time for analytics
+      directMessages: {}
     };
     const created = await UserEntity.create(c.env, newUser);
     // Don't return password
@@ -982,14 +983,61 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await UserEntity.ensureSeed(c.env);
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
+    const userId = c.req.query('userId');
     const page = await ChatBoardEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
+    // Filter chats for the user if userId is provided
+    if (userId) {
+        const filteredItems = page.items.filter(chat => {
+            // Include if public (no participants) or user is a participant
+            return !chat.participants || chat.participants.length === 0 || chat.participants.includes(userId);
+        });
+        return ok(c, { ...page, items: filteredItems });
+    }
     return ok(c, page);
   });
   app.post('/api/chats', async (c) => {
     const { title } = (await c.req.json()) as { title?: string };
     if (!title?.trim()) return bad(c, 'title required');
-    const created = await ChatBoardEntity.create(c.env, { id: crypto.randomUUID(), title: title.trim(), messages: [] });
+    const created = await ChatBoardEntity.create(c.env, {
+        id: crypto.randomUUID(),
+        title: title.trim(),
+        messages: [],
+        participants: [],
+        type: 'group',
+        updatedAt: Date.now()
+    });
     return ok(c, { id: created.id, title: created.title });
+  });
+  // Create or Get Direct Chat
+  app.post('/api/chats/direct', async (c) => {
+    const { currentUserId, targetUserId } = await c.req.json() as { currentUserId: string, targetUserId: string };
+    if (!currentUserId || !targetUserId) return bad(c, 'currentUserId and targetUserId required');
+    const currentUserEntity = new UserEntity(c.env, currentUserId);
+    if (!await currentUserEntity.exists()) return notFound(c, 'Current user not found');
+    const currentUser = await currentUserEntity.getState();
+    // Check if chat already exists
+    const existingChatId = currentUser.directMessages?.[targetUserId];
+    if (existingChatId) {
+        return ok(c, { id: existingChatId });
+    }
+    // Create new chat
+    const newChatId = crypto.randomUUID();
+    const chat = new ChatBoardEntity(c.env, newChatId);
+    await chat.save({
+        id: newChatId,
+        title: 'Direct Message', // Generic title, frontend handles display
+        participants: [currentUserId, targetUserId],
+        type: 'dm',
+        messages: [],
+        updatedAt: Date.now()
+    });
+    // Update both users
+    await currentUserEntity.addDirectMessage(targetUserId, newChatId);
+    const targetUserEntity = new UserEntity(c.env, targetUserId);
+    if (await targetUserEntity.exists()) {
+        await targetUserEntity.addDirectMessage(currentUserId, newChatId);
+    }
+    return ok(c, { id: newChatId });
   });
   app.get('/api/chats/:chatId/messages', async (c) => {
     const chat = new ChatBoardEntity(c.env, c.req.param('chatId'));
@@ -998,10 +1046,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.post('/api/chats/:chatId/messages', async (c) => {
     const chatId = c.req.param('chatId');
-    const { userId, text } = (await c.req.json()) as { userId?: string; text?: string };
-    if (!isStr(userId) || !text?.trim()) return bad(c, 'userId and text required');
+    const { userId, text, mediaUrl, mediaType } = (await c.req.json()) as { userId?: string; text?: string; mediaUrl?: string; mediaType?: 'image' | 'video' };
+    if (!isStr(userId) || (!text?.trim() && !mediaUrl)) return bad(c, 'userId and content required');
     const chat = new ChatBoardEntity(c.env, chatId);
     if (!await chat.exists()) return notFound(c, 'chat not found');
-    return ok(c, await chat.sendMessage(userId, text.trim()));
+    return ok(c, await chat.sendMessage(userId, text?.trim() || '', mediaUrl, mediaType));
   });
 }
