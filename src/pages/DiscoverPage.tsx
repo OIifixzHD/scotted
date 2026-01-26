@@ -121,9 +121,6 @@ export function DiscoverPage() {
     };
     performSearch();
   }, [debouncedQuery]);
-  const handleTagClick = (tag: string) => {
-    setSearchQuery(tag);
-  };
   const handleVideoClick = (post: Post, type: 'trending' | 'search') => {
     const list = type === 'trending' ? trendingPosts : searchResults.posts;
     const index = list.findIndex(p => p.id === post.id);
@@ -270,15 +267,15 @@ export function DiscoverPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {trendingHashtags.map(tag => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition-colors"
-                      onClick={() => handleTagClick(tag)}
-                    >
-                      <Hash className="w-3 h-3 mr-1" />
-                      {tag}
-                    </Badge>
+                    <Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>
+                      <Badge
+                        variant="secondary"
+                        className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition-colors"
+                      >
+                        <Hash className="w-3 h-3 mr-1" />
+                        {tag}
+                      </Badge>
+                    </Link>
                   ))}
                 </div>
               </div>

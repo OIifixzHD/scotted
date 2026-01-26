@@ -312,7 +312,7 @@ export function VideoCard({
         return (
           <Link
             key={index}
-            to={`/discover?q=${encodeURIComponent(tag)}`}
+            to={`/tag/${encodeURIComponent(tag)}`}
             className="text-primary font-bold hover:underline hover:text-primary/80 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >

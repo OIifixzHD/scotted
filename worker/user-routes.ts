@@ -303,6 +303,35 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, { items: hydratedPosts });
   });
+  // --- TAGS ---
+  app.get('/api/tags/:tagName', async (c) => {
+    const tagName = decodeURIComponent(c.req.param('tagName')).toLowerCase();
+    await PostEntity.ensureSeed(c.env);
+    // Fetch a large batch to filter
+    const page = await PostEntity.list(c.env, null, 1000);
+    const taggedPosts = page.items.filter(p => 
+      p.tags?.some(t => t.toLowerCase() === tagName)
+    );
+    // Hydrate user data
+    const hydratedPosts = await Promise.all(taggedPosts.map(async (post) => {
+        if (post.userId) {
+            const userEntity = new UserEntity(c.env, post.userId);
+            if (await userEntity.exists()) {
+                const userData = await userEntity.getState();
+                const { password, ...safeUser } = userData;
+                return { ...post, user: safeUser };
+            }
+        }
+        return post;
+    }));
+    // Sort by newest
+    hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
+    return ok(c, {
+      tagName,
+      count: hydratedPosts.length,
+      posts: hydratedPosts
+    });
+  });
   // --- SOUNDS ---
   app.get('/api/sounds/trending', async (c) => {
     await PostEntity.ensureSeed(c.env);

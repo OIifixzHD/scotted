@@ -23,6 +23,7 @@ import { AdminPage } from '@/pages/AdminPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SoundPage } from '@/pages/SoundPage'
 import { PostPage } from '@/pages/PostPage'
+import { TagPage } from '@/pages/TagPage'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -96,6 +97,10 @@ const router = createBrowserRouter([
           {
             path: "/post/:id",
             element: <PostPage />,
+          },
+          {
+            path: "/tag/:tagName",
+            element: <TagPage />,
           },
         ]
       },
