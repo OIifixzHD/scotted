@@ -55,7 +55,9 @@ export function UploadPage() {
   const [activeTab, setActiveTab] = useState('filters');
   // Sound Selection State
   const initialSoundId = searchParams.get('soundId') || 'default-sound';
+  const initialSoundName = searchParams.get('soundName') || 'Original Audio';
   const [soundId, setSoundId] = useState(initialSoundId);
+  const [soundName, setSoundName] = useState(initialSoundName);
   // Audio Preview State
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -135,6 +137,13 @@ export function UploadPage() {
     setNewText('');
     setActiveOverlayId(newOverlay.id);
   };
+  const handleSoundChange = (val: string) => {
+    setSoundId(val);
+    const preset = PRESET_SOUNDS.find(p => p.id === val);
+    if (preset) {
+      setSoundName(preset.name);
+    }
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!videoFile) {
@@ -161,7 +170,7 @@ export function UploadPage() {
       formData.append('caption', caption);
       formData.append('tags', tags); // Send as string, backend splits it
       formData.append('soundId', soundId);
-      formData.append('soundName', PRESET_SOUNDS.find(s => s.id === soundId)?.name || 'Original Audio');
+      formData.append('soundName', soundName); // Use the custom or preset name
       formData.append('filter', selectedFilter);
       formData.append('overlays', JSON.stringify(overlays));
       // Smart Fallback Logic for Large Files
@@ -251,7 +260,7 @@ export function UploadPage() {
                             </p>
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                 <span>Any duration</span>
-                                <span>•</span>
+                                <span>���</span>
                                 <span>Max 100MB</span>
                             </div>
                           </>
@@ -302,32 +311,41 @@ export function UploadPage() {
                   <div className="space-y-2">
                     <Label htmlFor="sound" className="flex items-center gap-2">
                       <Music2 className="w-4 h-4 text-primary" />
-                      Soundtrack
+                      Soundtrack (Optional)
                     </Label>
-                    <div className="flex gap-2">
-                        <Select value={soundId} onValueChange={setSoundId} disabled={isSubmitting}>
-                        <SelectTrigger className="bg-secondary/50 border-white/10 flex-1">
-                            <SelectValue placeholder="Select a sound" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {PRESET_SOUNDS.map((sound) => (
-                            <SelectItem key={sound.id} value={sound.id}>
-                                {sound.name}
-                            </SelectItem>
-                            ))}
-                        </SelectContent>
-                        </Select>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="border-white/10 hover:bg-white/5 shrink-0"
-                            onClick={togglePreview}
-                            title={isPlayingPreview ? "Pause Preview" : "Play Preview"}
-                        >
-                            {isPlayingPreview ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        </Button>
-                        <audio ref={audioRef} src={MOCK_AUDIO_URL} onEnded={() => setIsPlayingPreview(false)} />
+                    <div className="flex flex-col gap-3">
+                        <div className="flex gap-2">
+                            <Select value={soundId} onValueChange={handleSoundChange} disabled={isSubmitting}>
+                            <SelectTrigger className="bg-secondary/50 border-white/10 flex-1">
+                                <SelectValue placeholder="Select a sound" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {PRESET_SOUNDS.map((sound) => (
+                                <SelectItem key={sound.id} value={sound.id}>
+                                    {sound.name}
+                                </SelectItem>
+                                ))}
+                            </SelectContent>
+                            </Select>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="border-white/10 hover:bg-white/5 shrink-0"
+                                onClick={togglePreview}
+                                title={isPlayingPreview ? "Pause Preview" : "Play Preview"}
+                            >
+                                {isPlayingPreview ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            </Button>
+                            <audio ref={audioRef} src={MOCK_AUDIO_URL} onEnded={() => setIsPlayingPreview(false)} />
+                        </div>
+                        <Input
+                            placeholder="Track Name (e.g. Original Audio)"
+                            value={soundName}
+                            onChange={(e) => setSoundName(e.target.value)}
+                            className="bg-secondary/50 border-white/10"
+                            disabled={isSubmitting}
+                        />
                     </div>
                   </div>
                   <div className="space-y-2">
