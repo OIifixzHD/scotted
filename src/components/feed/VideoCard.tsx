@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
@@ -514,18 +514,6 @@ export function VideoCard({
               <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
                 {renderCaption(post.caption)}
               </p>
-              <Link
-                to={`/sound/${post.soundId || 'default-sound'}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-2 text-white/80 text-xs font-medium mt-2 hover:text-white hover:underline transition-colors w-fit"
-              >
-                <Music2 className="w-3 h-3" />
-                <div className="overflow-hidden w-32">
-                    <p className="animate-marquee whitespace-nowrap">
-                      {post.soundName || 'Original Audio'} • {post.user?.displayName || post.user?.name || 'Unknown User'}
-                    </p>
-                </div>
-              </Link>
             </div>
           </div>
           {/* Mute Toggle */}
