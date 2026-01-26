@@ -243,14 +243,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // --- SEARCH & TRENDING ---
   app.get('/api/search', async (c) => {
     const q = c.req.query('q');
+    const type = c.req.query('type'); // 'video', 'audio', 'user', 'all'
     if (!q || q.trim().length === 0) {
       return ok(c, { users: [], posts: [] });
     }
     const query = q.trim();
-    const [users, posts] = await Promise.all([
-      UserEntity.search(c.env, query),
-      PostEntity.search(c.env, query)
-    ]);
+    let users: User[] = [];
+    let posts: Post[] = [];
+    // Fetch Users if type allows
+    if (!type || type === 'all' || type === 'user') {
+        users = await UserEntity.search(c.env, query);
+    }
+    // Fetch Posts if type allows
+    if (!type || type === 'all' || type === 'video' || type === 'audio') {
+        posts = await PostEntity.search(c.env, query);
+        // Filter by specific post type if requested
+        if (type === 'video' || type === 'audio') {
+            posts = posts.filter(p => p.type === type);
+        }
+    }
     const hydratedPosts = await Promise.all(posts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -269,10 +280,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { users: safeUsers, posts: hydratedPosts });
   });
   app.get('/api/feed/trending', async (c) => {
+    const type = c.req.query('type'); // 'video', 'audio'
     await PostEntity.ensureSeed(c.env);
     await UserEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 100);
-    const sortedPosts = page.items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    let sortedPosts = page.items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    if (type === 'video' || type === 'audio') {
+        sortedPosts = sortedPosts.filter(p => p.type === type);
+    }
     const hydratedPosts = await Promise.all(sortedPosts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -647,6 +662,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
     const userId = c.req.query('userId');
+    const type = c.req.query('type'); // 'video', 'audio'
     let hiddenPostIds: string[] = [];
     if (userId) {
         const userEntity = new UserEntity(c.env, userId);
@@ -656,7 +672,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
     }
     const page = await PostEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : 20);
-    const visibleItems = page.items.filter(p => !hiddenPostIds.includes(p.id));
+    let visibleItems = page.items.filter(p => !hiddenPostIds.includes(p.id));
+    if (type === 'video' || type === 'audio') {
+        visibleItems = visibleItems.filter(p => p.type === type);
+    }
     const hydratedPosts = await Promise.all(visibleItems.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);

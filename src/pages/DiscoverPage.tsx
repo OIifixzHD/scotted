@@ -15,6 +15,7 @@ import { TrendingSoundCard } from '@/components/discover/TrendingSoundCard';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { GridSkeleton } from '@/components/skeletons/GridSkeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface TrendingSound {
   id: string;
   name: string;
@@ -32,6 +33,7 @@ export function DiscoverPage() {
   const [searchResults, setSearchResults] = useState<{ users: User[], posts: Post[] }>({ users: [], posts: [] });
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'video' | 'audio' | 'user'>('all');
   // Search History State
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('pulse_recent_searches');
@@ -77,37 +79,48 @@ export function DiscoverPage() {
       return newHistory;
     });
   };
-  // Fetch Trending & Suggestions on mount
+  // Fetch Trending & Suggestions on mount or filter change
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
         const promises: Promise<any>[] = [
-          api<{ items: Post[] }>('/api/feed/trending'),
-          api<TrendingSound[]>('/api/sounds/trending')
+          // 0: Trending Posts
+          (activeFilter !== 'user') 
+            ? api<{ items: Post[] }>(`/api/feed/trending${activeFilter !== 'all' ? `?type=${activeFilter}` : ''}`)
+            : Promise.resolve({ items: [] }),
+          // 1: Trending Sounds
+          (activeFilter === 'all' || activeFilter === 'audio')
+            ? api<TrendingSound[]>('/api/sounds/trending')
+            : Promise.resolve([]),
+          // 2: Suggested Users
+          (activeFilter === 'all' || activeFilter === 'user')
+            ? api<User[]>(`/api/users/suggested${currentUser ? `?userId=${currentUser.id}` : ''}`)
+            : Promise.resolve([])
         ];
-        // Fetch suggestions if logged in, or generic ones if not
-        const userIdParam = currentUser ? `?userId=${currentUser.id}` : '';
-        promises.push(api<User[]>(`/api/users/suggested${userIdParam}`));
         const [trendingRes, soundsRes, suggestedRes] = await Promise.all(promises);
-        setTrendingPosts(trendingRes.items);
-        setTrendingSounds(soundsRes);
-        setSuggestedUsers(suggestedRes);
+        setTrendingPosts(trendingRes.items || []);
+        setTrendingSounds(soundsRes || []);
+        setSuggestedUsers(suggestedRes || []);
       } catch (e) {
         console.error(e);
       } finally {
         setLoading(false);
       }
     };
-    fetchInitialData();
-  }, [currentUser]); // Re-fetch if user changes (e.g. login)
+    if (!debouncedQuery) {
+        fetchInitialData();
+    }
+  }, [currentUser, activeFilter, debouncedQuery]);
   // Perform Search when debounced query changes
   useEffect(() => {
     if (!debouncedQuery) return;
     const performSearch = async () => {
       try {
         setSearching(true);
-        const res = await api<{ users: User[], posts: Post[] }>(`/api/search?q=${encodeURIComponent(debouncedQuery)}`);
+        let endpoint = `/api/search?q=${encodeURIComponent(debouncedQuery)}`;
+        if (activeFilter !== 'all') endpoint += `&type=${activeFilter}`;
+        const res = await api<{ users: User[], posts: Post[] }>(endpoint);
         setSearchResults(res);
         // Add to history if results found
         if (res.users.length > 0 || res.posts.length > 0) {
@@ -120,7 +133,7 @@ export function DiscoverPage() {
       }
     };
     performSearch();
-  }, [debouncedQuery]);
+  }, [debouncedQuery, activeFilter]);
   const handleVideoClick = (post: Post, type: 'trending' | 'search') => {
     const list = type === 'trending' ? trendingPosts : searchResults.posts;
     const index = list.findIndex(p => p.id === post.id);
@@ -147,14 +160,11 @@ export function DiscoverPage() {
       return;
     }
     try {
-      // Call API
       const updatedCurrentUser = await api<User>(`/api/users/${targetId}/follow`, {
         method: 'POST',
         body: JSON.stringify({ currentUserId: currentUser.id })
       });
-      // Update auth context
       login(updatedCurrentUser);
-      // Remove from suggestions list
       setSuggestedUsers(prev => prev.filter(u => u.id !== targetId));
       toast.success("Followed successfully");
     } catch (error) {
@@ -172,7 +182,7 @@ export function DiscoverPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
         <div className="space-y-8 min-h-[80vh]">
           {/* Search Header */}
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between sticky top-0 z-30 bg-background/80 backdrop-blur-md py-4 -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="flex flex-col gap-4 sticky top-0 z-30 bg-background/80 backdrop-blur-md py-4 -mx-4 px-4 md:mx-0 md:px-0">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -187,12 +197,20 @@ export function DiscoverPage() {
                   </div>
               )}
             </div>
+            <Tabs value={activeFilter} onValueChange={(v: any) => setActiveFilter(v)} className="w-full">
+                <TabsList className="bg-secondary/50 border border-white/10 w-full justify-start overflow-x-auto no-scrollbar">
+                    <TabsTrigger value="all">Trending</TabsTrigger>
+                    <TabsTrigger value="video">Videos</TabsTrigger>
+                    <TabsTrigger value="audio">Music</TabsTrigger>
+                    <TabsTrigger value="user">People</TabsTrigger>
+                </TabsList>
+            </Tabs>
           </div>
           {!debouncedQuery ? (
             /* Trending View */
             <>
               {/* Recent Searches */}
-              {recentSearches.length > 0 && (
+              {recentSearches.length > 0 && activeFilter === 'all' && (
                 <div className="space-y-4 animate-fade-in">
                     <div className="flex items-center justify-between text-primary">
                         <div className="flex items-center gap-2">
@@ -222,7 +240,7 @@ export function DiscoverPage() {
                 </div>
               )}
               {/* Suggested Users (Who to Follow) */}
-              {suggestedUsers.length > 0 && (
+              {suggestedUsers.length > 0 && (activeFilter === 'all' || activeFilter === 'user') && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="flex items-center gap-2 text-primary">
                     <Sparkles className="w-5 h-5" />
@@ -242,7 +260,7 @@ export function DiscoverPage() {
                 </div>
               )}
               {/* Trending Sounds */}
-              {trendingSounds.length > 0 && (
+              {trendingSounds.length > 0 && (activeFilter === 'all' || activeFilter === 'audio') && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="flex items-center gap-2 text-primary">
                     <Music2 className="w-5 h-5" />
@@ -260,40 +278,44 @@ export function DiscoverPage() {
                 </div>
               )}
               {/* Trending Tags */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                  <TrendingUp className="w-5 h-5" />
-                  <h2 className="font-bold text-lg">Trending Now</h2>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {trendingHashtags.map(tag => (
-                    <Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>
-                      <Badge
-                        variant="secondary"
-                        className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition-colors"
-                      >
-                        <Hash className="w-3 h-3 mr-1" />
-                        {tag}
-                      </Badge>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              {activeFilter === 'all' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-primary">
+                      <TrendingUp className="w-5 h-5" />
+                      <h2 className="font-bold text-lg">Trending Now</h2>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {trendingHashtags.map(tag => (
+                        <Link key={tag} to={`/tag/${encodeURIComponent(tag)}`}>
+                          <Badge
+                            variant="secondary"
+                            className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white transition-colors"
+                          >
+                            <Hash className="w-3 h-3 mr-1" />
+                            {tag}
+                          </Badge>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+              )}
               {/* Trending Grid */}
-              <div className="space-y-4">
-                <h2 className="font-bold text-lg">Popular Videos</h2>
-                {loading ? (
-                  <GridSkeleton count={8} />
-                ) : (
-                  <VideoGrid posts={trendingPosts} onVideoClick={(p) => handleVideoClick(p, 'trending')} />
-                )}
-              </div>
+              {activeFilter !== 'user' && (
+                  <div className="space-y-4">
+                    <h2 className="font-bold text-lg">Popular {activeFilter === 'audio' ? 'Music' : activeFilter === 'video' ? 'Videos' : 'Content'}</h2>
+                    {loading ? (
+                      <GridSkeleton count={8} />
+                    ) : (
+                      <VideoGrid posts={trendingPosts} onVideoClick={(p) => handleVideoClick(p, 'trending')} />
+                    )}
+                  </div>
+              )}
             </>
           ) : (
             /* Search Results View */
             <div className="space-y-8 animate-fade-in">
               {/* Users Section */}
-              {searchResults.users.length > 0 && (
+              {searchResults.users.length > 0 && (activeFilter === 'all' || activeFilter === 'user') && (
                   <div className="space-y-4">
                       <h2 className="font-bold text-lg flex items-center gap-2">
                           <UserIcon className="w-5 h-5 text-primary" />
@@ -315,20 +337,22 @@ export function DiscoverPage() {
                   </div>
               )}
               {/* Videos Section */}
-              <div className="space-y-4">
-                  <h2 className="font-bold text-lg">Videos</h2>
-                  {searching ? (
-                    <GridSkeleton count={4} />
-                  ) : searchResults.posts.length > 0 ? (
-                      <VideoGrid posts={searchResults.posts} onVideoClick={(p) => handleVideoClick(p, 'search')} />
-                  ) : (
-                      !searching && searchResults.users.length === 0 && (
-                          <div className="text-center py-12 text-muted-foreground">
-                              <p>No results found for "{debouncedQuery}"</p>
-                          </div>
-                      )
-                  )}
-              </div>
+              {activeFilter !== 'user' && (
+                  <div className="space-y-4">
+                      <h2 className="font-bold text-lg">Videos</h2>
+                      {searching ? (
+                        <GridSkeleton count={4} />
+                      ) : searchResults.posts.length > 0 ? (
+                          <VideoGrid posts={searchResults.posts} onVideoClick={(p) => handleVideoClick(p, 'search')} />
+                      ) : (
+                          !searching && searchResults.users.length === 0 && (
+                              <div className="text-center py-12 text-muted-foreground">
+                                  <p>No results found for "{debouncedQuery}"</p>
+                              </div>
+                          )
+                      )}
+                  </div>
+              )}
             </div>
           )}
         </div>

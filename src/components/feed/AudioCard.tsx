@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { PostOptions } from './PostOptions';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { Slider } from '@/components/ui/slider';
+import { AudioVisualizer } from '@/components/ui/audio-visualizer';
 interface AudioCardProps {
   post: Post;
   isActive: boolean;
@@ -142,12 +143,16 @@ export function AudioCard({
       </div>
       {/* Content */}
       <div className="relative z-10 flex-1 flex flex-col p-6 justify-center items-center text-center space-y-8">
+        {/* Visualizer Background */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
+             <AudioVisualizer isPlaying={isPlaying} barCount={30} className="h-64 gap-1" />
+        </div>
         {/* Cover Art */}
         <motion.div
           animate={{ rotate: isPlaying ? 360 : 0 }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear", repeatType: "loop" }}
           className={cn(
-            "w-64 h-64 rounded-full shadow-2xl border-4 border-white/10 overflow-hidden relative",
+            "w-64 h-64 rounded-full shadow-2xl border-4 border-white/10 overflow-hidden relative z-10",
             !isPlaying && "animation-play-state: paused"
           )}
         >
@@ -162,12 +167,12 @@ export function AudioCard({
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-black rounded-full border border-white/20" />
         </motion.div>
         {/* Metadata */}
-        <div className="space-y-2 max-w-xs">
+        <div className="space-y-2 max-w-xs relative z-10">
           <h2 className="text-2xl font-bold text-white truncate">{post.title || "Untitled Track"}</h2>
           <p className="text-lg text-muted-foreground truncate">{post.artist || post.user?.name}</p>
         </div>
         {/* Progress & Controls */}
-        <div className="w-full max-w-xs space-y-4">
+        <div className="w-full max-w-xs space-y-4 relative z-10">
           <div className="space-y-1">
             <Slider
               value={[progress]}
