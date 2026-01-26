@@ -593,6 +593,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydrated });
   });
   // --- FEED / POSTS ---
+  // Get Single Post
+  app.get('/api/posts/:id', async (c) => {
+    const id = c.req.param('id');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const post = await postEntity.getState();
+    // Hydrate user
+    if (post.userId) {
+        const userEntity = new UserEntity(c.env, post.userId);
+        if (await userEntity.exists()) {
+            const userData = await userEntity.getState();
+            const { password, ...safeUser } = userData;
+            post.user = safeUser;
+        }
+    }
+    return ok(c, post);
+  });
   app.get('/api/feed', async (c) => {
     await PostEntity.ensureSeed(c.env);
     await UserEntity.ensureSeed(c.env);
