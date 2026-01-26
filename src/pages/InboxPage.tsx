@@ -4,7 +4,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Send, MessageCircle, Bell, Search, Plus, Image as ImageIcon, Check, CheckCheck } from 'lucide-react';
+import { Loader2, Send, MessageCircle, Bell, Search, Plus, Image as ImageIcon, Check, CheckCheck, Settings } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import type { Notification, Chat, ChatMessage, User } from '@shared/types';
 import { NotificationItem } from '@/components/activity/NotificationItem';
 import { cn } from '@/lib/utils';
 import { NewChatDialog } from '@/components/inbox/NewChatDialog';
+import { ChatSettingsDialog } from '@/components/inbox/ChatSettingsDialog';
 import { ChatListSkeleton } from '@/components/skeletons/ChatListSkeleton';
 import { TypingIndicator } from '@/components/ui/typing-indicator';
 import { useSearchParams } from 'react-router-dom';
@@ -121,6 +122,7 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +133,6 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
       try {
         setLoadingChats(true);
         const res = await api<{ items: Chat[] }>(`/api/chats?userId=${user.id}`);
-        // Sort by updatedAt desc
         const sorted = res.items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
         setChats(sorted);
       } catch (error) {
@@ -198,13 +199,11 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
       });
       setMessages(prev => [...prev, res]);
       setNewMessage('');
-      // Update chat list preview
-      setChats(prev => prev.map(c =>
-        c.id === selectedChatId
-          ? { ...c, lastMessage: res, updatedAt: res.ts }
+      setChats(prev => prev.map(c => 
+        c.id === selectedChatId 
+          ? { ...c, lastMessage: res, updatedAt: res.ts } 
           : c
       ).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
-      // Simulate typing response
       setTimeout(() => {
         setIsTyping(true);
       }, 1000);
@@ -213,7 +212,8 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
       }, 4000);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to send message');
+      const msg = error instanceof Error ? error.message : 'Failed to send message';
+      toast.error(msg);
     } finally {
       setSending(false);
     }
@@ -221,7 +221,7 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 500 * 1024) { // 500KB limit for demo
+    if (file.size > 500 * 1024) { 
       toast.error("Image too large (max 500KB for demo)");
       return;
     }
@@ -231,12 +231,14 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
       handleSendMessage(undefined, base64, 'image');
     };
     reader.readAsDataURL(file);
-    // Reset input
     e.target.value = '';
   };
   const handleChatCreated = (chat: Chat) => {
     setChats(prev => [chat, ...prev]);
     setSelectedChatId(chat.id);
+  };
+  const handleChatUpdated = (updatedChat: Chat) => {
+    setChats(prev => prev.map(c => c.id === updatedChat.id ? { ...c, ...updatedChat } : c));
   };
   if (!user) {
     return (
@@ -245,6 +247,8 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
       </div>
     );
   }
+  const activeChat = chats.find(c => c.id === selectedChatId);
+  const isOwner = activeChat?.ownerId === user.id;
   return (
     <div className="flex h-full">
       {/* Chat List Sidebar */}
@@ -314,26 +318,38 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
         "flex-1 flex flex-col bg-background",
         !selectedChatId ? "hidden md:flex" : "flex"
       )}>
-        {selectedChatId ? (
+        {selectedChatId && activeChat ? (
           <>
             {/* Chat Header */}
-            <div className="h-16 border-b border-white/10 flex items-center px-4 bg-card/30 backdrop-blur-sm">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="md:hidden mr-2 -ml-2"
-                onClick={() => setSelectedChatId(null)}
-              >
-                ←
-              </Button>
-              <Avatar className="w-8 h-8 border border-white/10 mr-3">
-                <AvatarFallback>
-                  {chats.find(c => c.id === selectedChatId)?.title.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="font-semibold text-white">
-                {chats.find(c => c.id === selectedChatId)?.title}
-              </span>
+            <div className="h-16 border-b border-white/10 flex items-center justify-between px-4 bg-card/30 backdrop-blur-sm">
+              <div className="flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="md:hidden mr-2 -ml-2"
+                  onClick={() => setSelectedChatId(null)}
+                >
+                  ←
+                </Button>
+                <Avatar className="w-8 h-8 border border-white/10 mr-3">
+                  <AvatarFallback>
+                    {activeChat.title.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="font-semibold text-white">
+                    {activeChat.title}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground capitalize">
+                    {activeChat.visibility} • {activeChat.participants?.length || 0} participants
+                  </span>
+                </div>
+              </div>
+              {isOwner && (
+                <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)}>
+                  <Settings className="w-5 h-5 text-muted-foreground hover:text-white" />
+                </Button>
+              )}
             </div>
             {/* Messages Area */}
             <ScrollArea className="flex-1 p-4">
@@ -447,6 +463,14 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
         onOpenChange={setIsNewChatOpen}
         onChatCreated={handleChatCreated}
       />
+      {activeChat && (
+        <ChatSettingsDialog
+          open={isSettingsOpen}
+          onOpenChange={setIsSettingsOpen}
+          chat={activeChat}
+          onUpdate={handleChatUpdated}
+        />
+      )}
     </div>
   );
 }

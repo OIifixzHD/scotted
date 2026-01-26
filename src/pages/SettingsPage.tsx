@@ -6,13 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2, 
-  AlertTriangle, Bell, Eye, Keyboard 
+import {
+  LogOut, Moon, Sun, Shield, Info, Lock, UserX, Loader2, Trash2,
+  AlertTriangle, Bell, Eye, Keyboard
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import type { User } from '@shared/types';
+import type { User, UserSettings } from '@shared/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,17 +27,18 @@ import {
 import { KeyboardShortcutsDialog } from '@/components/settings/KeyboardShortcutsDialog';
 export function SettingsPage() {
   const { isDark, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  // Settings State (Persisted to localStorage)
-  const [autoplayEnabled, setAutoplayEnabled] = useState(() => localStorage.getItem('pulse_autoplay') !== 'false');
-  const [reducedMotion, setReducedMotion] = useState(() => localStorage.getItem('pulse_reduced_motion') === 'true');
-  const [pauseNotifications, setPauseNotifications] = useState(() => localStorage.getItem('pulse_pause_notifs') === 'true');
-  const [privateAccount, setPrivateAccount] = useState(false); // Mocked for now
-  // Mounted Ref to prevent state updates on unmounted component
+  const [isUpdating, setIsUpdating] = useState(false);
+  // Local state for settings, initialized from user object
+  const [settings, setSettings] = useState<UserSettings>({
+    notifications: { paused: false, newFollowers: true, interactions: true },
+    privacy: { privateAccount: false },
+    content: { autoplay: true, reducedMotion: false }
+  });
   const isMounted = useRef(true);
   useEffect(() => {
     isMounted.current = true;
@@ -45,21 +46,60 @@ export function SettingsPage() {
       isMounted.current = false;
     };
   }, []);
-  // Persist settings effects
+  // Sync state with user object when it loads/updates
   useEffect(() => {
-    localStorage.setItem('pulse_autoplay', String(autoplayEnabled));
-  }, [autoplayEnabled]);
-  useEffect(() => {
-    localStorage.setItem('pulse_reduced_motion', String(reducedMotion));
-    if (reducedMotion) {
-      document.documentElement.classList.add('motion-reduce');
-    } else {
-      document.documentElement.classList.remove('motion-reduce');
+    if (user?.settings) {
+      setSettings(user.settings);
+      // Sync local storage for immediate UI effects (theme/motion)
+      localStorage.setItem('pulse_autoplay', String(user.settings.content.autoplay));
+      localStorage.setItem('pulse_reduced_motion', String(user.settings.content.reducedMotion));
+      if (user.settings.content.reducedMotion) {
+        document.documentElement.classList.add('motion-reduce');
+      } else {
+        document.documentElement.classList.remove('motion-reduce');
+      }
     }
-  }, [reducedMotion]);
-  useEffect(() => {
-    localStorage.setItem('pulse_pause_notifs', String(pauseNotifications));
-  }, [pauseNotifications]);
+  }, [user]);
+  const updateSettings = async (newSettings: UserSettings) => {
+    if (!user) return;
+    setSettings(newSettings); // Optimistic update
+    setIsUpdating(true);
+    try {
+      await api(`/api/users/${user.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ settings: newSettings })
+      });
+      await refreshUser();
+      toast.success('Settings saved');
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to save settings');
+      // Revert would go here in a more complex implementation
+    } finally {
+      if (isMounted.current) setIsUpdating(false);
+    }
+  };
+  const handleNotificationChange = (key: keyof UserSettings['notifications'], value: boolean) => {
+    const newSettings = {
+      ...settings,
+      notifications: { ...settings.notifications, [key]: value }
+    };
+    updateSettings(newSettings);
+  };
+  const handlePrivacyChange = (key: keyof UserSettings['privacy'], value: boolean) => {
+    const newSettings = {
+      ...settings,
+      privacy: { ...settings.privacy, [key]: value }
+    };
+    updateSettings(newSettings);
+  };
+  const handleContentChange = (key: keyof UserSettings['content'], value: boolean) => {
+    const newSettings = {
+      ...settings,
+      content: { ...settings.content, [key]: value }
+    };
+    updateSettings(newSettings);
+  };
   const fetchBlockedUsers = useCallback(async () => {
     if (!user) return;
     try {
@@ -69,9 +109,7 @@ export function SettingsPage() {
         setBlockedUsers(res);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error(`[SettingsPage] Failed to fetch blocked users: ${errorMessage}`);
-      // Silent fail for blocked users fetch
+      console.error(`Failed to fetch blocked users`, error);
     } finally {
       if (isMounted.current) {
         setLoadingBlocked(false);
@@ -91,8 +129,7 @@ export function SettingsPage() {
       toast.success('User unblocked');
       fetchBlockedUsers();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`Failed to unblock user: ${errorMessage}`);
+      toast.error(`Failed to unblock user`);
     }
   };
   const handleDeleteAccount = async () => {
@@ -107,17 +144,10 @@ export function SettingsPage() {
       logout();
     } catch (error) {
       console.error(error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(`Failed to delete account: ${errorMessage}`);
+      toast.error(`Failed to delete account`);
       if (isMounted.current) {
         setIsDeleting(false);
       }
-    }
-  };
-  const handlePrivateToggle = (checked: boolean) => {
-    setPrivateAccount(checked);
-    if (checked) {
-      toast.info("Private account mode enabled (Simulation)");
     }
   };
   return (
@@ -190,8 +220,9 @@ export function SettingsPage() {
               </div>
               <Switch
                 id="autoplay"
-                checked={autoplayEnabled}
-                onCheckedChange={setAutoplayEnabled}
+                checked={settings.content.autoplay}
+                onCheckedChange={(val) => handleContentChange('autoplay', val)}
+                disabled={isUpdating}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -203,8 +234,9 @@ export function SettingsPage() {
               </div>
               <Switch
                 id="reduced-motion"
-                checked={reducedMotion}
-                onCheckedChange={setReducedMotion}
+                checked={settings.content.reducedMotion}
+                onCheckedChange={(val) => handleContentChange('reducedMotion', val)}
+                disabled={isUpdating}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -240,27 +272,36 @@ export function SettingsPage() {
               </div>
               <Switch
                 id="pause-notifs"
-                checked={pauseNotifications}
-                onCheckedChange={setPauseNotifications}
+                checked={settings.notifications.paused}
+                onCheckedChange={(val) => handleNotificationChange('paused', val)}
+                disabled={isUpdating}
               />
             </div>
-            <div className="flex items-center justify-between opacity-80">
+            <div className={`flex items-center justify-between transition-opacity ${settings.notifications.paused ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               <div className="space-y-0.5">
                 <Label className="text-base">New Followers</Label>
                 <p className="text-sm text-muted-foreground">
                   Notify me when someone follows my profile.
                 </p>
               </div>
-              <Switch checked={!pauseNotifications} disabled={pauseNotifications} />
+              <Switch 
+                checked={settings.notifications.newFollowers} 
+                onCheckedChange={(val) => handleNotificationChange('newFollowers', val)}
+                disabled={isUpdating}
+              />
             </div>
-            <div className="flex items-center justify-between opacity-80">
+            <div className={`flex items-center justify-between transition-opacity ${settings.notifications.paused ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
               <div className="space-y-0.5">
                 <Label className="text-base">Interactions</Label>
                 <p className="text-sm text-muted-foreground">
                   Likes, comments, and mentions.
                 </p>
               </div>
-              <Switch checked={!pauseNotifications} disabled={pauseNotifications} />
+              <Switch 
+                checked={settings.notifications.interactions} 
+                onCheckedChange={(val) => handleNotificationChange('interactions', val)}
+                disabled={isUpdating}
+              />
             </div>
           </CardContent>
         </Card>
@@ -283,8 +324,9 @@ export function SettingsPage() {
               </div>
               <Switch
                 id="private-account"
-                checked={privateAccount}
-                onCheckedChange={handlePrivateToggle}
+                checked={settings.privacy.privateAccount}
+                onCheckedChange={(val) => handlePrivacyChange('privateAccount', val)}
+                disabled={isUpdating}
               />
             </div>
             <div className="space-y-4 pt-2">

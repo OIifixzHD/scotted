@@ -3,6 +3,20 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+export interface UserSettings {
+  notifications: {
+    paused: boolean;
+    newFollowers: boolean;
+    interactions: boolean;
+  };
+  privacy: {
+    privateAccount: boolean;
+  };
+  content: {
+    autoplay: boolean;
+    reducedMotion: boolean;
+  };
+}
 export interface User {
   id: string;
   name: string; // Username/Handle (Immutable)
@@ -27,6 +41,7 @@ export interface User {
   notInterestedPostIds?: string[];
   createdAt?: number; // Added for analytics
   directMessages?: Record<string, string>; // targetUserId -> chatId
+  settings?: UserSettings;
 }
 export interface Comment {
   id: string;
@@ -74,6 +89,9 @@ export interface Chat {
   type?: 'dm' | 'group';
   lastMessage?: ChatMessage;
   updatedAt?: number;
+  visibility?: 'public' | 'private';
+  canType?: 'all' | 'participants' | 'admin';
+  ownerId?: string;
 }
 export interface ChatMessage {
   id: string;

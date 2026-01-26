@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2, MessageCircle } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2, MessageCircle, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -56,6 +56,10 @@ export function ProfilePage() {
   // Determine if following based on currentUser's followingIds
   const isFollowing = currentUser?.followingIds?.includes(user?.id || '') || false;
   const isBlocked = currentUser?.blockedUserIds?.includes(user?.id || '') || false;
+  const isOwnProfile = currentUser?.id === user?.id;
+  // Privacy Check
+  const isPrivate = user?.settings?.privacy?.privateAccount;
+  const canViewContent = isOwnProfile || !isPrivate || isFollowing || user?.isAdmin;
   const handleFollow = async () => {
     if (!id || !user || !currentUser) {
         if (!currentUser) toast.error("Please log in to follow");
@@ -141,10 +145,8 @@ export function ProfilePage() {
         setIsVideoModalOpen(false);
         setSelectedVideoIndex(null);
     } else if (selectedVideoIndex >= newPosts.length) {
-        // If we deleted the last item, move to the new last item
         setSelectedVideoIndex(newPosts.length - 1);
     }
-    // If we deleted a middle item, the index now points to the next item, which is correct
   };
   if (loading) {
     return <ProfileSkeleton />;
@@ -161,7 +163,6 @@ export function ProfilePage() {
       </div>
     );
   }
-  // Check if user is banned
   if (user.bannedUntil && user.bannedUntil > Date.now()) {
     return (
       <div className="h-full overflow-y-auto">
@@ -179,7 +180,6 @@ export function ProfilePage() {
       </div>
     );
   }
-  const isOwnProfile = currentUser?.id === user.id;
   const handle = user.name.toLowerCase().replace(/\s/g, '');
   return (
     <div className="h-full overflow-y-auto">
@@ -194,7 +194,6 @@ export function ProfilePage() {
             )}>
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-              {/* Animated Pulse Overlay */}
               <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent animate-pulse pointer-events-none"></div>
             </div>
             {/* Profile Info */}
@@ -220,16 +219,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -238,8 +237,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button
-                            variant="destructive"
+                          <Button 
+                            variant="destructive" 
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -249,15 +248,15 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button
+                          <Button 
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
                           >
                             {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                           </Button>
-                          <Button
-                            variant="outline"
+                          <Button 
+                            variant="outline" 
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={handleMessage}
                             disabled={isMessageLoading}
@@ -265,9 +264,9 @@ export function ProfilePage() {
                             {isMessageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
                             Message
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
                             className="border border-white/10 text-white hover:bg-white/5"
                             onClick={() => setIsShareDialogOpen(true)}
                           >
@@ -291,9 +290,9 @@ export function ProfilePage() {
                         </>
                       )}
                       {isOwnProfile && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
                           className="border border-white/10 text-white hover:bg-white/5"
                           onClick={() => setIsShareDialogOpen(true)}
                         >
@@ -317,9 +316,9 @@ export function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <a
-                        href={`https://pulse.aurelia.so/${handle}`}
-                        target="_blank"
+                      <a 
+                        href={`https://pulse.aurelia.so/${handle}`} 
+                        target="_blank" 
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
@@ -349,50 +348,62 @@ export function ProfilePage() {
               </div>
             </div>
           </div>
-          {/* Content Tabs */}
-          <Tabs defaultValue="videos" className="w-full">
-            <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-              <TabsTrigger
-                value="videos"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
-              >
-                Videos
-              </TabsTrigger>
-              <TabsTrigger
-                value="liked"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
-              >
-                Liked
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="videos" className="mt-0">
-              <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
-            </TabsContent>
-            <TabsContent value="liked" className="mt-0">
-              {isOwnProfile ? (
-                <LikedVideosTab userId={user.id} />
-              ) : (
-                <div className="py-20 text-center text-muted-foreground">
-                  <p>Liked videos are private.</p>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+          {/* Content Tabs or Private Message */}
+          {canViewContent ? (
+            <Tabs defaultValue="videos" className="w-full">
+              <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
+                <TabsTrigger 
+                  value="videos" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
+                >
+                  Videos
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="liked" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
+                >
+                  Liked
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="videos" className="mt-0">
+                <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
+              </TabsContent>
+              <TabsContent value="liked" className="mt-0">
+                {isOwnProfile ? (
+                  <LikedVideosTab userId={user.id} />
+                ) : (
+                  <div className="py-20 text-center text-muted-foreground">
+                    <p>Liked videos are private.</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 border-t border-white/10">
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                <Lock className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">This Account is Private</h3>
+              <p className="text-muted-foreground text-center max-w-sm">
+                Follow this account to see their photos and videos.
+              </p>
+            </div>
+          )}
         </div>
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          currentUser={currentUser}
+        <EditProfileDialog 
+          open={isEditDialogOpen} 
+          onOpenChange={setIsEditDialogOpen} 
+          currentUser={currentUser} 
         />
       )}
       {/* Report Dialog */}
       {user && (
-        <ReportDialog
-          open={isReportDialogOpen}
-          onClose={() => setIsReportDialogOpen(false)}
+        <ReportDialog 
+          open={isReportDialogOpen} 
+          onClose={() => setIsReportDialogOpen(false)} 
           targetId={user.id}
           targetType="user"
           targetName={user.name}

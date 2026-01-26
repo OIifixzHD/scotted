@@ -3,11 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Search, UserPlus, MessageSquarePlus } from "lucide-react";
+import { Loader2, Search, UserPlus, MessageSquarePlus, Lock, Globe } from "lucide-react";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { Chat, User } from '@shared/types';
 import { useAuth } from '@/context/AuthContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 interface NewChatDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -19,14 +21,15 @@ export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDial
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  // New Chat Settings
+  const [visibility, setVisibility] = useState<'public' | 'private'>('private');
+  const [canType, setCanType] = useState<'all' | 'participants' | 'admin'>('all');
   useEffect(() => {
     if (open) {
       const fetchUsers = async () => {
         setIsLoading(true);
         try {
-          // Fetch users to select from (limit 100 for better selection pool)
           const res = await api<{ items: User[] }>('/api/users?limit=100');
-          // Filter out current user
           setUsers(res.items.filter(u => u.id !== currentUser?.id));
         } catch (error) {
           console.error(error);
@@ -37,6 +40,8 @@ export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDial
       };
       fetchUsers();
       setSearchQuery('');
+      setVisibility('private');
+      setCanType('all');
     }
   }, [open, currentUser]);
   const filteredUsers = users.filter(u =>
@@ -44,15 +49,18 @@ export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDial
     (u.displayName && u.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   const handleUserSelect = async (selectedUser: User) => {
-    if (isCreating) return;
+    if (isCreating || !currentUser) return;
     setIsCreating(true);
     try {
-      // Create a chat with a title indicating the participants
-      // In a real app, this would be a DM type chat with participant IDs
       const chatTitle = `Chat with ${selectedUser.displayName || selectedUser.name}`;
       const newChat = await api<Chat>('/api/chats', {
         method: 'POST',
-        body: JSON.stringify({ title: chatTitle })
+        body: JSON.stringify({ 
+          title: chatTitle,
+          visibility,
+          canType,
+          ownerId: currentUser.id
+        })
       });
       toast.success(`Started chat with ${selectedUser.name}`);
       onChatCreated(newChat);
@@ -73,9 +81,39 @@ export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDial
             New Message
           </DialogTitle>
           <DialogDescription>
-            Select a user to start a conversation.
+            Configure settings and select a user to start a conversation.
           </DialogDescription>
         </DialogHeader>
+        {/* Settings Section */}
+        <div className="p-4 bg-secondary/10 border-b border-white/10 space-y-3">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Visibility</Label>
+              <Select value={visibility} onValueChange={(v: any) => setVisibility(v)}>
+                <SelectTrigger className="h-8 text-xs bg-secondary/50 border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="public">Public</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Who Can Type</Label>
+              <Select value={canType} onValueChange={(v: any) => setCanType(v)}>
+                <SelectTrigger className="h-8 text-xs bg-secondary/50 border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Everyone</SelectItem>
+                  <SelectItem value="participants">Participants</SelectItem>
+                  <SelectItem value="admin">Admin Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
         <div className="p-4 border-b border-white/10 bg-secondary/20">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

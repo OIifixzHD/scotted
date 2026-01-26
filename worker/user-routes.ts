@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity, SystemEntity, SystemSettings } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay, Chat } from "@shared/types";
+import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay, Chat, UserSettings } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- SYSTEM SETTINGS ---
@@ -12,7 +12,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, settings);
   });
   app.put('/api/admin/system', async (c) => {
-    // In a real app, verify admin token here
     const updates = await c.req.json() as Partial<SystemSettings>;
     const system = new SystemEntity(c.env, 'global-settings');
     const updated = await system.updateSettings(updates);
@@ -20,7 +19,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   // --- AUTHENTICATION ---
   app.post('/api/auth/signup', async (c) => {
-    // Check System Settings
     const system = new SystemEntity(c.env, 'global-settings');
     const settings = await system.getSettings();
     if (settings.disableSignups) {
@@ -37,8 +35,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const newUser: User = {
       id: crypto.randomUUID(),
       name: username.trim(),
-      displayName: username.trim(), // Initialize displayName with username
-      password: password.trim(), // In a real app, hash this!
+      displayName: username.trim(),
+      password: password.trim(),
       bio: bio?.trim() || 'New to Pulse',
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
       followers: 0,
@@ -54,11 +52,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       bannedBy: "",
       blockedUserIds: [],
       notInterestedPostIds: [],
-      createdAt: Date.now(), // Track creation time for analytics
-      directMessages: {}
+      createdAt: Date.now(),
+      directMessages: {},
+      settings: {
+        notifications: { paused: false, newFollowers: true, interactions: true },
+        privacy: { privateAccount: false },
+        content: { autoplay: true, reducedMotion: false }
+      }
     };
     const created = await UserEntity.create(c.env, newUser);
-    // Don't return password
     const { password: _, ...safeUser } = created;
     return ok(c, safeUser);
   });
@@ -76,7 +78,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, 'User not found');
       }
     }
-    // Check if banned
     if (user.bannedUntil && user.bannedUntil > Date.now()) {
         return bad(c, `Account suspended until ${new Date(user.bannedUntil).toLocaleDateString()}. Reason: ${user.banReason || 'Violation of terms'}`);
     }
@@ -85,10 +86,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   // --- ADMIN ---
   app.get('/api/admin/stats', async (c) => {
-    // In a real app, verify admin token here or rely on middleware
     await UserEntity.ensureSeed(c.env);
     await PostEntity.ensureSeed(c.env);
-    // Fetch all data (limit high for demo)
     const [usersPage, postsPage, notificationsPage] = await Promise.all([
         UserEntity.list(c.env, null, 10000),
         PostEntity.list(c.env, null, 10000),
@@ -103,26 +102,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const totalLikes = posts.reduce((acc, p) => acc + (p.likes || 0), 0);
     const totalComments = posts.reduce((acc, p) => acc + (p.comments || 0), 0);
     const totalEngagement = totalLikes + totalComments;
-    // Real-time Aggregation for Charts (Last 7 Days)
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
       days.push(d);
     }
-    // Initialize chart data structures
     const userGrowth: ChartDataPoint[] = days.map(d => ({
         name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateStr: d.toDateString(), // Helper for matching
+        dateStr: d.toDateString(),
         users: 0
     }));
     const activity: ChartDataPoint[] = days.map(d => ({
         name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateStr: d.toDateString(), // Helper for matching
+        dateStr: d.toDateString(),
         likes: 0,
         comments: 0
     }));
-    // Aggregate User Growth
     users.forEach(u => {
         if (u.createdAt) {
             const d = new Date(u.createdAt).toDateString();
@@ -132,7 +128,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
         }
     });
-    // Aggregate Activity (Likes & Comments from Notifications)
     notifications.forEach(n => {
         if (n.createdAt) {
             const d = new Date(n.createdAt).toDateString();
@@ -143,7 +138,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
         }
     });
-    // Clean up helper properties
     userGrowth.forEach(p => delete p.dateStr);
     activity.forEach(p => delete p.dateStr);
     const stats: AdminStats = {
@@ -158,13 +152,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     return ok(c, stats);
   });
-  // NEW: Admin Posts Endpoint
   app.get('/api/admin/posts', async (c) => {
     await PostEntity.ensureSeed(c.env);
-    // Fetch latest 100 posts for admin review
     const page = await PostEntity.list(c.env, null, 100);
     const posts = page.items;
-    // Hydrate with user data
     const hydratedPosts = await Promise.all(posts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -176,7 +167,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    // Sort by newest first
     hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
     return ok(c, { items: hydratedPosts });
   });
@@ -199,7 +189,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (bannedBy !== undefined) updates.bannedBy = bannedBy;
     if (bio !== undefined) updates.bio = bio;
     if (avatar !== undefined) updates.avatar = avatar;
-    // Admin can still force update name if absolutely necessary, but generally discouraged
     if (name !== undefined) updates.name = name;
     const updated = await userEntity.updateAdminStats(updates);
     const { password: _, ...safeUser } = updated;
@@ -216,7 +205,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/admin/reports', async (c) => {
     const reports = await ReportEntity.listAll(c.env);
-    // Hydrate reports
     const hydrated = await Promise.all(reports.map(async (r) => {
         const reporterEntity = new UserEntity(c.env, r.reporterId);
         let reporter: User | undefined;
@@ -263,7 +251,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       UserEntity.search(c.env, query),
       PostEntity.search(c.env, query)
     ]);
-    // Hydrate posts with user data
     const hydratedPosts = await Promise.all(posts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -275,7 +262,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    // Strip passwords from users
     const safeUsers = users.map(u => {
         const { password, ...rest } = u;
         return rest;
@@ -285,11 +271,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/feed/trending', async (c) => {
     await PostEntity.ensureSeed(c.env);
     await UserEntity.ensureSeed(c.env);
-    // Get all posts (limit 100 for demo)
     const page = await PostEntity.list(c.env, null, 100);
-    // Sort by likes descending
     const sortedPosts = page.items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-    // Hydrate
     const hydratedPosts = await Promise.all(sortedPosts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -303,16 +286,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, { items: hydratedPosts });
   });
-  // --- TAGS ---
   app.get('/api/tags/:tagName', async (c) => {
     const tagName = decodeURIComponent(c.req.param('tagName')).toLowerCase();
     await PostEntity.ensureSeed(c.env);
-    // Fetch a large batch to filter
     const page = await PostEntity.list(c.env, null, 1000);
     const taggedPosts = page.items.filter(p => 
       p.tags?.some(t => t.toLowerCase() === tagName)
     );
-    // Hydrate user data
     const hydratedPosts = await Promise.all(taggedPosts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -324,7 +304,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    // Sort by newest
     hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
     return ok(c, {
       tagName,
@@ -332,13 +311,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       posts: hydratedPosts
     });
   });
-  // --- SOUNDS ---
   app.get('/api/sounds/trending', async (c) => {
     await PostEntity.ensureSeed(c.env);
-    // Fetch a batch of recent posts to aggregate sound usage
     const page = await PostEntity.list(c.env, null, 500);
     const posts = page.items;
-    // Aggregate counts
     const soundCounts = new Map<string, { id: string; name: string; count: number }>();
     for (const post of posts) {
         const soundId = post.soundId || 'default-sound';
@@ -350,26 +326,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             soundCounts.set(soundId, { id: soundId, name: soundName, count: 1 });
         }
     }
-    // Convert to array and sort by count descending
     const trendingSounds = Array.from(soundCounts.values())
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10); // Top 10
+        .slice(0, 10);
     return ok(c, trendingSounds);
   });
   app.get('/api/sounds/:id', async (c) => {
     const id = c.req.param('id');
-    // Mock sound details
     const sound = {
         id,
         name: id === 'default-sound' ? 'Original Audio' : `Sound Track ${id.substring(0, 4)}`,
         playCount: 1200000,
         artist: 'Pulse Artist'
     };
-    // Reuse trending logic for posts to simulate videos using this sound
     await PostEntity.ensureSeed(c.env);
     await UserEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 50);
-    // Hydrate
     const hydratedPosts = await Promise.all(page.items.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
@@ -389,18 +361,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const cq = c.req.query('cursor');
     const lq = c.req.query('limit');
     const page = await UserEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    // Strip passwords
     const safeItems = page.items.map(u => {
       const { password, ...rest } = u;
       return rest;
     });
     return ok(c, { ...page, items: safeItems });
   });
-  // Suggested Users (Who to Follow)
   app.get('/api/users/suggested', async (c) => {
     const userId = c.req.query('userId');
     await UserEntity.ensureSeed(c.env);
-    // Get current user's following list if logged in
     let followingIds: string[] = [];
     if (userId) {
         const currentUserEntity = new UserEntity(c.env, userId);
@@ -409,21 +378,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             followingIds = currentUser.followingIds || [];
         }
     }
-    // Fetch a batch of users to filter from
     const page = await UserEntity.list(c.env, null, 100);
-    // Filter out:
-    // 1. The current user themselves
-    // 2. Users already followed
     const candidates = page.items.filter(u => {
         if (userId && u.id === userId) return false;
         if (followingIds.includes(u.id)) return false;
         return true;
     });
-    // Sort by popularity (followers count) descending
     candidates.sort((a, b) => (b.followers || 0) - (a.followers || 0));
-    // Take top 10
     const suggestions = candidates.slice(0, 10);
-    // Strip passwords
     const safeSuggestions = suggestions.map(u => {
         const { password, ...rest } = u;
         return rest;
@@ -441,9 +403,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    // We do NOT extract 'name' here to prevent username changes
-    // REMOVED avatarDecoration from allowed fields for user self-update
-    const { displayName, bio, avatar, bannerStyle } = await c.req.json() as { displayName?: string; bio?: string; avatar?: string; bannerStyle?: string };
+    const { displayName, bio, avatar, bannerStyle, settings } = await c.req.json() as { 
+        displayName?: string; 
+        bio?: string; 
+        avatar?: string; 
+        bannerStyle?: string;
+        settings?: UserSettings;
+    };
     if (displayName !== undefined && !displayName.trim()) {
       return bad(c, 'Display Name cannot be empty');
     }
@@ -451,24 +417,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
     }
-    const updated = await userEntity.mutate(s => ({
-      ...s,
-      displayName: displayName?.trim() || s.displayName || s.name, // Update display name
-      bio: bio?.trim() ?? s.bio,
-      avatar: avatar || s.avatar, // Keep existing if not provided
-      bannerStyle: bannerStyle || s.bannerStyle
-    }));
+    const updated = await userEntity.mutate(s => {
+        let newSettings = s.settings;
+        if (settings) {
+            // Shallow merge top-level setting groups to preserve other groups if not sent
+            newSettings = {
+                notifications: { ...s.settings?.notifications, ...settings.notifications },
+                privacy: { ...s.settings?.privacy, ...settings.privacy },
+                content: { ...s.settings?.content, ...settings.content },
+            };
+        }
+        return {
+            ...s,
+            displayName: displayName?.trim() || s.displayName || s.name,
+            bio: bio?.trim() ?? s.bio,
+            avatar: avatar || s.avatar,
+            bannerStyle: bannerStyle || s.bannerStyle,
+            settings: newSettings
+        };
+    });
     const { password, ...safeUser } = updated;
     return ok(c, safeUser);
   });
-  // Delete User (Self)
   app.delete('/api/users/:id', async (c) => {
     const id = c.req.param('id');
     const { currentUserId } = await c.req.json() as { currentUserId?: string };
     if (!currentUserId) {
         return bad(c, 'currentUserId required');
     }
-    // Check authorization: User can delete themselves, or Admin can delete anyone
     const requester = new UserEntity(c.env, currentUserId);
     if (!await requester.exists()) return bad(c, 'Requester not found');
     const requesterData = await requester.getState();
@@ -482,7 +458,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await UserEntity.delete(c.env, id);
     return ok(c, { deleted: true });
   });
-  // Toggle Follow
   app.post('/api/users/:id/follow', async (c) => {
     const targetId = c.req.param('id');
     const { currentUserId } = await c.req.json() as { currentUserId?: string };
@@ -492,18 +467,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await currentUserEntity.exists()) return notFound(c, 'Current user not found');
     const targetUserEntity = new UserEntity(c.env, targetId);
     if (!await targetUserEntity.exists()) return notFound(c, 'Target user not found');
-    // Mutate current user (update following list and count)
     const updatedCurrentUser = await currentUserEntity.mutate(user => {
         const followingIds = user.followingIds || [];
         const isFollowing = followingIds.includes(targetId);
         let newFollowingIds;
         let followingCountChange = 0;
         if (isFollowing) {
-            // Unfollow
             newFollowingIds = followingIds.filter(id => id !== targetId);
             followingCountChange = -1;
         } else {
-            // Follow
             newFollowingIds = [...followingIds, targetId];
             followingCountChange = 1;
         }
@@ -513,20 +485,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             following: Math.max(0, (user.following || 0) + followingCountChange)
         };
     });
-    // Mutate target user (update followers count)
     await targetUserEntity.mutate(user => {
         const isFollowingNow = updatedCurrentUser.followingIds?.includes(targetId);
         const change = isFollowingNow ? 1 : -1;
         const newFollowers = Math.max(0, (user.followers || 0) + change);
-        // Automatic Verification Logic
         let newBadge = user.badge;
         if (newFollowers > 5) {
-            // Only upgrade if they have no badge or 'none'
             if (!user.badge || user.badge === 'none') {
                 newBadge = 'verified-pro';
             }
         } else {
-            // Downgrade only if they were verified-pro (don't remove admin/owner badges)
             if (user.badge === 'verified-pro') {
                 newBadge = 'none';
             }
@@ -537,8 +505,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             badge: newBadge
         };
     });
-    // Create Notification if followed
-    if (updatedCurrentUser.followingIds?.includes(targetId)) {
+    // Check target user settings before notifying
+    const targetUser = await targetUserEntity.getState();
+    const notificationsPaused = targetUser.settings?.notifications?.paused;
+    const newFollowersNotif = targetUser.settings?.notifications?.newFollowers !== false; // Default true
+    if (updatedCurrentUser.followingIds?.includes(targetId) && !notificationsPaused && newFollowersNotif) {
         const notif: Notification = {
             id: crypto.randomUUID(),
             userId: targetId,
@@ -552,7 +523,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { password, ...safeUser } = updatedCurrentUser;
     return ok(c, safeUser);
   });
-  // Block User
   app.post('/api/users/:id/block', async (c) => {
     const targetId = c.req.param('id');
     const { currentUserId } = await c.req.json() as { currentUserId?: string };
@@ -563,7 +533,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const result = await currentUserEntity.toggleBlock(targetId);
     return ok(c, result);
   });
-  // Get Blocked Users
   app.get('/api/users/blocked', async (c) => {
     const userId = c.req.query('userId');
     if (!userId) return bad(c, 'userId required');
@@ -572,7 +541,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const user = await userEntity.getState();
     const blockedIds = user.blockedUserIds || [];
     if (blockedIds.length === 0) return ok(c, []);
-    // Fetch details for blocked users
     const blockedUsers = await Promise.all(blockedIds.map(async (id) => {
         const uEntity = new UserEntity(c.env, id);
         if (await uEntity.exists()) {
@@ -584,7 +552,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, blockedUsers.filter(Boolean));
   });
-  // Report User
   app.post('/api/users/:id/report', async (c) => {
     const targetId = c.req.param('id');
     const { reporterId, reason, description } = await c.req.json() as { reporterId: string, reason: string, description?: string };
@@ -602,7 +569,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const created = await ReportEntity.create(c.env, report);
     return ok(c, created);
   });
-  // Not Interested
   app.post('/api/users/:id/not-interested', async (c) => {
     const id = c.req.param('id');
     const { postId } = await c.req.json() as { postId: string };
@@ -628,7 +594,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 500);
     const likedPosts = page.items.filter(p => p.likedBy?.includes(userId));
-    // Hydrate posts with their authors
     const hydrated = await Promise.all(likedPosts.map(async (post) => {
         if (post.userId) {
             const uEntity = new UserEntity(c.env, post.userId);
@@ -642,13 +607,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, { items: hydrated });
   });
-  // Get Saved Posts
   app.get('/api/users/:id/saved', async (c) => {
     const userId = c.req.param('id');
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 1000);
     const savedPosts = page.items.filter(p => p.savedBy?.includes(userId));
-    // Hydrate
     const hydrated = await Promise.all(savedPosts.map(async (post) => {
         if (post.userId) {
             const uEntity = new UserEntity(c.env, post.userId);
@@ -663,13 +626,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydrated });
   });
   // --- FEED / POSTS ---
-  // Get Single Post
   app.get('/api/posts/:id', async (c) => {
     const id = c.req.param('id');
     const postEntity = new PostEntity(c.env, id);
     if (!await postEntity.exists()) return notFound(c, 'Post not found');
     const post = await postEntity.getState();
-    // Hydrate user
     if (post.userId) {
         const userEntity = new UserEntity(c.env, post.userId);
         if (await userEntity.exists()) {
@@ -694,9 +655,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             hiddenPostIds = u.notInterestedPostIds || [];
         }
     }
-    // Fetch more posts to ensure we have enough valid ones
     const page = await PostEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : 20);
-    // Filter hidden posts
     const visibleItems = page.items.filter(p => !hiddenPostIds.includes(p.id));
     const hydratedPosts = await Promise.all(visibleItems.map(async (post) => {
         if (post.userId) {
@@ -709,12 +668,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    // Smart Feed Algorithm: Sort by Engagement Score
-    // Score = (Likes * 2) + (Comments * 3) + (Views * 0.5)
     hydratedPosts.sort((a, b) => {
         const scoreA = (a.likes * 2) + (a.comments * 3) + ((a.views || 0) * 0.5);
         const scoreB = (b.likes * 2) + (b.comments * 3) + ((b.views || 0) * 0.5);
-        // If scores are equal, fallback to recency
         if (scoreA === scoreB) {
             return b.createdAt - a.createdAt;
         }
@@ -722,7 +678,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     return ok(c, { ...page, items: hydratedPosts });
   });
-  // Following Feed
   app.get('/api/feed/following', async (c) => {
     const userId = c.req.query('userId');
     if (!userId) return bad(c, 'userId required');
@@ -733,11 +688,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (followingIds.length === 0) {
         return ok(c, { items: [] });
     }
-    // Fetch posts and filter by followingIds
     await PostEntity.ensureSeed(c.env);
-    const page = await PostEntity.list(c.env, null, 500); // Fetch larger batch to filter
+    const page = await PostEntity.list(c.env, null, 500);
     const followingPosts = page.items.filter(p => followingIds.includes(p.userId));
-    // Hydrate
     const hydratedPosts = await Promise.all(followingPosts.map(async (post) => {
         if (post.userId) {
             const uEntity = new UserEntity(c.env, post.userId);
@@ -749,12 +702,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    // Sort by newest
     hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
     return ok(c, { items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
-    // Check System Settings
     const system = new SystemEntity(c.env, 'global-settings');
     const settings = await system.getSettings();
     if (settings.readOnlyMode) {
@@ -769,27 +720,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const userId = body['userId'] as string;
         const soundId = body['soundId'] as string || 'default-sound';
         const soundName = body['soundName'] as string || 'Original Audio';
-        const filter = body['filter'] as string || 'none'; // Extract filter
-        const overlaysStr = body['overlays'] as string | undefined; // Extract overlays string
+        const filter = body['filter'] as string || 'none';
+        const overlaysStr = body['overlays'] as string | undefined;
         if (!userId) {
             return bad(c, 'userId required');
         }
         const newPostId = crypto.randomUUID();
         let servedUrl = '';
-        // Simulation Mode: Use provided URL if present (bypasses file upload)
         if (demoUrl && typeof demoUrl === 'string' && demoUrl.length > 0) {
             servedUrl = demoUrl;
         } else {
-            // Standard Mode: Process file upload
             if (!videoFile || !(videoFile instanceof File)) {
                 return bad(c, 'videoFile required and must be a file');
             }
             const postEntity = new PostEntity(c.env, newPostId);
-            // Save binary directly from stream
             servedUrl = await postEntity.saveVideoBinary(videoFile.stream(), videoFile.type || 'video/mp4');
         }
         const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
-        // Parse overlays
         const overlays: TextOverlay[] = overlaysStr ? JSON.parse(overlaysStr) : [];
         const newPost = {
             id: newPostId,
@@ -808,8 +755,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             commentsList: [],
             soundId,
             soundName,
-            filter, // Save filter
-            overlays // Save overlays
+            filter,
+            overlays
         };
         const created = await PostEntity.create(c.env, newPost);
         return ok(c, created);
@@ -818,7 +765,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, 'Failed to process upload: ' + (e instanceof Error ? e.message : String(e)));
     }
   });
-  // Serve Video Content (Streaming)
   app.get('/api/content/video/:id', async (c) => {
     const id = c.req.param('id');
     const postEntity = new PostEntity(c.env, id);
@@ -829,7 +775,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       }
       const { size: totalSize, mimeType, format } = meta;
       const rangeHeader = c.req.header('Range');
-      // Default to full content if no range (though browsers usually send range for video)
       let start = 0;
       let end = totalSize - 1;
       if (rangeHeader) {
@@ -845,14 +790,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
         }
       }
-      // Validate range
       if (start >= totalSize || end >= totalSize) {
          return c.text('Requested Range Not Satisfiable', 416, {
              'Content-Range': `bytes */${totalSize}`
          });
       }
-      // Determine chunk size based on format
-      // Binary format uses 128KB, Legacy uses 100KB
       const chunkSize = (format === 'binary') ? 128 * 1024 : 100 * 1024;
       const contentLength = end - start + 1;
       const stream = new ReadableStream({
@@ -868,20 +810,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             }
             let sliceStart = 0;
             let sliceEnd = chunkData.length;
-            // Adjust start of first chunk
             if (i === startChunk) {
               sliceStart = start - currentPos;
             }
-            // Adjust end of last chunk
             if (i === endChunk) {
-               // The end requested is inclusive index.
-               // currentPos is start of this chunk.
-               // end is the absolute index of the last byte we want.
-               // relative end index = end - currentPos
-               // slice expects end index to be exclusive, so +1
                sliceEnd = (end - currentPos) + 1;
             }
-            // Safety clamp
             sliceStart = Math.max(0, sliceStart);
             sliceEnd = Math.min(chunkData.length, sliceEnd);
             if (sliceStart < sliceEnd) {
@@ -907,7 +841,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return c.json({ success: false, error: 'Failed to load video' }, 500);
     }
   });
-  // Update Post (Caption/Tags)
   app.put('/api/posts/:id', async (c) => {
     const id = c.req.param('id');
     const { userId, caption, tags } = await c.req.json() as { userId?: string; caption?: string; tags?: string[] };
@@ -915,9 +848,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const postEntity = new PostEntity(c.env, id);
     if (!await postEntity.exists()) return notFound(c, 'Post not found');
     const post = await postEntity.getState();
-    // Check ownership
     if (post.userId !== userId) {
-        // Check if admin
         const userEntity = new UserEntity(c.env, userId);
         if (!await userEntity.exists()) return bad(c, 'User not found');
         const user = await userEntity.getState();
@@ -928,7 +859,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         caption: caption !== undefined ? caption : s.caption,
         tags: tags !== undefined ? tags : s.tags
     }));
-    // Hydrate user for consistency in frontend
     const authorEntity = new UserEntity(c.env, updated.userId);
     const authorData = await authorEntity.getState();
     const { password, ...safeAuthor } = authorData;
@@ -943,7 +873,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const post = await postEntity.getState();
     const userEntity = new UserEntity(c.env, userId);
     const user = await userEntity.getState();
-    // Allow deletion if user is owner OR user is admin
     if (post.userId !== userId && !user.isAdmin) {
         return bad(c, 'Unauthorized');
     }
@@ -974,20 +903,25 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const postEntity = new PostEntity(c.env, id);
     if (!await postEntity.exists()) return notFound(c, 'Post not found');
     const result = await postEntity.toggleLike(userId);
-    // Create Notification if liked (and not self-like)
     if (result.isLiked) {
         const post = await postEntity.getState();
         if (post.userId !== userId) {
-            const notif: Notification = {
-                id: crypto.randomUUID(),
-                userId: post.userId,
-                actorId: userId,
-                type: 'like',
-                postId: id,
-                read: false,
-                createdAt: Date.now()
-            };
-            await NotificationEntity.create(c.env, notif);
+            const targetUserEntity = new UserEntity(c.env, post.userId);
+            const targetUser = await targetUserEntity.getState();
+            const notificationsPaused = targetUser.settings?.notifications?.paused;
+            const interactionsNotif = targetUser.settings?.notifications?.interactions !== false;
+            if (!notificationsPaused && interactionsNotif) {
+                const notif: Notification = {
+                    id: crypto.randomUUID(),
+                    userId: post.userId,
+                    actorId: userId,
+                    type: 'like',
+                    postId: id,
+                    read: false,
+                    createdAt: Date.now()
+                };
+                await NotificationEntity.create(c.env, notif);
+            }
         }
     }
     return ok(c, result);
@@ -1029,25 +963,29 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!userId || !text?.trim()) return bad(c, 'userId and text required');
     const postEntity = new PostEntity(c.env, id);
     if (!await postEntity.exists()) return notFound(c, 'Post not found');
-    // Get user details for snapshot
     const userEntity = new UserEntity(c.env, userId);
     if (!await userEntity.exists()) return bad(c, 'User not found');
     const userData = await userEntity.getState();
     const { password, ...safeUser } = userData;
     const comment = await postEntity.addComment(userId, text.trim(), safeUser);
-    // Create Notification (if not self-comment)
     const post = await postEntity.getState();
     if (post.userId !== userId) {
-        const notif: Notification = {
-            id: crypto.randomUUID(),
-            userId: post.userId,
-            actorId: userId,
-            type: 'comment',
-            postId: id,
-            read: false,
-            createdAt: Date.now()
-        };
-        await NotificationEntity.create(c.env, notif);
+        const targetUserEntity = new UserEntity(c.env, post.userId);
+        const targetUser = await targetUserEntity.getState();
+        const notificationsPaused = targetUser.settings?.notifications?.paused;
+        const interactionsNotif = targetUser.settings?.notifications?.interactions !== false;
+        if (!notificationsPaused && interactionsNotif) {
+            const notif: Notification = {
+                id: crypto.randomUUID(),
+                userId: post.userId,
+                actorId: userId,
+                type: 'comment',
+                postId: id,
+                read: false,
+                createdAt: Date.now()
+            };
+            await NotificationEntity.create(c.env, notif);
+        }
     }
     return ok(c, comment);
   });
@@ -1061,7 +999,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const post = await postEntity.getState();
     const comment = post.commentsList?.find(c => c.id === commentId);
     if (!comment) return notFound(c, 'Comment not found');
-    // Authorization: Comment Author OR Post Author OR Admin
     let isAuthorized = false;
     if (comment.userId === userId) isAuthorized = true;
     else if (post.userId === userId) isAuthorized = true;
@@ -1076,7 +1013,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const deleted = await postEntity.deleteComment(commentId);
     return ok(c, { deleted });
   });
-  // Like Comment
   app.post('/api/posts/:id/comments/:commentId/like', async (c) => {
     const id = c.req.param('id');
     const commentId = c.req.param('commentId');
@@ -1093,7 +1029,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const userId = c.req.query('userId');
     if (!userId) return bad(c, 'userId required');
     const notifications = await NotificationEntity.listForUser(c.env, userId);
-    // Hydrate notifications with actor and post data
     const hydrated = await Promise.all(notifications.map(async (n) => {
         const actorEntity = new UserEntity(c.env, n.actorId);
         let actor: User | undefined;
@@ -1113,11 +1048,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, hydrated);
   });
-  // NEW: Get Unread Notification Count
   app.get('/api/notifications/unread-count', async (c) => {
     const userId = c.req.query('userId');
     if (!userId) return bad(c, 'userId required');
-    const notifications = await NotificationEntity.listForUser(c.env, userId, 100); // Check last 100
+    const notifications = await NotificationEntity.listForUser(c.env, userId, 100);
     const count = notifications.filter(n => !n.read).length;
     return ok(c, { count });
   });
@@ -1129,53 +1063,90 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const lq = c.req.query('limit');
     const userId = c.req.query('userId');
     const page = await ChatBoardEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    // Filter chats for the user if userId is provided
     if (userId) {
         const filteredItems = page.items.filter(chat => {
-            // Include if public (no participants) or user is a participant
-            return !chat.participants || chat.participants.length === 0 || chat.participants.includes(userId);
+            // Visibility Logic:
+            // 1. If user is participant, always show.
+            // 2. If visibility is 'public', show.
+            // 3. If visibility is 'private', hide unless participant.
+            const isParticipant = chat.participants?.includes(userId);
+            if (isParticipant) return true;
+            if (chat.visibility === 'public') return true;
+            return false;
         });
         return ok(c, { ...page, items: filteredItems });
     }
     return ok(c, page);
   });
   app.post('/api/chats', async (c) => {
-    const { title } = (await c.req.json()) as { title?: string };
+    const { title, visibility, canType, ownerId } = (await c.req.json()) as { 
+        title?: string; 
+        visibility?: 'public' | 'private';
+        canType?: 'all' | 'participants' | 'admin';
+        ownerId?: string; // Passed from frontend or inferred? Better to infer from context if we had auth middleware, but here we trust input or require it.
+    };
+    // In a real app, we'd get ownerId from the authenticated session.
+    // Here we assume the frontend sends the creator's ID as ownerId if available, or we might need to pass it.
+    // Let's assume the frontend sends `ownerId` (which is the creator).
     if (!title?.trim()) return bad(c, 'title required');
     const created = await ChatBoardEntity.create(c.env, {
         id: crypto.randomUUID(),
         title: title.trim(),
         messages: [],
-        participants: [],
+        participants: ownerId ? [ownerId] : [],
         type: 'group',
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        visibility: visibility || 'private',
+        canType: canType || 'all',
+        ownerId: ownerId || ''
     });
     return ok(c, { id: created.id, title: created.title });
   });
-  // Create or Get Direct Chat
+  app.put('/api/chats/:chatId', async (c) => {
+    const chatId = c.req.param('chatId');
+    const { title, visibility, canType, userId } = await c.req.json() as {
+        title?: string;
+        visibility?: 'public' | 'private';
+        canType?: 'all' | 'participants' | 'admin';
+        userId: string; // Requester ID
+    };
+    const chatEntity = new ChatBoardEntity(c.env, chatId);
+    if (!await chatEntity.exists()) return notFound(c, 'Chat not found');
+    const chat = await chatEntity.getState();
+    // Only owner can update settings
+    if (chat.ownerId && chat.ownerId !== userId) {
+        return bad(c, 'Unauthorized: Only the owner can update chat settings');
+    }
+    const updates: Partial<Chat> = {};
+    if (title !== undefined) updates.title = title;
+    if (visibility !== undefined) updates.visibility = visibility;
+    if (canType !== undefined) updates.canType = canType;
+    const updated = await chatEntity.updateSettings(updates);
+    return ok(c, updated);
+  });
   app.post('/api/chats/direct', async (c) => {
     const { currentUserId, targetUserId } = await c.req.json() as { currentUserId: string, targetUserId: string };
     if (!currentUserId || !targetUserId) return bad(c, 'currentUserId and targetUserId required');
     const currentUserEntity = new UserEntity(c.env, currentUserId);
     if (!await currentUserEntity.exists()) return notFound(c, 'Current user not found');
     const currentUser = await currentUserEntity.getState();
-    // Check if chat already exists
     const existingChatId = currentUser.directMessages?.[targetUserId];
     if (existingChatId) {
         return ok(c, { id: existingChatId });
     }
-    // Create new chat
     const newChatId = crypto.randomUUID();
     const chat = new ChatBoardEntity(c.env, newChatId);
     await chat.save({
         id: newChatId,
-        title: 'Direct Message', // Generic title, frontend handles display
+        title: 'Direct Message',
         participants: [currentUserId, targetUserId],
         type: 'dm',
         messages: [],
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
+        visibility: 'private',
+        canType: 'participants',
+        ownerId: currentUserId
     });
-    // Update both users
     await currentUserEntity.addDirectMessage(targetUserId, newChatId);
     const targetUserEntity = new UserEntity(c.env, targetUserId);
     if (await targetUserEntity.exists()) {
@@ -1192,8 +1163,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const chatId = c.req.param('chatId');
     const { userId, text, mediaUrl, mediaType } = (await c.req.json()) as { userId?: string; text?: string; mediaUrl?: string; mediaType?: 'image' | 'video' };
     if (!isStr(userId) || (!text?.trim() && !mediaUrl)) return bad(c, 'userId and content required');
-    const chat = new ChatBoardEntity(c.env, chatId);
-    if (!await chat.exists()) return notFound(c, 'chat not found');
-    return ok(c, await chat.sendMessage(userId, text?.trim() || '', mediaUrl, mediaType));
+    const chatEntity = new ChatBoardEntity(c.env, chatId);
+    if (!await chatEntity.exists()) return notFound(c, 'chat not found');
+    const chat = await chatEntity.getState();
+    // Permission Check
+    if (chat.canType === 'participants') {
+        if (!chat.participants?.includes(userId)) {
+            return c.json({ success: false, error: 'Only participants can send messages in this chat' }, 403);
+        }
+    } else if (chat.canType === 'admin') {
+        if (chat.ownerId !== userId) {
+            return c.json({ success: false, error: 'Only the admin can send messages in this chat' }, 403);
+        }
+    }
+    return ok(c, await chatEntity.sendMessage(userId, text?.trim() || '', mediaUrl, mediaType));
   });
 }
