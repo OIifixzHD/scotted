@@ -582,7 +582,9 @@ export function UploadPage() {
                     </div>
                   </div>
                 )}
-                <p className="text-sm text-muted-foreground">Preview</p>
+                <p className="text-sm text-muted-foreground">
+                  {postType === 'video' ? 'Video Preview' : 'Music Preview'}
+                </p>
               </div>
             </div>
           </Tabs>
