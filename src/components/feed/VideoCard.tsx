@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Music2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
@@ -24,6 +24,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
+  ContextMenuLabel,
 } from "@/components/ui/context-menu";
 interface VideoCardProps {
   post: Post;
@@ -51,6 +52,7 @@ export function VideoCard({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   const toggleMute = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
@@ -302,6 +304,12 @@ export function VideoCard({
       toast.error("Failed to delete post");
     }
   };
+  const handlePlaybackRateChange = (rate: number) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) {
+        videoRef.current.playbackRate = rate;
+    }
+  };
   const renderCaption = (text: string) => {
     if (!text) return [];
     // Split by whitespace but keep delimiters to preserve formatting
@@ -493,7 +501,6 @@ export function VideoCard({
             </div>
             {/* More Options */}
             <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
-            {/* Spinning Disc Removed as per user request */}
           </div>
           {/* Bottom Info Area */}
           <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
@@ -577,6 +584,16 @@ export function VideoCard({
           <LinkIcon className="mr-2 h-4 w-4" />
           Copy Link
         </ContextMenuItem>
+        <ContextMenuSeparator className="bg-white/10" />
+        <ContextMenuLabel>Playback Speed</ContextMenuLabel>
+        {[0.5, 1.0, 1.5, 2.0].map((rate) => (
+            <ContextMenuItem key={rate} onClick={() => handlePlaybackRateChange(rate)}>
+                <div className="flex items-center justify-between w-full">
+                    <span>{rate}x</span>
+                    {playbackRate === rate && <Check className="h-4 w-4" />}
+                </div>
+            </ContextMenuItem>
+        ))}
         <ContextMenuSeparator className="bg-white/10" />
         {user && !isOwner && (
           <>

@@ -32,7 +32,13 @@ export function AppSidebar(): JSX.Element {
     fetchUnread();
     // Poll every minute for updates
     const interval = setInterval(fetchUnread, 60000);
-    return () => clearInterval(interval);
+    // Listen for read event to clear badge immediately
+    const handleRead = () => setUnreadCount(0);
+    window.addEventListener('pulse:notifications-read', handleRead);
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('pulse:notifications-read', handleRead);
+    };
   }, [user]);
   return (
     <Sidebar className="border-r border-white/5 bg-sidebar/95 backdrop-blur-xl">

@@ -290,7 +290,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tagName = decodeURIComponent(c.req.param('tagName')).toLowerCase();
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 1000);
-    const taggedPosts = page.items.filter(p => 
+    const taggedPosts = page.items.filter(p =>
       p.tags?.some(t => t.toLowerCase() === tagName)
     );
     const hydratedPosts = await Promise.all(taggedPosts.map(async (post) => {
@@ -403,10 +403,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { displayName, bio, avatar, bannerStyle, settings } = await c.req.json() as { 
-        displayName?: string; 
-        bio?: string; 
-        avatar?: string; 
+    const { displayName, bio, avatar, bannerStyle, settings } = await c.req.json() as {
+        displayName?: string;
+        bio?: string;
+        avatar?: string;
         bannerStyle?: string;
         settings?: UserSettings;
     };
@@ -1055,6 +1055,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const count = notifications.filter(n => !n.read).length;
     return ok(c, { count });
   });
+  app.post('/api/notifications/mark-read', async (c) => {
+    const { userId } = await c.req.json() as { userId: string };
+    if (!userId) return bad(c, 'userId required');
+    await NotificationEntity.markAllRead(c.env, userId);
+    return ok(c, { success: true });
+  });
   // --- CHATS ---
   app.get('/api/chats', async (c) => {
     await ChatBoardEntity.ensureSeed(c.env);
@@ -1079,8 +1085,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, page);
   });
   app.post('/api/chats', async (c) => {
-    const { title, visibility, canType, ownerId } = (await c.req.json()) as { 
-        title?: string; 
+    const { title, visibility, canType, ownerId } = (await c.req.json()) as {
+        title?: string;
         visibility?: 'public' | 'private';
         canType?: 'all' | 'participants' | 'admin';
         ownerId?: string; // Passed from frontend or inferred? Better to infer from context if we had auth middleware, but here we trust input or require it.

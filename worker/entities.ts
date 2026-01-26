@@ -255,7 +255,7 @@ export class PostEntity extends IndexedEntity<Post> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
-    return posts.filter(p => 
+    return posts.filter(p =>
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
       (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
     );
@@ -459,6 +459,14 @@ export class NotificationEntity extends IndexedEntity<Notification> {
     const userNotifications = items.filter(n => n.userId === userId);
     userNotifications.sort((a, b) => b.createdAt - a.createdAt);
     return userNotifications.slice(0, limit);
+  }
+  static async markAllRead(env: Env, userId: string): Promise<void> {
+    const { items } = await this.list(env, null, 500);
+    const unread = items.filter(n => n.userId === userId && !n.read);
+    await Promise.all(unread.map(n => {
+        const entity = new NotificationEntity(env, n.id);
+        return entity.mutate(state => ({ ...state, read: true }));
+    }));
   }
 }
 // REPORT ENTITY

@@ -75,7 +75,20 @@ function ActivityView() {
         setLoading(false);
       }
     };
+    const markRead = async () => {
+        try {
+            await api('/api/notifications/mark-read', {
+                method: 'POST',
+                body: JSON.stringify({ userId: user.id })
+            });
+            // Dispatch event to update sidebar
+            window.dispatchEvent(new Event('pulse:notifications-read'));
+        } catch (e) {
+            console.error("Failed to mark notifications read", e);
+        }
+    };
     fetchNotifications();
+    markRead();
   }, [user]);
   if (!user) {
     return (
@@ -199,9 +212,9 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
       });
       setMessages(prev => [...prev, res]);
       setNewMessage('');
-      setChats(prev => prev.map(c => 
-        c.id === selectedChatId 
-          ? { ...c, lastMessage: res, updatedAt: res.ts } 
+      setChats(prev => prev.map(c =>
+        c.id === selectedChatId
+          ? { ...c, lastMessage: res, updatedAt: res.ts }
           : c
       ).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)));
       setTimeout(() => {
@@ -221,7 +234,7 @@ function MessagesView({ initialChatId }: { initialChatId: string | null }) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 500 * 1024) { 
+    if (file.size > 500 * 1024) {
       toast.error("Image too large (max 500KB for demo)");
       return;
     }
