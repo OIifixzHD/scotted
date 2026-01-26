@@ -24,7 +24,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { AdminPostTable } from '@/components/admin/AdminPostTable';
@@ -33,6 +35,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { format } from 'date-fns';
+interface SystemSettings {
+  maintenanceMode: boolean;
+  disableSignups: boolean;
+  readOnlyMode: boolean;
+  announcement: string;
+  announcementLevel: 'info' | 'warning' | 'destructive';
+}
 export function AdminPage() {
   const navigate = useNavigate();
   const { user: currentUser, isLoading: isAuthLoading } = useAuth();
@@ -49,12 +58,15 @@ export function AdminPage() {
   const [dialogMode, setDialogMode] = useState<'edit' | 'ban' | 'unban'>('edit');
   // Video Modal State
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  // Mock Platform Settings
-  const [platformSettings, setPlatformSettings] = useState({
+  // System Settings
+  const [platformSettings, setPlatformSettings] = useState<SystemSettings>({
     maintenanceMode: false,
     disableSignups: false,
-    readOnlyMode: false
+    readOnlyMode: false,
+    announcement: '',
+    announcementLevel: 'info'
   });
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   // Security Check
   useEffect(() => {
     if (!isAuthLoading) {
@@ -80,16 +92,18 @@ export function AdminPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [usersRes, reportsRes, statsRes, postsRes] = await Promise.all([
+      const [usersRes, reportsRes, statsRes, postsRes, systemRes] = await Promise.all([
         api<{ items: User[] }>('/api/users?limit=100'),
         api<Report[]>('/api/admin/reports'),
         api<AdminStats>('/api/admin/stats'),
-        api<{ items: Post[] }>('/api/admin/posts')
+        api<{ items: Post[] }>('/api/admin/posts'),
+        api<SystemSettings>('/api/system')
       ]);
       setUsers(usersRes.items);
       setReports(reportsRes);
       setStats(statsRes);
       setPosts(postsRes.items);
+      setPlatformSettings(systemRes);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -162,9 +176,42 @@ export function AdminPage() {
   const handleViewPost = (post: Post) => {
     setSelectedPost(post);
   };
-  const handleSettingChange = (key: keyof typeof platformSettings, value: boolean) => {
-    setPlatformSettings(prev => ({ ...prev, [key]: value }));
-    toast.info(`Setting updated (Simulation): ${key} is now ${value ? 'ON' : 'OFF'}`);
+  const handleSettingChange = async (key: keyof SystemSettings, value: any) => {
+    const newSettings = { ...platformSettings, [key]: value };
+    setPlatformSettings(newSettings);
+    // For toggles, update immediately
+    if (typeof value === 'boolean') {
+        try {
+            await api('/api/admin/system', {
+                method: 'PUT',
+                body: JSON.stringify({ [key]: value })
+            });
+            toast.success(`Setting updated: ${key}`);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to update setting');
+            // Revert
+            setPlatformSettings(prev => ({ ...prev, [key]: !value }));
+        }
+    }
+  };
+  const handleUpdateAnnouncement = async () => {
+    setIsUpdatingSettings(true);
+    try {
+        await api('/api/admin/system', {
+            method: 'PUT',
+            body: JSON.stringify({
+                announcement: platformSettings.announcement,
+                announcementLevel: platformSettings.announcementLevel
+            })
+        });
+        toast.success('Announcement updated');
+    } catch (error) {
+        console.error(error);
+        toast.error('Failed to update announcement');
+    } finally {
+        setIsUpdatingSettings(false);
+    }
   };
   // Calculate Top Performing Content
   const topContent = [...posts].sort((a, b) => {
@@ -550,7 +597,50 @@ export function AdminPage() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-red-950/10 backdrop-blur-sm border-red-500/20">
+                <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Megaphone className="w-5 h-5 text-yellow-400" />
+                            Global Announcement
+                        </CardTitle>
+                        <CardDescription>Broadcast a message to all users.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Message</Label>
+                            <Input
+                                placeholder="e.g. Scheduled maintenance at 2 AM"
+                                value={platformSettings.announcement}
+                                onChange={(e) => handleSettingChange('announcement', e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Level</Label>
+                            <Select
+                                value={platformSettings.announcementLevel}
+                                onValueChange={(val) => handleSettingChange('announcementLevel', val)}
+                            >
+                                <SelectTrigger className="bg-secondary/50 border-white/10">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="info">Info (Blue)</SelectItem>
+                                    <SelectItem value="warning">Warning (Yellow)</SelectItem>
+                                    <SelectItem value="destructive">Critical (Red)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Button
+                            onClick={handleUpdateAnnouncement}
+                            disabled={isUpdatingSettings}
+                            className="w-full bg-primary hover:bg-primary/90"
+                        >
+                            {isUpdatingSettings && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Update Announcement
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card className="bg-red-950/10 backdrop-blur-sm border-red-500/20 md:col-span-2">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-red-500">
                             <AlertTriangle className="w-5 h-5" />

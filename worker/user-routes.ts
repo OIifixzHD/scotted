@@ -1,12 +1,31 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity } from "./entities";
+import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity, SystemEntity, SystemSettings } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
 import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay, Chat } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
+  // --- SYSTEM SETTINGS ---
+  app.get('/api/system', async (c) => {
+    const system = new SystemEntity(c.env, 'global-settings');
+    const settings = await system.getSettings();
+    return ok(c, settings);
+  });
+  app.put('/api/admin/system', async (c) => {
+    // In a real app, verify admin token here
+    const updates = await c.req.json() as Partial<SystemSettings>;
+    const system = new SystemEntity(c.env, 'global-settings');
+    const updated = await system.updateSettings(updates);
+    return ok(c, updated);
+  });
   // --- AUTHENTICATION ---
   app.post('/api/auth/signup', async (c) => {
+    // Check System Settings
+    const system = new SystemEntity(c.env, 'global-settings');
+    const settings = await system.getSettings();
+    if (settings.disableSignups) {
+        return c.json({ success: false, error: 'New signups are currently disabled by the administrator.' }, 403);
+    }
     const { username, password, bio } = await c.req.json() as { username?: string; password?: string; bio?: string };
     if (!username?.trim() || !password?.trim()) {
       return bad(c, 'Username and password are required');
@@ -706,6 +725,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { items: hydratedPosts });
   });
   app.post('/api/posts', async (c) => {
+    // Check System Settings
+    const system = new SystemEntity(c.env, 'global-settings');
+    const settings = await system.getSettings();
+    if (settings.readOnlyMode) {
+        return c.json({ success: false, error: 'System is currently in read-only mode. New posts are disabled.' }, 503);
+    }
     try {
         const body = await c.req.parseBody();
         const demoUrl = body['demoUrl'] as string | undefined;

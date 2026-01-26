@@ -7,14 +7,40 @@ import { PageTransition } from "./PageTransition";
 import { AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { BannedPage } from "@/pages/BannedPage";
+import { MaintenancePage } from "@/pages/MaintenancePage";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { KeyboardShortcutsDialog } from "@/components/settings/KeyboardShortcutsDialog";
 import { GlobalContextMenu } from "./GlobalContextMenu";
 import { AnimatedBackground } from "./AnimatedBackground";
+import { AnnouncementBanner } from "@/components/ui/announcement-banner";
+import { api } from "@/lib/api-client";
+interface SystemSettings {
+  maintenanceMode: boolean;
+  disableSignups: boolean;
+  readOnlyMode: boolean;
+  announcement: string;
+  announcementLevel: 'info' | 'warning' | 'destructive';
+}
 export function RootLayout() {
   const location = useLocation();
   const { user, isLoading } = useAuth();
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  // Fetch System Settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await api<SystemSettings>('/api/system');
+        setSystemSettings(settings);
+      } catch (error) {
+        console.error("Failed to fetch system settings:", error);
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
   // Global Keyboard Shortcut Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -29,10 +55,14 @@ export function RootLayout() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-  // Show loading screen while auth is initializing
-  // This prevents the "flash of unauthenticated content"
-  if (isLoading) {
+  // Show loading screen while auth or settings are initializing
+  if (isLoading || settingsLoading) {
     return <LoadingScreen />;
+  }
+  // Maintenance Mode Guard
+  // If maintenance mode is active AND user is NOT an admin, show MaintenancePage
+  if (systemSettings?.maintenanceMode && !user?.isAdmin) {
+    return <MaintenancePage />;
   }
   // Global Ban Guard
   // If user is logged in AND banned, show BannedPage instead of app shell
@@ -43,6 +73,13 @@ export function RootLayout() {
     <SidebarProvider defaultOpen={true} className="h-screen w-full bg-background overflow-hidden">
       <AppSidebar />
       <SidebarInset className="flex flex-col h-full overflow-hidden relative bg-background">
+        {/* Global Announcement Banner */}
+        {systemSettings?.announcement && (
+          <AnnouncementBanner
+            message={systemSettings.announcement}
+            level={systemSettings.announcementLevel}
+          />
+        )}
         <AnimatedBackground />
         <GlobalContextMenu>
           <main className="flex-1 h-full overflow-hidden pb-16 md:pb-0 relative z-10">

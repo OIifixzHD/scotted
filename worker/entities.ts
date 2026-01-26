@@ -1,12 +1,36 @@
 /**
  * Minimal real-world demo: One Durable Object instance per entity (User, ChatBoard, Post), with Indexes for listing.
  */
-import { IndexedEntity, Index } from "./core-utils";
+import { IndexedEntity, Index, Entity } from "./core-utils";
 import type { Env } from "./core-utils";
 import type { User, Chat, ChatMessage, Post, Comment, Notification, Report } from "@shared/types";
 import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/mock-data";
 // Helper type matching the one in core-utils (which isn't exported)
 type Doc<T> = { v: number; data: T };
+// SYSTEM ENTITY
+export interface SystemSettings {
+  maintenanceMode: boolean;
+  disableSignups: boolean;
+  readOnlyMode: boolean;
+  announcement: string;
+  announcementLevel: 'info' | 'warning' | 'destructive';
+}
+export class SystemEntity extends Entity<SystemSettings> {
+  static readonly entityName = "system";
+  static readonly initialState: SystemSettings = {
+    maintenanceMode: false,
+    disableSignups: false,
+    readOnlyMode: false,
+    announcement: "",
+    announcementLevel: "info"
+  };
+  async getSettings(): Promise<SystemSettings> {
+    return this.getState();
+  }
+  async updateSettings(partial: Partial<SystemSettings>): Promise<SystemSettings> {
+    return this.mutate(s => ({ ...s, ...partial }));
+  }
+}
 // USER ENTITY
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
