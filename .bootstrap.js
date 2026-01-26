@@ -84,7 +84,7 @@ function runSetupCommands() {
     "bun add date-fns",
     "bun add @radix-ui/react-dialog",
     "bun add @radix-ui/react-slot",
-    "bun add react-dropzone react-masonry-css",
+    "bun add react-dropzone",
     "bun add recharts",
     "bun add @radix-ui/react-progress",
     "bun add @radix-ui/react-slider"
