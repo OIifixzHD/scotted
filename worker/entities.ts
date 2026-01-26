@@ -240,8 +240,42 @@ export class PostEntity extends IndexedEntity<Post> {
     return `/api/content/video/${this.id}`;
   }
   /**
+   * Retrieve video metadata without loading content.
+   */
+  async getVideoMetadata(): Promise<{ count: number, mimeType: string, size: number, format?: string } | null> {
+    const metaKey = `video:${this.id}:meta`;
+    const doc = await this.stub.getDoc(metaKey) as Doc<{ count: number, mimeType: string, size: number, format?: string }> | null;
+    return doc?.data ?? null;
+  }
+  /**
+   * Retrieve a specific video chunk by index.
+   * Handles both legacy Base64 chunks and new binary chunks.
+   */
+  async getVideoChunk(index: number): Promise<Uint8Array | null> {
+    const key = `video:${this.id}:${index}`;
+    // We cast to unknown first to handle the union type safely
+    const doc = await this.stub.getDoc(key) as Doc<unknown> | null;
+    if (!doc || doc.data === undefined) return null;
+    if (doc.data instanceof Uint8Array) {
+        return doc.data;
+    } else if (typeof doc.data === 'string') {
+        // Legacy base64 support
+        const binaryString = atob(doc.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes;
+    } else if (Array.isArray(doc.data)) {
+       // Fallback for array serialization
+       return new Uint8Array(doc.data as number[]);
+    }
+    return null;
+  }
+  /**
    * Retrieve and reassemble video chunks.
    * Handles both legacy Base64 chunks and new binary chunks.
+   * @deprecated Use streaming via getVideoMetadata and getVideoChunk instead
    */
   async getVideoData(): Promise<{ data: Uint8Array, mimeType: string } | null> {
     const metaKey = `video:${this.id}:meta`;

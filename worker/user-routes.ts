@@ -725,42 +725,93 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, 'Failed to process upload: ' + (e instanceof Error ? e.message : String(e)));
     }
   });
-  // Serve Video Content
+  // Serve Video Content (Streaming)
   app.get('/api/content/video/:id', async (c) => {
     const id = c.req.param('id');
     const postEntity = new PostEntity(c.env, id);
     try {
-        const videoData = await postEntity.getVideoData();
-        if (!videoData) {
-            return notFound(c, 'Video content not found');
+      const meta = await postEntity.getVideoMetadata();
+      if (!meta) {
+        return notFound(c, 'Video content not found');
+      }
+      const { size: totalSize, mimeType, format } = meta;
+      const rangeHeader = c.req.header('Range');
+      // Default to full content if no range (though browsers usually send range for video)
+      let start = 0;
+      let end = totalSize - 1;
+      if (rangeHeader) {
+        const bytesPrefix = "bytes=";
+        if (rangeHeader.startsWith(bytesPrefix)) {
+            const rangeValue = rangeHeader.substring(bytesPrefix.length);
+            const parts = rangeValue.split("-");
+            if (parts[0]) {
+                start = parseInt(parts[0], 10);
+            }
+            if (parts[1]) {
+                end = parseInt(parts[1], 10);
+            }
         }
-        const { data, mimeType } = videoData;
-        const total = data.length;
-        const range = c.req.header('Range');
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
-            const chunksize = (end - start) + 1;
-            const file = data.slice(start, end + 1);
-            return c.body(file, 206, {
-                'Content-Range': `bytes ${start}-${end}/${total}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunksize.toString(),
-                'Content-Type': mimeType,
-                'Cache-Control': 'public, max-age=31536000'
-            });
-        } else {
-            return c.body(data, 200, {
-                'Content-Length': total.toString(),
-                'Content-Type': mimeType,
-                'Accept-Ranges': 'bytes',
-                'Cache-Control': 'public, max-age=31536000'
-            });
+      }
+      // Validate range
+      if (start >= totalSize || end >= totalSize) {
+         return c.text('Requested Range Not Satisfiable', 416, {
+             'Content-Range': `bytes */${totalSize}`
+         });
+      }
+      // Determine chunk size based on format
+      // Binary format uses 128KB, Legacy uses 100KB
+      const chunkSize = (format === 'binary') ? 128 * 1024 : 100 * 1024;
+      const contentLength = end - start + 1;
+      const stream = new ReadableStream({
+        async start(controller) {
+          const startChunk = Math.floor(start / chunkSize);
+          const endChunk = Math.floor(end / chunkSize);
+          let currentPos = startChunk * chunkSize;
+          for (let i = startChunk; i <= endChunk; i++) {
+            const chunkData = await postEntity.getVideoChunk(i);
+            if (!chunkData) {
+              controller.error(new Error(`Missing chunk ${i}`));
+              return;
+            }
+            let sliceStart = 0;
+            let sliceEnd = chunkData.length;
+            // Adjust start of first chunk
+            if (i === startChunk) {
+              sliceStart = start - currentPos;
+            }
+            // Adjust end of last chunk
+            if (i === endChunk) {
+               // The end requested is inclusive index.
+               // currentPos is start of this chunk.
+               // end is the absolute index of the last byte we want.
+               // relative end index = end - currentPos
+               // slice expects end index to be exclusive, so +1
+               sliceEnd = (end - currentPos) + 1;
+            }
+            // Safety clamp
+            sliceStart = Math.max(0, sliceStart);
+            sliceEnd = Math.min(chunkData.length, sliceEnd);
+            if (sliceStart < sliceEnd) {
+                controller.enqueue(chunkData.slice(sliceStart, sliceEnd));
+            }
+            currentPos += chunkData.length;
+          }
+          controller.close();
         }
+      });
+      return new Response(stream, {
+        status: 206,
+        headers: {
+          'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': contentLength.toString(),
+          'Content-Type': mimeType,
+          'Cache-Control': 'public, max-age=31536000'
+        }
+      });
     } catch (e) {
-        console.error("Failed to serve video", e);
-        return c.json({ success: false, error: 'Failed to load video' }, 500);
+      console.error("Failed to serve video", e);
+      return c.json({ success: false, error: 'Failed to load video' }, 500);
     }
   });
   // Update Post (Caption/Tags)
