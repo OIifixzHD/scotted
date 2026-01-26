@@ -69,7 +69,8 @@ export function SettingsPage() {
         setBlockedUsers(res);
       }
     } catch (error) {
-      console.error(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[SettingsPage] Failed to fetch blocked users: ${errorMessage}`);
       // Silent fail for blocked users fetch
     } finally {
       if (isMounted.current) {

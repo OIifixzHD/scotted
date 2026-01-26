@@ -139,6 +139,28 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     return ok(c, stats);
   });
+  // NEW: Admin Posts Endpoint
+  app.get('/api/admin/posts', async (c) => {
+    await PostEntity.ensureSeed(c.env);
+    // Fetch latest 100 posts for admin review
+    const page = await PostEntity.list(c.env, null, 100);
+    const posts = page.items;
+    // Hydrate with user data
+    const hydratedPosts = await Promise.all(posts.map(async (post) => {
+        if (post.userId) {
+            const userEntity = new UserEntity(c.env, post.userId);
+            if (await userEntity.exists()) {
+                const userData = await userEntity.getState();
+                const { password, ...safeUser } = userData;
+                return { ...post, user: safeUser };
+            }
+        }
+        return post;
+    }));
+    // Sort by newest first
+    hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
+    return ok(c, { items: hydratedPosts });
+  });
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
     const { followers, avatarDecoration, badge, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle } = await c.req.json() as Partial<User>;

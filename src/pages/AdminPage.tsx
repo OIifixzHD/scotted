@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api-client';
-import type { User, Report, AdminStats } from '@shared/types';
+import type { User, Report, AdminStats, Post } from '@shared/types';
 import {
   Table,
   TableBody,
@@ -21,19 +21,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
+import { AdminPostTable } from '@/components/admin/AdminPostTable';
+import { VideoModal } from '@/components/feed/VideoModal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { format } from 'date-fns';
 export function AdminPage() {
   const navigate = useNavigate();
   const { user: currentUser, isLoading: isAuthLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState<User[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartsReady, setChartsReady] = useState(false);
@@ -41,6 +47,14 @@ export function AdminPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dialogMode, setDialogMode] = useState<'edit' | 'ban' | 'unban'>('edit');
+  // Video Modal State
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  // Mock Platform Settings
+  const [platformSettings, setPlatformSettings] = useState({
+    maintenanceMode: false,
+    disableSignups: false,
+    readOnlyMode: false
+  });
   // Security Check
   useEffect(() => {
     if (!isAuthLoading) {
@@ -66,14 +80,16 @@ export function AdminPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [usersRes, reportsRes, statsRes] = await Promise.all([
+      const [usersRes, reportsRes, statsRes, postsRes] = await Promise.all([
         api<{ items: User[] }>('/api/users?limit=100'),
         api<Report[]>('/api/admin/reports'),
-        api<AdminStats>('/api/admin/stats')
+        api<AdminStats>('/api/admin/stats'),
+        api<{ items: Post[] }>('/api/admin/posts')
       ]);
       setUsers(usersRes.items);
       setReports(reportsRes);
       setStats(statsRes);
+      setPosts(postsRes.items);
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -129,6 +145,33 @@ export function AdminPage() {
       toast.error(`Failed to update report: ${errorMessage}`);
     }
   };
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) return;
+    try {
+        await api(`/api/posts/${postId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ userId: currentUser?.id })
+        });
+        toast.success('Post deleted');
+        fetchData();
+    } catch (error) {
+        console.error(error);
+        toast.error('Failed to delete post');
+    }
+  };
+  const handleViewPost = (post: Post) => {
+    setSelectedPost(post);
+  };
+  const handleSettingChange = (key: keyof typeof platformSettings, value: boolean) => {
+    setPlatformSettings(prev => ({ ...prev, [key]: value }));
+    toast.info(`Setting updated (Simulation): ${key} is now ${value ? 'ON' : 'OFF'}`);
+  };
+  // Calculate Top Performing Content
+  const topContent = [...posts].sort((a, b) => {
+    const scoreA = (a.likes * 2) + (a.comments * 3) + ((a.views || 0) * 0.5);
+    const scoreB = (b.likes * 2) + (b.comments * 3) + ((b.views || 0) * 0.5);
+    return scoreB - scoreA;
+  }).slice(0, 5);
   if (isAuthLoading || (!currentUser?.isAdmin && currentUser?.name !== 'AdminUser001')) {
     return (
       <div className="flex justify-center py-20">
@@ -155,8 +198,10 @@ export function AdminPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-secondary/50 border border-white/10">
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           {/* Users Tab */}
           <TabsContent value="users" className="mt-6">
@@ -170,8 +215,9 @@ export function AdminPage() {
                   <TableHeader>
                     <TableRow className="border-white/10 hover:bg-white/5">
                       <TableHead>User</TableHead>
+                      <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Verified</TableHead>
+                      <TableHead>Joined</TableHead>
                       <TableHead>Followers</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -188,10 +234,18 @@ export function AdminPage() {
                                 <AvatarFallback>{user.name.substring(0, 2)}</AvatarFallback>
                               </Avatar>
                               <div>
-                                <div className="font-bold">{user.name}</div>
+                                <div className="font-bold flex items-center gap-1">
+                                    {user.name}
+                                    {user.isVerified && <CheckCircle2 className="w-3 h-3 text-blue-400" />}
+                                </div>
                                 <div className="text-xs text-muted-foreground">@{user.name.toLowerCase().replace(/\s/g, '')}</div>
                               </div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.isAdmin ? "default" : "secondary"} className={user.isAdmin ? "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30" : ""}>
+                                {user.isAdmin ? "Admin" : "User"}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             {isBanned ? (
@@ -200,12 +254,8 @@ export function AdminPage() {
                               <Badge variant="outline" className="border-green-500/50 text-green-400">Active</Badge>
                             )}
                           </TableCell>
-                          <TableCell>
-                            {user.isVerified ? (
-                              <CheckCircle2 className="w-5 h-5 text-blue-400" />
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
+                          <TableCell className="text-muted-foreground text-sm">
+                            {format(user.createdAt || Date.now(), 'MMM d, yyyy')}
                           </TableCell>
                           <TableCell>{user.followers || 0}</TableCell>
                           <TableCell className="text-right">
@@ -246,6 +296,20 @@ export function AdminPage() {
                 </Table>
               )}
             </div>
+          </TabsContent>
+          {/* Content Tab */}
+          <TabsContent value="content" className="mt-6">
+            {loading ? (
+                <div className="flex justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+            ) : (
+                <AdminPostTable
+                    posts={posts}
+                    onView={handleViewPost}
+                    onDelete={handleDeletePost}
+                />
+            )}
           </TabsContent>
           {/* Reports Tab */}
           <TabsContent value="reports" className="mt-6">
@@ -429,6 +493,93 @@ export function AdminPage() {
                 </div>
               </div>
             </div>
+            {/* Top Performing Content */}
+            <div className="space-y-4">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Video className="w-5 h-5 text-primary" />
+                    Top Performing Content
+                </h3>
+                <AdminPostTable
+                    posts={topContent}
+                    onView={handleViewPost}
+                    onDelete={handleDeletePost}
+                />
+            </div>
+          </TabsContent>
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Settings className="w-5 h-5 text-primary" />
+                            Platform Controls
+                        </CardTitle>
+                        <CardDescription>Global settings for the application.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">Maintenance Mode</Label>
+                                <p className="text-sm text-muted-foreground">Disable access for non-admin users.</p>
+                            </div>
+                            <Switch
+                                checked={platformSettings.maintenanceMode}
+                                onCheckedChange={(val) => handleSettingChange('maintenanceMode', val)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">Disable Signups</Label>
+                                <p className="text-sm text-muted-foreground">Prevent new user registrations.</p>
+                            </div>
+                            <Switch
+                                checked={platformSettings.disableSignups}
+                                onCheckedChange={(val) => handleSettingChange('disableSignups', val)}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">Read-Only Mode</Label>
+                                <p className="text-sm text-muted-foreground">Disable all write operations (posts, likes, comments).</p>
+                            </div>
+                            <Switch
+                                checked={platformSettings.readOnlyMode}
+                                onCheckedChange={(val) => handleSettingChange('readOnlyMode', val)}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-red-950/10 backdrop-blur-sm border-red-500/20">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-500">
+                            <AlertTriangle className="w-5 h-5" />
+                            Emergency Actions
+                        </CardTitle>
+                        <CardDescription>Irreversible system actions.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-red-500/10 bg-red-500/5">
+                            <div className="space-y-1">
+                                <p className="font-medium text-red-400">Flush Cache</p>
+                                <p className="text-xs text-muted-foreground">Clear all server-side caches.</p>
+                            </div>
+                            <Button variant="destructive" size="sm" onClick={() => toast.success("Cache flushed (Simulation)")}>
+                                Execute
+                            </Button>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-red-500/10 bg-red-500/5">
+                            <div className="space-y-1">
+                                <p className="font-medium text-red-400">Reset Search Index</p>
+                                <p className="text-xs text-muted-foreground">Rebuild search indexes from scratch.</p>
+                            </div>
+                            <Button variant="destructive" size="sm" onClick={() => toast.success("Index rebuild started (Simulation)")}>
+                                Execute
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
@@ -438,6 +589,15 @@ export function AdminPage() {
         user={selectedUser}
         mode={dialogMode}
         onSuccess={fetchData}
+      />
+      <VideoModal
+        post={selectedPost}
+        isOpen={!!selectedPost}
+        onClose={() => setSelectedPost(null)}
+        onDelete={() => {
+            if (selectedPost) handleDeletePost(selectedPost.id);
+            setSelectedPost(null);
+        }}
       />
     </div>
   );
