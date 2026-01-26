@@ -18,6 +18,12 @@ import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from '@/components/feed/EditPostDialog';
 import { getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
+import { UserHoverCard } from '@/components/ui/user-hover-card';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -450,79 +456,118 @@ export function VideoCard({
           {/* Right Sidebar Actions */}
           <div className="absolute right-4 bottom-12 flex flex-col items-center gap-6 z-20">
             <div className="flex flex-col items-center gap-1">
-                <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
-                    <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
-                        <AvatarImage src={post.user?.avatar} />
-                        <AvatarFallback>{post.user?.displayName?.substring(0, 2) || post.user?.name?.substring(0, 2) || 'U'}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5">
-                        <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-red-500">+</span>
+                <UserHoverCard userId={post.userId} asChild>
+                    <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
+                        <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
+                            <AvatarImage src={post.user?.avatar} />
+                            <AvatarFallback>{post.user?.displayName?.substring(0, 2) || post.user?.name?.substring(0, 2) || 'U'}</AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-red-500 rounded-full p-0.5">
+                            <div className="w-3 h-3 bg-white rounded-full flex items-center justify-center">
+                                <span className="text-[10px] font-bold text-red-500">+</span>
+                            </div>
                         </div>
-                    </div>
-                </Link>
+                    </Link>
+                </UserHoverCard>
             </div>
-            <button
-              onClick={handleLike}
-              className="flex flex-col items-center gap-1 group"
-            >
-              <div className={cn(
-                "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
-                isLiked ? "text-red-500" : "text-white"
-              )}>
-                <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
-              </div>
-              <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
-            </button>
-            <button
-              onClick={() => setIsCommentsOpen(true)}
-              className="flex flex-col items-center gap-1 group"
-            >
-              <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
-                <MessageCircle className="w-7 h-7 fill-white/10" />
-              </div>
-              <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
-            </button>
-            <button
-              onClick={handleShare}
-              className="flex flex-col items-center gap-1 group"
-            >
-              <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
-                <Share2 className="w-7 h-7" />
-              </div>
-              <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
-            </button>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                      onClick={handleLike}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <div className={cn(
+                        "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
+                        isLiked ? "text-red-500" : "text-white"
+                      )}>
+                        <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Like</p>
+                </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIsCommentsOpen(true)}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
+                        <MessageCircle className="w-7 h-7 fill-white/10" />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Comment</p>
+                </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                      onClick={handleShare}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
+                        <Share2 className="w-7 h-7" />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Share</p>
+                </TooltipContent>
+            </Tooltip>
             {/* View Count */}
-            <div className="flex flex-col items-center gap-1 group">
-              <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
-                <Eye className="w-7 h-7" />
-              </div>
-              <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
-            </div>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="flex flex-col items-center gap-1 group">
+                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                        <Eye className="w-7 h-7" />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Views</p>
+                </TooltipContent>
+            </Tooltip>
             {/* More Options */}
             <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
           </div>
           {/* Bottom Info Area */}
           <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
             <div className="max-w-[80%] space-y-2 pointer-events-auto">
-              <Link to={`/profile/${post.userId}`} className="flex items-center gap-2 group/name">
-                <h3 className="text-lg font-bold text-white text-shadow group-hover/name:underline cursor-pointer">
-                  {post.user?.displayName || post.user?.name || 'unknown'}
-                </h3>
-                {getBadgeIcon(post.user?.badge)}
-              </Link>
+              <UserHoverCard userId={post.userId} asChild>
+                  <Link to={`/profile/${post.userId}`} className="flex items-center gap-2 group/name w-fit">
+                    <h3 className="text-lg font-bold text-white text-shadow group-hover/name:underline cursor-pointer">
+                      {post.user?.displayName || post.user?.name || 'unknown'}
+                    </h3>
+                    {getBadgeIcon(post.user?.badge)}
+                  </Link>
+              </UserHoverCard>
               <p className="text-sm text-white/90 text-shadow-lg line-clamp-2 text-pretty">
                 {renderCaption(post.caption)}
               </p>
             </div>
           </div>
           {/* Mute Toggle */}
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
-          >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
+          <Tooltip>
+              <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleMute(); }}
+                    className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
+                  >
+                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                  </button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                  <p>{isMuted ? "Unmute" : "Mute"}</p>
+              </TooltipContent>
+          </Tooltip>
           {/* Share Dialog */}
           <ShareDialog
             open={isShareOpen}

@@ -17,6 +17,8 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import type { Comment } from '@shared/types';
 import { cn } from '@/lib/utils';
+import { UserHoverCard } from '@/components/ui/user-hover-card';
+import { Link } from 'react-router-dom';
 interface CommentsSheetProps {
   postId: string;
   open: boolean;
@@ -159,15 +161,21 @@ export function CommentsSheet({ postId, open, onOpenChange, onCommentAdded }: Co
             <div className="space-y-6">
               {comments.map((comment) => (
                 <div key={comment.id} className="flex items-start gap-3 animate-fade-in group w-full">
-                  <Avatar className="w-8 h-8 border border-white/10 mt-1 shrink-0">
-                    <AvatarImage src={comment.user?.avatar} />
-                    <AvatarFallback>{comment.user?.name?.substring(0, 2)}</AvatarFallback>
-                  </Avatar>
+                  <UserHoverCard userId={comment.userId} asChild>
+                    <Link to={`/profile/${comment.userId}`} className="mt-1 shrink-0">
+                        <Avatar className="w-8 h-8 border border-white/10">
+                            <AvatarImage src={comment.user?.avatar} />
+                            <AvatarFallback>{comment.user?.name?.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                    </Link>
+                  </UserHoverCard>
                   <div className="flex-1 space-y-1 min-w-0">
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm font-semibold text-white truncate">
-                        {comment.user?.name || 'Unknown'}
-                      </span>
+                      <UserHoverCard userId={comment.userId} asChild>
+                          <Link to={`/profile/${comment.userId}`} className="text-sm font-semibold text-white truncate hover:underline">
+                            {comment.user?.name || 'Unknown'}
+                          </Link>
+                      </UserHoverCard>
                       <span className="text-xs text-muted-foreground whitespace-nowrap ml-2">
                         {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
                       </span>

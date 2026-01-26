@@ -28,6 +28,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RootLayout } from '@/components/layout/RootLayout'
+import { TooltipProvider } from '@/components/ui/tooltip'
 const router = createBrowserRouter([
   {
     element: <Outlet />,
@@ -116,7 +117,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <TooltipProvider>
+          <RouterProvider router={router} />
+        </TooltipProvider>
         <Toaster richColors closeButton theme="dark" />
       </AuthProvider>
     </ErrorBoundary>
