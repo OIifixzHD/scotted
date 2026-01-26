@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { VideoCard } from './VideoCard';
+import { AudioCard } from './AudioCard';
 import { FeedSkeleton } from './FeedSkeleton';
 import { api } from '@/lib/api-client';
 import type { Post } from '@shared/types';
@@ -173,27 +174,40 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   }
   const activeIndex = posts.findIndex(p => p.id === activeVideoId);
   return (
-    <div 
+    <div
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black"
     >
       {posts.map((post, index) => (
-        <div 
-            key={post.id} 
+        <div
+            key={post.id}
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
         >
-          <VideoCard
-            post={post}
-            isActive={activeVideoId === post.id}
-            isMuted={isMuted}
-            toggleMute={() => setIsMuted(!isMuted)}
-            onDelete={() => handlePostDelete(post.id)}
-            onUpdate={handlePostUpdate}
-            onHide={() => handlePostHide(post.id)}
-            shouldPreload={index === activeIndex + 1}
-            autoplayEnabled={autoplayEnabled}
-          />
+          {post.type === 'audio' ? (
+            <AudioCard
+              post={post}
+              isActive={activeVideoId === post.id}
+              isMuted={isMuted}
+              toggleMute={() => setIsMuted(!isMuted)}
+              onDelete={() => handlePostDelete(post.id)}
+              onUpdate={handlePostUpdate}
+              onHide={() => handlePostHide(post.id)}
+              autoplayEnabled={autoplayEnabled}
+            />
+          ) : (
+            <VideoCard
+              post={post}
+              isActive={activeVideoId === post.id}
+              isMuted={isMuted}
+              toggleMute={() => setIsMuted(!isMuted)}
+              onDelete={() => handlePostDelete(post.id)}
+              onUpdate={handlePostUpdate}
+              onHide={() => handlePostHide(post.id)}
+              shouldPreload={index === activeIndex + 1}
+              autoplayEnabled={autoplayEnabled}
+            />
+          )}
         </div>
       ))}
       {/* Loading more indicator (mock) */}

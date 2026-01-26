@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,25 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Play, Pause, Wand2, Palette, Plus } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Wand2, Palette, Plus, Image as ImageIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
 import { VIDEO_FILTERS, getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import type { TextOverlay } from '@shared/types';
 import { v4 as uuidv4 } from 'uuid';
-const PRESET_SOUNDS = [
-  { id: 'default-sound', name: 'Original Audio' },
-  { id: 'cosmic-vibes', name: 'Cosmic Vibes' },
-  { id: 'neon-dreams', name: 'Neon Dreams' },
-  { id: 'urban-beat', name: 'Urban Beat' },
-  { id: 'lofi-chill', name: 'Lofi Chill' },
-  { id: 'cyber-pulse', name: 'Cyber Pulse' },
-];
 const STOCK_VIDEOS = [
   "https://assets.mixkit.co/videos/preview/mixkit-cyberpunk-city-lights-at-night-15434-large.mp4",
   "https://assets.mixkit.co/videos/preview/mixkit-futuristic-city-traffic-at-night-34565-large.mp4",
@@ -37,62 +28,40 @@ const TEXT_COLORS = [
 ];
 export function UploadPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [postType, setPostType] = useState<'video' | 'audio'>('video');
+  // Common State
   const [caption, setCaption] = useState('');
   const [tags, setTags] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  // Video Mode State
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
   const [isValidating, setIsValidating] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('none');
-  // Text Overlay State
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
   const [activeOverlayId, setActiveOverlayId] = useState<string | null>(null);
   const [newText, setNewText] = useState('');
   const [newTextColor, setNewTextColor] = useState('#ffffff');
   const [activeTab, setActiveTab] = useState('filters');
-  // Sound Selection State
-  const initialSoundId = searchParams.get('soundId') || 'default-sound';
-  const initialSoundName = searchParams.get('soundName') || 'Original Audio';
-  const [soundId, setSoundId] = useState(initialSoundId);
-  const [soundName, setSoundName] = useState(initialSoundName);
-  // Audio Preview State
-  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const MOCK_AUDIO_URL = "https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/win.ogg";
-  // Cleanup preview URL on unmount
+  // Audio Mode State
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [coverArtFile, setCoverArtFile] = useState<File | null>(null);
+  const [coverArtPreview, setCoverArtPreview] = useState<string>('');
+  const [title, setTitle] = useState('');
+  const [artist, setArtist] = useState('');
+  // Cleanup preview URLs
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (coverArtPreview) URL.revokeObjectURL(coverArtPreview);
     };
-  }, [previewUrl]);
-  // Cleanup audio on unmount
-  useEffect(() => {
-    const audio = audioRef.current;
-    return () => {
-      if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
-      }
-    };
-  }, []);
-  const togglePreview = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent form submission
-    if (!audioRef.current) return;
-    if (isPlayingPreview) {
-        audioRef.current.pause();
-        setIsPlayingPreview(false);
-    } else {
-        audioRef.current.play().catch(console.error);
-        setIsPlayingPreview(true);
-    }
-  };
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  }, [previewUrl, coverArtPreview]);
+  // Video Dropzone
+  const onVideoDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles?.length > 0) {
       const file = acceptedFiles[0];
-      // Removed client-side size validation to allow larger uploads (e.g. 70MB)
       setIsValidating(true);
       try {
         setVideoFile(file);
@@ -100,22 +69,46 @@ export function UploadPage() {
         setPreviewUrl(url);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to process video");
-        console.error("Validation error:", error);
       } finally {
         setIsValidating(false);
       }
     }
   }, []);
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'video/*': ['.mp4', '.webm', '.ogg', '.mov']
-    },
+  const { getRootProps: getVideoRootProps, getInputProps: getVideoInputProps, isDragActive: isVideoDragActive } = useDropzone({
+    onDrop: onVideoDrop,
+    accept: { 'video/*': ['.mp4', '.webm', '.ogg', '.mov'] },
     maxFiles: 1,
     multiple: false,
   });
-  const clearFile = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent dropzone click
+  // Audio Dropzone
+  const onAudioDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles?.length > 0) {
+      setAudioFile(acceptedFiles[0]);
+    }
+  }, []);
+  const { getRootProps: getAudioRootProps, getInputProps: getAudioInputProps, isDragActive: isAudioDragActive } = useDropzone({
+    onDrop: onAudioDrop,
+    accept: { 'audio/*': ['.mp3', '.wav', '.ogg', '.m4a'] },
+    maxFiles: 1,
+    multiple: false,
+  });
+  // Cover Art Dropzone
+  const onCoverArtDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles?.length > 0) {
+      const file = acceptedFiles[0];
+      setCoverArtFile(file);
+      const url = URL.createObjectURL(file);
+      setCoverArtPreview(url);
+    }
+  }, []);
+  const { getRootProps: getCoverRootProps, getInputProps: getCoverInputProps, isDragActive: isCoverDragActive } = useDropzone({
+    onDrop: onCoverArtDrop,
+    accept: { 'image/*': ['.png', '.jpg', '.jpeg', '.webp'] },
+    maxFiles: 1,
+    multiple: false,
+  });
+  const clearVideo = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setVideoFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl('');
@@ -123,13 +116,23 @@ export function UploadPage() {
     setSelectedFilter('none');
     setOverlays([]);
   };
+  const clearAudio = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAudioFile(null);
+  };
+  const clearCoverArt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCoverArtFile(null);
+    if (coverArtPreview) URL.revokeObjectURL(coverArtPreview);
+    setCoverArtPreview('');
+  };
   const handleAddText = () => {
     if (!newText.trim()) return;
     const newOverlay: TextOverlay = {
       id: uuidv4(),
       text: newText,
-      x: 50, // Center
-      y: 50, // Center
+      x: 50,
+      y: 50,
       color: newTextColor,
       style: 'bold'
     };
@@ -137,28 +140,24 @@ export function UploadPage() {
     setNewText('');
     setActiveOverlayId(newOverlay.id);
   };
-  const handleSoundChange = (val: string) => {
-    setSoundId(val);
-    const preset = PRESET_SOUNDS.find(p => p.id === val);
-    if (preset) {
-      setSoundName(preset.name);
-    }
-  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!videoFile) {
-      toast.error('Please select a video file');
-      return;
-    }
     if (!user) {
       toast.error('You must be logged in to post');
       navigate('/login');
       return;
     }
+    if (postType === 'video' && !videoFile) {
+      toast.error('Please select a video file');
+      return;
+    }
+    if (postType === 'audio' && !audioFile) {
+      toast.error('Please select an audio file');
+      return;
+    }
     try {
       setIsSubmitting(true);
       setUploadProgress(0);
-      // Simulate progress for better UX while converting/uploading
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) return prev;
@@ -167,33 +166,34 @@ export function UploadPage() {
       }, 500);
       const formData = new FormData();
       formData.append('userId', user.id);
+      formData.append('type', postType);
       formData.append('caption', caption);
-      formData.append('tags', tags); // Send as string, backend splits it
-      formData.append('soundId', soundId);
-      formData.append('soundName', soundName); // Use the custom or preset name
-      formData.append('filter', selectedFilter);
-      formData.append('overlays', JSON.stringify(overlays));
-      // Smart Fallback Logic for Large Files
-      // Increased limit to 100MB to allow direct uploads for larger files
-      const SAFE_UPLOAD_LIMIT = 100 * 1024 * 1024; // 100MB
-      if (videoFile.size > SAFE_UPLOAD_LIMIT) {
-        toast.info("Very large file detected. Using simulation mode for demo.", {
-            duration: 5000,
-            icon: <Sparkles className="w-4 h-4 text-purple-400" />
-        });
-        // Pick a random stock video
-        const randomVideo = STOCK_VIDEOS[Math.floor(Math.random() * STOCK_VIDEOS.length)];
-        formData.append('demoUrl', randomVideo);
-        // CRITICAL: Do NOT append the actual video file to avoid sending the large payload
-        // which would crash the server before our logic runs
+      formData.append('tags', tags);
+      if (postType === 'video') {
+        formData.append('filter', selectedFilter);
+        formData.append('overlays', JSON.stringify(overlays));
+        // Large file fallback logic
+        const SAFE_UPLOAD_LIMIT = 100 * 1024 * 1024; // 100MB
+        if (videoFile!.size > SAFE_UPLOAD_LIMIT) {
+            toast.info("Large file detected. Using simulation mode.", { icon: <Sparkles className="w-4 h-4 text-purple-400" /> });
+            const randomVideo = STOCK_VIDEOS[Math.floor(Math.random() * STOCK_VIDEOS.length)];
+            formData.append('demoUrl', randomVideo);
+        } else {
+            formData.append('videoFile', videoFile!);
+        }
       } else {
-        formData.append('videoFile', videoFile);
+        // Audio Mode
+        formData.append('audioFile', audioFile!);
+        if (coverArtFile) {
+            formData.append('coverArtFile', coverArtFile);
+        }
+        formData.append('title', title || 'Untitled Track');
+        formData.append('artist', artist || user.displayName || user.name);
       }
-      // Important: Pass empty headers to allow browser to set Content-Type with boundary
       await api('/api/posts', {
         method: 'POST',
         body: formData,
-        headers: {} // This overrides the default 'application/json'
+        headers: {}
       });
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -212,333 +212,380 @@ export function UploadPage() {
     <div className="h-full overflow-y-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
         <div className="max-w-4xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Form Section */}
-            <div className="space-y-6 order-2 lg:order-1">
-              <div>
-                <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
-                <p className="text-muted-foreground">Share your vibe with the world.</p>
-              </div>
-              <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Film className="w-4 h-4 text-primary" />
-                      Select Video
-                    </Label>
-                    {!videoFile ? (
-                      <div
-                        {...getRootProps()}
-                        className={cn(
-                          "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden",
-                          isDragActive
-                            ? "border-primary bg-primary/10 scale-[1.02]"
-                            : "border-white/10 hover:bg-white/5 hover:border-white/20",
-                          isValidating && "opacity-50 pointer-events-none"
-                        )}
-                      >
-                        <input {...getInputProps()} />
-                        {isValidating ? (
-                          <div className="flex flex-col items-center animate-pulse">
-                            <Sparkles className="w-8 h-8 text-primary mb-4 animate-spin" />
-                            <p className="text-sm font-medium">Processing video...</p>
-                          </div>
-                        ) : (
-                          <>
-                            <div className={cn(
-                              "w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors",
-                              isDragActive ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
-                            )}>
-                              {isDragActive ? (
-                                <CloudUpload className="w-8 h-8 animate-bounce" />
-                              ) : (
-                                <Upload className="w-8 h-8" />
-                              )}
-                            </div>
-                            <p className="text-sm font-medium text-center">
-                              {isDragActive ? "Drop video here" : "Drag & drop or click to upload"}
-                            </p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span>Any duration</span>
-                                <span>���</span>
-                                <span>Max 100MB</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
-                              <Film className="w-5 h-5 text-primary" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{videoFile.name}</p>
-                              <p className="text-xs text-muted-foreground flex items-center gap-2">
-                                {formatBytes(videoFile.size)}
-                              </p>
-                            </div>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={clearFile}
-                            className="hover:bg-red-500/20 hover:text-red-500"
-                            disabled={isSubmitting}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="caption" className="flex items-center gap-2">
-                      <Type className="w-4 h-4 text-primary" />
-                      Caption
-                    </Label>
-                    <Textarea
-                      id="caption"
-                      placeholder="What's on your mind?"
-                      value={caption}
-                      onChange={(e) => setCaption(e.target.value)}
-                      className="bg-secondary/50 border-white/10 min-h-[100px]"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sound" className="flex items-center gap-2">
-                      <Music2 className="w-4 h-4 text-primary" />
-                      Soundtrack (Optional)
-                    </Label>
-                    <div className="flex flex-col gap-3">
-                        <div className="flex gap-2">
-                            <Select value={soundId} onValueChange={handleSoundChange} disabled={isSubmitting}>
-                            <SelectTrigger className="bg-secondary/50 border-white/10 flex-1">
-                                <SelectValue placeholder="Select a sound" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {PRESET_SOUNDS.map((sound) => (
-                                <SelectItem key={sound.id} value={sound.id}>
-                                    {sound.name}
-                                </SelectItem>
-                                ))}
-                            </SelectContent>
-                            </Select>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="border-white/10 hover:bg-white/5 shrink-0"
-                                onClick={togglePreview}
-                                title={isPlayingPreview ? "Pause Preview" : "Play Preview"}
-                            >
-                                {isPlayingPreview ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                            </Button>
-                            <audio ref={audioRef} src={MOCK_AUDIO_URL} onEnded={() => setIsPlayingPreview(false)} />
-                        </div>
-                        <Input
-                            placeholder="Track Name (e.g. Original Audio)"
-                            value={soundName}
-                            onChange={(e) => setSoundName(e.target.value)}
-                            className="bg-secondary/50 border-white/10"
-                            disabled={isSubmitting}
-                        />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tags" className="flex items-center gap-2">
-                      <Hash className="w-4 h-4 text-primary" />
-                      Tags
-                    </Label>
-                    <Input
-                      id="tags"
-                      placeholder="cyberpunk, neon, vibes (comma separated)"
-                      value={tags}
-                      onChange={(e) => setTags(e.target.value)}
-                      className="bg-secondary/50 border-white/10"
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  {isSubmitting && (
-                    <div className="space-y-2 animate-fade-in">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Uploading...</span>
-                        <span>{Math.round(uploadProgress)}%</span>
-                      </div>
-                      <Progress value={uploadProgress} className="h-2" />
-                    </div>
-                  )}
-                  <div className="pt-4">
-                    <Button
-                      type="submit"
-                      className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600 shadow-glow transition-all duration-300"
-                      disabled={isSubmitting || !videoFile}
-                    >
-                      {isSubmitting ? (
-                        <span className="flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 animate-spin" />
-                          Pulsing...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Upload className="w-5 h-5" />
-                          Pulse It
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            </div>
-            {/* Preview & Creative Tools Section */}
-            <div className="flex flex-col items-center justify-start space-y-6 order-1 lg:order-2">
-              <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
-                {previewUrl ? (
-                  <>
-                    <video
-                      src={previewUrl}
-                      className={cn("w-full h-full object-cover transition-all duration-300", getFilterClass(selectedFilter))}
-                      controls
-                      autoPlay
-                      muted
-                      loop
-                    />
-                    <OverlayCanvas
-                      overlays={overlays}
-                      onChange={setOverlays}
-                      activeId={activeOverlayId}
-                      onSelect={setActiveOverlayId}
-                    />
-                  </>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-secondary/20">
-                    <Film className="w-12 h-12 mb-4 opacity-20" />
-                    <p className="text-sm">Preview will appear here</p>
-                  </div>
-                )}
-                {/* Mock Overlay for Preview (only when no video) */}
-                {!previewUrl && (
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
-                    <div className="space-y-2">
-                      <div className="h-4 w-24 bg-white/20 rounded animate-pulse" />
-                      <div className="h-3 w-48 bg-white/20 rounded animate-pulse" />
-                    </div>
-                  </div>
-                )}
-              </div>
-              {/* Creative Tools */}
-              {previewUrl && (
-                <div className="w-full max-w-[320px] space-y-4">
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="w-full bg-secondary/50 border border-white/10">
-                      <TabsTrigger value="filters" className="flex-1">
-                        <Wand2 className="w-4 h-4 mr-2" /> Filters
-                      </TabsTrigger>
-                      <TabsTrigger value="text" className="flex-1">
-                        <Type className="w-4 h-4 mr-2" /> Text
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="filters" className="mt-4">
-                      <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
-                        {VIDEO_FILTERS.map((filter) => (
-                          <button
-                            key={filter.id}
-                            onClick={() => setSelectedFilter(filter.id)}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
+            <p className="text-muted-foreground">Share your vibe with the world.</p>
+          </div>
+          <Tabs value={postType} onValueChange={(v: any) => setPostType(v)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-secondary/50 border border-white/10">
+              <TabsTrigger value="video" className="flex items-center gap-2">
+                <Film className="w-4 h-4" /> Video
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="flex items-center gap-2">
+                <Music2 className="w-4 h-4" /> Music
+              </TabsTrigger>
+            </TabsList>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Form Section */}
+              <div className="space-y-6 order-2 lg:order-1">
+                <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <TabsContent value="video" className="mt-0 space-y-6">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Film className="w-4 h-4 text-primary" />
+                          Select Video
+                        </Label>
+                        {!videoFile ? (
+                          <div
+                            {...getVideoRootProps()}
                             className={cn(
-                              "flex-shrink-0 flex flex-col items-center gap-2 group snap-start",
-                              selectedFilter === filter.id ? "opacity-100" : "opacity-60 hover:opacity-100"
+                              "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden",
+                              isVideoDragActive
+                                ? "border-primary bg-primary/10 scale-[1.02]"
+                                : "border-white/10 hover:bg-white/5 hover:border-white/20",
+                              isValidating && "opacity-50 pointer-events-none"
                             )}
                           >
-                            <div className={cn(
-                              "w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200",
-                              selectedFilter === filter.id ? "border-primary shadow-glow scale-105" : "border-transparent group-hover:border-white/20"
-                            )}>
-                              <div className={cn("w-full h-full bg-gray-800", filter.class)}>
-                                <div className="w-full h-full bg-gradient-to-br from-purple-500 to-teal-500" />
+                            <input {...getVideoInputProps()} />
+                            {isValidating ? (
+                              <div className="flex flex-col items-center animate-pulse">
+                                <Sparkles className="w-8 h-8 text-primary mb-4 animate-spin" />
+                                <p className="text-sm font-medium">Processing video...</p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className={cn(
+                                  "w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors",
+                                  isVideoDragActive ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+                                )}>
+                                  <Upload className="w-8 h-8" />
+                                </div>
+                                <p className="text-sm font-medium text-center">
+                                  {isVideoDragActive ? "Drop video here" : "Drag & drop or click to upload"}
+                                </p>
+                                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                    <span>Any duration</span>
+                                    <span>•</span>
+                                    <span>Max 100MB</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                                <Film className="w-5 h-5 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{videoFile.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatBytes(videoFile.size)}</p>
                               </div>
                             </div>
-                            <span className={cn(
-                              "text-xs font-medium transition-colors",
-                              selectedFilter === filter.id ? "text-primary" : "text-muted-foreground"
-                            )}>
-                              {filter.name}
-                            </span>
-                          </button>
-                        ))}
+                            <Button type="button" variant="ghost" size="icon" onClick={clearVideo} disabled={isSubmitting} className="hover:text-red-500">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </TabsContent>
-                    <TabsContent value="text" className="mt-4 space-y-4">
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Add text..."
-                          value={newText}
-                          onChange={(e) => setNewText(e.target.value)}
-                          className="bg-secondary/50 border-white/10"
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddText()}
-                        />
-                        <Button size="icon" onClick={handleAddText} className="bg-primary hover:bg-primary/90 shrink-0">
-                          <Plus className="w-4 h-4" />
-                        </Button>
+                    <TabsContent value="audio" className="mt-0 space-y-6">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Music2 className="w-4 h-4 text-primary" />
+                          Audio File
+                        </Label>
+                        {!audioFile ? (
+                          <div
+                            {...getAudioRootProps()}
+                            className={cn(
+                              "border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200",
+                              isAudioDragActive ? "border-primary bg-primary/10" : "border-white/10 hover:bg-white/5"
+                            )}
+                          >
+                            <input {...getAudioInputProps()} />
+                            <CloudUpload className="w-8 h-8 text-muted-foreground mb-2" />
+                            <p className="text-sm font-medium">Upload MP3, WAV, OGG</p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center shrink-0">
+                                <Music2 className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{audioFile.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatBytes(audioFile.size)}</p>
+                              </div>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" onClick={clearAudio} disabled={isSubmitting} className="hover:text-red-500">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                          <Palette className="w-3 h-3" /> Color
+                        <Label className="flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4 text-primary" />
+                          Cover Art
                         </Label>
-                        <div className="flex gap-2 flex-wrap">
-                          {TEXT_COLORS.map(color => (
-                            <button
-                              key={color}
-                              onClick={() => setNewTextColor(color)}
-                              className={cn(
-                                "w-6 h-6 rounded-full border-2 transition-all",
-                                newTextColor === color ? "border-white scale-110 shadow-glow" : "border-transparent hover:scale-105"
-                              )}
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
+                        {!coverArtFile ? (
+                          <div
+                            {...getCoverRootProps()}
+                            className={cn(
+                              "border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200",
+                              isCoverDragActive ? "border-primary bg-primary/10" : "border-white/10 hover:bg-white/5"
+                            )}
+                          >
+                            <input {...getCoverInputProps()} />
+                            <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
+                            <p className="text-sm font-medium">Upload Image</p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl border border-white/10">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <img src={coverArtPreview} alt="Cover" className="w-10 h-10 rounded object-cover" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{coverArtFile.name}</p>
+                                <p className="text-xs text-muted-foreground">{formatBytes(coverArtFile.size)}</p>
+                              </div>
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" onClick={clearCoverArt} disabled={isSubmitting} className="hover:text-red-500">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Title</Label>
+                          <Input placeholder="Song Title" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-secondary/50 border-white/10" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Artist</Label>
+                          <Input placeholder="Artist Name" value={artist} onChange={(e) => setArtist(e.target.value)} className="bg-secondary/50 border-white/10" />
                         </div>
                       </div>
-                      {overlays.length > 0 && (
-                        <div className="space-y-2 pt-2 border-t border-white/10">
-                          <Label className="text-xs text-muted-foreground">Layers</Label>
-                          <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
-                            {overlays.map(overlay => (
-                              <div
-                                key={overlay.id}
-                                className={cn(
-                                  "flex items-center justify-between p-2 rounded bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50",
-                                  activeOverlayId === overlay.id && "border-primary/50 bg-primary/10"
-                                )}
-                                onClick={() => setActiveOverlayId(overlay.id)}
-                              >
-                                <div className="flex items-center gap-2 truncate">
-                                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: overlay.color }} />
-                                  <span className="text-sm truncate max-w-[150px]">{overlay.text}</span>
-                                </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOverlays(prev => prev.filter(o => o.id !== overlay.id));
-                                  }}
-                                  className="text-muted-foreground hover:text-red-500"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
+                    </TabsContent>
+                    {/* Common Fields */}
+                    <div className="space-y-2">
+                      <Label htmlFor="caption" className="flex items-center gap-2">
+                        <Type className="w-4 h-4 text-primary" />
+                        Caption
+                      </Label>
+                      <Textarea
+                        id="caption"
+                        placeholder="What's on your mind?"
+                        value={caption}
+                        onChange={(e) => setCaption(e.target.value)}
+                        className="bg-secondary/50 border-white/10 min-h-[100px]"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="tags" className="flex items-center gap-2">
+                        <Hash className="w-4 h-4 text-primary" />
+                        Tags
+                      </Label>
+                      <Input
+                        id="tags"
+                        placeholder="cyberpunk, neon, vibes (comma separated)"
+                        value={tags}
+                        onChange={(e) => setTags(e.target.value)}
+                        className="bg-secondary/50 border-white/10"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    {isSubmitting && (
+                      <div className="space-y-2 animate-fade-in">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Uploading...</span>
+                          <span>{Math.round(uploadProgress)}%</span>
+                        </div>
+                        <Progress value={uploadProgress} className="h-2" />
+                      </div>
+                    )}
+                    <div className="pt-4">
+                      <Button
+                        type="submit"
+                        className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600 shadow-glow transition-all duration-300"
+                        disabled={isSubmitting || (postType === 'video' ? !videoFile : !audioFile)}
+                      >
+                        {isSubmitting ? (
+                          <span className="flex items-center gap-2">
+                            <Sparkles className="w-5 h-5 animate-spin" />
+                            Pulsing...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <Upload className="w-5 h-5" />
+                            Pulse It
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </Card>
+              </div>
+              {/* Preview Section */}
+              <div className="flex flex-col items-center justify-start space-y-6 order-1 lg:order-2">
+                {postType === 'video' ? (
+                  <>
+                    <div className="relative w-full max-w-[320px] aspect-[9/16] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                      {previewUrl ? (
+                        <>
+                          <video
+                            src={previewUrl}
+                            className={cn("w-full h-full object-cover transition-all duration-300", getFilterClass(selectedFilter))}
+                            controls
+                            autoPlay
+                            muted
+                            loop
+                          />
+                          <OverlayCanvas
+                            overlays={overlays}
+                            onChange={setOverlays}
+                            activeId={activeOverlayId}
+                            onSelect={setActiveOverlayId}
+                          />
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-secondary/20">
+                          <Film className="w-12 h-12 mb-4 opacity-20" />
+                          <p className="text-sm">Video preview</p>
                         </div>
                       )}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              )}
-              <p className="text-sm text-muted-foreground">Mobile Preview</p>
+                    </div>
+                    {previewUrl && (
+                      <div className="w-full max-w-[320px] space-y-4">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                          <TabsList className="w-full bg-secondary/50 border border-white/10">
+                            <TabsTrigger value="filters" className="flex-1">
+                              <Wand2 className="w-4 h-4 mr-2" /> Filters
+                            </TabsTrigger>
+                            <TabsTrigger value="text" className="flex-1">
+                              <Type className="w-4 h-4 mr-2" /> Text
+                            </TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="filters" className="mt-4">
+                            <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
+                              {VIDEO_FILTERS.map((filter) => (
+                                <button
+                                  key={filter.id}
+                                  onClick={() => setSelectedFilter(filter.id)}
+                                  className={cn(
+                                    "flex-shrink-0 flex flex-col items-center gap-2 group snap-start",
+                                    selectedFilter === filter.id ? "opacity-100" : "opacity-60 hover:opacity-100"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200",
+                                    selectedFilter === filter.id ? "border-primary shadow-glow scale-105" : "border-transparent group-hover:border-white/20"
+                                  )}>
+                                    <div className={cn("w-full h-full bg-gray-800", filter.class)}>
+                                      <div className="w-full h-full bg-gradient-to-br from-purple-500 to-teal-500" />
+                                    </div>
+                                  </div>
+                                  <span className={cn(
+                                    "text-xs font-medium transition-colors",
+                                    selectedFilter === filter.id ? "text-primary" : "text-muted-foreground"
+                                  )}>
+                                    {filter.name}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </TabsContent>
+                          <TabsContent value="text" className="mt-4 space-y-4">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="Add text..."
+                                value={newText}
+                                onChange={(e) => setNewText(e.target.value)}
+                                className="bg-secondary/50 border-white/10"
+                                onKeyDown={(e) => e.key === 'Enter' && handleAddText()}
+                              />
+                              <Button size="icon" onClick={handleAddText} className="bg-primary hover:bg-primary/90 shrink-0">
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground flex items-center gap-2">
+                                <Palette className="w-3 h-3" /> Color
+                              </Label>
+                              <div className="flex gap-2 flex-wrap">
+                                {TEXT_COLORS.map(color => (
+                                  <button
+                                    key={color}
+                                    onClick={() => setNewTextColor(color)}
+                                    className={cn(
+                                      "w-6 h-6 rounded-full border-2 transition-all",
+                                      newTextColor === color ? "border-white scale-110 shadow-glow" : "border-transparent hover:scale-105"
+                                    )}
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            {overlays.length > 0 && (
+                              <div className="space-y-2 pt-2 border-t border-white/10">
+                                <Label className="text-xs text-muted-foreground">Layers</Label>
+                                <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+                                  {overlays.map(overlay => (
+                                    <div
+                                      key={overlay.id}
+                                      className={cn(
+                                        "flex items-center justify-between p-2 rounded bg-secondary/30 border border-white/5 cursor-pointer hover:bg-secondary/50",
+                                        activeOverlayId === overlay.id && "border-primary/50 bg-primary/10"
+                                      )}
+                                      onClick={() => setActiveOverlayId(overlay.id)}
+                                    >
+                                      <div className="flex items-center gap-2 truncate">
+                                        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: overlay.color }} />
+                                        <span className="text-sm truncate max-w-[150px]">{overlay.text}</span>
+                                      </div>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOverlays(prev => prev.filter(o => o.id !== overlay.id));
+                                        }}
+                                        className="text-muted-foreground hover:text-red-500"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </TabsContent>
+                        </Tabs>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="relative w-full max-w-[320px] aspect-square bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col items-center justify-center p-6 text-center">
+                    {coverArtPreview ? (
+                      <img src={coverArtPreview} alt="Cover Art" className="w-full h-full object-cover absolute inset-0 opacity-50 blur-xl" />
+                    ) : null}
+                    <div className="relative z-10 w-40 h-40 bg-card rounded-xl shadow-2xl overflow-hidden mb-4 flex items-center justify-center border border-white/10">
+                      {coverArtPreview ? (
+                        <img src={coverArtPreview} alt="Cover Art" className="w-full h-full object-cover" />
+                      ) : (
+                        <Music2 className="w-16 h-16 text-muted-foreground/50" />
+                      )}
+                    </div>
+                    <div className="relative z-10 space-y-1">
+                      <h3 className="font-bold text-white text-lg">{title || 'Song Title'}</h3>
+                      <p className="text-sm text-muted-foreground">{artist || 'Artist Name'}</p>
+                    </div>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">Preview</p>
+              </div>
             </div>
-          </div>
+          </Tabs>
         </div>
       </div>
     </div>

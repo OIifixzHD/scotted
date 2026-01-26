@@ -713,36 +713,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     try {
         const body = await c.req.parseBody();
-        const demoUrl = body['demoUrl'] as string | undefined;
-        const videoFile = body['videoFile'];
+        const type = (body['type'] as string) || 'video';
+        const userId = body['userId'] as string;
         const caption = body['caption'] as string || '';
         const tagsStr = body['tags'] as string || '';
-        const userId = body['userId'] as string;
-        const soundId = body['soundId'] as string || 'default-sound';
-        const soundName = body['soundName'] as string || 'Original Audio';
-        const filter = body['filter'] as string || 'none';
-        const overlaysStr = body['overlays'] as string | undefined;
-        if (!userId) {
-            return bad(c, 'userId required');
-        }
-        const newPostId = crypto.randomUUID();
-        let servedUrl = '';
-        if (demoUrl && typeof demoUrl === 'string' && demoUrl.length > 0) {
-            servedUrl = demoUrl;
-        } else {
-            if (!videoFile || !(videoFile instanceof File)) {
-                return bad(c, 'videoFile required and must be a file');
-            }
-            const postEntity = new PostEntity(c.env, newPostId);
-            servedUrl = await postEntity.saveVideoBinary(videoFile.stream(), videoFile.type || 'video/mp4');
-        }
         const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
-        const overlays: TextOverlay[] = overlaysStr ? JSON.parse(overlaysStr) : [];
-        const newPost = {
+        if (!userId) return bad(c, 'userId required');
+        const newPostId = crypto.randomUUID();
+        const postEntity = new PostEntity(c.env, newPostId);
+        let newPost: Post = {
             id: newPostId,
             userId,
-            videoUrl: servedUrl,
+            type: type as 'video' | 'audio',
             caption,
+            tags,
             likes: 0,
             likedBy: [],
             saves: 0,
@@ -751,13 +735,61 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             shares: 0,
             views: 0,
             createdAt: Date.now(),
-            tags,
             commentsList: [],
-            soundId,
-            soundName,
-            filter,
-            overlays
+            overlays: []
         };
+        if (type === 'audio') {
+            const audioFile = body['audioFile'];
+            const coverArtFile = body['coverArtFile'];
+            const title = body['title'] as string || 'Untitled';
+            const artist = body['artist'] as string || 'Unknown Artist';
+            if (!audioFile || !(audioFile instanceof File)) {
+                return bad(c, 'audioFile required for audio posts');
+            }
+            const audioUrl = await postEntity.saveAudioBinary(audioFile.stream(), audioFile.type || 'audio/mpeg');
+            let coverArtUrl = '';
+            if (coverArtFile && coverArtFile instanceof File) {
+                // For demo simplicity, convert small cover art to base64.
+                // In prod, save as binary similar to video/audio.
+                const buffer = await coverArtFile.arrayBuffer();
+                const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+                coverArtUrl = `data:${coverArtFile.type};base64,${base64}`;
+            }
+            newPost = {
+                ...newPost,
+                audioUrl,
+                coverArtUrl,
+                title,
+                artist,
+                videoUrl: '' // Empty for audio posts
+            };
+        } else {
+            // Video Type (Default)
+            const demoUrl = body['demoUrl'] as string | undefined;
+            const videoFile = body['videoFile'];
+            const soundId = body['soundId'] as string || 'default-sound';
+            const soundName = body['soundName'] as string || 'Original Audio';
+            const filter = body['filter'] as string || 'none';
+            const overlaysStr = body['overlays'] as string | undefined;
+            const overlays: TextOverlay[] = overlaysStr ? JSON.parse(overlaysStr) : [];
+            let servedUrl = '';
+            if (demoUrl && typeof demoUrl === 'string' && demoUrl.length > 0) {
+                servedUrl = demoUrl;
+            } else {
+                if (!videoFile || !(videoFile instanceof File)) {
+                    return bad(c, 'videoFile required and must be a file');
+                }
+                servedUrl = await postEntity.saveVideoBinary(videoFile.stream(), videoFile.type || 'video/mp4');
+            }
+            newPost = {
+                ...newPost,
+                videoUrl: servedUrl,
+                soundId,
+                soundName,
+                filter,
+                overlays
+            };
+        }
         const created = await PostEntity.create(c.env, newPost);
         return ok(c, created);
     } catch (e) {
@@ -839,6 +871,82 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     } catch (e) {
       console.error("Failed to serve video", e);
       return c.json({ success: false, error: 'Failed to load video' }, 500);
+    }
+  });
+  app.get('/api/content/audio/:id', async (c) => {
+    const id = c.req.param('id');
+    const postEntity = new PostEntity(c.env, id);
+    try {
+      const meta = await postEntity.getAudioMetadata();
+      if (!meta) {
+        return notFound(c, 'Audio content not found');
+      }
+      const { size: totalSize, mimeType } = meta;
+      const rangeHeader = c.req.header('Range');
+      let start = 0;
+      let end = totalSize - 1;
+      if (rangeHeader) {
+        const bytesPrefix = "bytes=";
+        if (rangeHeader.startsWith(bytesPrefix)) {
+            const rangeValue = rangeHeader.substring(bytesPrefix.length);
+            const parts = rangeValue.split("-");
+            if (parts[0]) {
+                start = parseInt(parts[0], 10);
+            }
+            if (parts[1]) {
+                end = parseInt(parts[1], 10);
+            }
+        }
+      }
+      if (start >= totalSize || end >= totalSize) {
+         return c.text('Requested Range Not Satisfiable', 416, {
+             'Content-Range': `bytes */${totalSize}`
+         });
+      }
+      const chunkSize = 128 * 1024;
+      const contentLength = end - start + 1;
+      const stream = new ReadableStream({
+        async start(controller) {
+          const startChunk = Math.floor(start / chunkSize);
+          const endChunk = Math.floor(end / chunkSize);
+          let currentPos = startChunk * chunkSize;
+          for (let i = startChunk; i <= endChunk; i++) {
+            const chunkData = await postEntity.getAudioChunk(i);
+            if (!chunkData) {
+              controller.error(new Error(`Missing chunk ${i}`));
+              return;
+            }
+            let sliceStart = 0;
+            let sliceEnd = chunkData.length;
+            if (i === startChunk) {
+              sliceStart = start - currentPos;
+            }
+            if (i === endChunk) {
+               sliceEnd = (end - currentPos) + 1;
+            }
+            sliceStart = Math.max(0, sliceStart);
+            sliceEnd = Math.min(chunkData.length, sliceEnd);
+            if (sliceStart < sliceEnd) {
+                controller.enqueue(chunkData.slice(sliceStart, sliceEnd));
+            }
+            currentPos += chunkData.length;
+          }
+          controller.close();
+        }
+      });
+      return new Response(stream, {
+        status: 206,
+        headers: {
+          'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': contentLength.toString(),
+          'Content-Type': mimeType,
+          'Cache-Control': 'public, max-age=31536000'
+        }
+      });
+    } catch (e) {
+      console.error("Failed to serve audio", e);
+      return c.json({ success: false, error: 'Failed to load audio' }, 500);
     }
   });
   app.put('/api/posts/:id', async (c) => {

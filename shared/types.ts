@@ -64,7 +64,12 @@ export interface TextOverlay {
 export interface Post {
   id: string;
   userId: string;
-  videoUrl: string; // Can be a URL or a Base64 Data URI
+  type?: 'video' | 'audio'; // Defaults to 'video' if undefined
+  videoUrl?: string; // Optional now, used for type='video'
+  audioUrl?: string; // Used for type='audio'
+  coverArtUrl?: string; // Used for type='audio'
+  artist?: string; // Used for type='audio'
+  title?: string; // Used for type='audio'
   caption: string;
   likes: number;
   likedBy?: string[]; // Track user IDs who liked the post

@@ -148,6 +148,7 @@ export class PostEntity extends IndexedEntity<Post> {
   static readonly initialState: Post = {
     id: "",
     userId: "",
+    type: 'video',
     videoUrl: "",
     caption: "",
     likes: 0,
@@ -251,13 +252,102 @@ export class PostEntity extends IndexedEntity<Post> {
     }
     return null;
   }
+  // --- Audio Storage Methods ---
+  async saveAudioBinary(stream: ReadableStream<Uint8Array>, mimeType: string): Promise<string> {
+    const CHUNK_SIZE = 128 * 1024; // 128KB chunks
+    let chunkIndex = 0;
+    let totalLength = 0;
+    let buffer = new Uint8Array(0);
+    const reader = stream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const newBuffer = new Uint8Array(buffer.length + value.length);
+        newBuffer.set(buffer);
+        newBuffer.set(value, buffer.length);
+        buffer = newBuffer;
+        while (buffer.length >= CHUNK_SIZE) {
+          const chunk = buffer.slice(0, CHUNK_SIZE);
+          buffer = buffer.slice(CHUNK_SIZE);
+          const key = `audio:${this.id}:${chunkIndex}`;
+          let saved = false;
+          for(let attempt=0; attempt<3; attempt++) {
+              const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
+              const v = doc ? doc.v : 0;
+              const res = await this.stub.casPut(key, v, chunk);
+              if (res.ok) {
+                  saved = true;
+                  break;
+              }
+          }
+          if (!saved) throw new Error(`Failed to save audio chunk ${chunkIndex}`);
+          chunkIndex++;
+          totalLength += chunk.length;
+        }
+      }
+      if (buffer.length > 0) {
+        const key = `audio:${this.id}:${chunkIndex}`;
+        let saved = false;
+        for(let attempt=0; attempt<3; attempt++) {
+            const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
+            const v = doc ? doc.v : 0;
+            const res = await this.stub.casPut(key, v, buffer);
+            if (res.ok) {
+                saved = true;
+                break;
+            }
+        }
+        if (!saved) throw new Error(`Failed to save audio chunk ${chunkIndex}`);
+        chunkIndex++;
+        totalLength += buffer.length;
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    // Save metadata
+    const metaKey = `audio:${this.id}:meta`;
+    const meta = { count: chunkIndex, mimeType, size: totalLength, format: 'binary' };
+    for(let attempt=0; attempt<3; attempt++) {
+        const doc = (await this.stub.getDoc(metaKey)) as Doc<typeof meta> | null;
+        const v = doc ? doc.v : 0;
+        const res = await this.stub.casPut(metaKey, v, meta);
+        if (res.ok) break;
+    }
+    return `/api/content/audio/${this.id}`;
+  }
+  async getAudioMetadata(): Promise<{ count: number, mimeType: string, size: number, format?: string } | null> {
+    const metaKey = `audio:${this.id}:meta`;
+    const doc = await this.stub.getDoc(metaKey) as Doc<{ count: number, mimeType: string, size: number, format?: string }> | null;
+    return doc?.data ?? null;
+  }
+  async getAudioChunk(index: number): Promise<Uint8Array | null> {
+    const key = `audio:${this.id}:${index}`;
+    const doc = await this.stub.getDoc(key) as Doc<unknown> | null;
+    if (!doc || doc.data === undefined) return null;
+    if (doc.data instanceof Uint8Array) {
+        return doc.data;
+    } else if (typeof doc.data === 'string') {
+        const binaryString = atob(doc.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes;
+    } else if (Array.isArray(doc.data)) {
+       return new Uint8Array(doc.data as number[]);
+    }
+    return null;
+  }
   static async search(env: Env, query: string): Promise<Post[]> {
     await this.ensureSeed(env);
     const { items: posts } = await this.list(env, null, 1000);
     const lowerQuery = query.toLowerCase();
     return posts.filter(p =>
       (p.caption && p.caption.toLowerCase().includes(lowerQuery)) ||
-      (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery)))
+      (p.tags && p.tags.some(t => t.toLowerCase().includes(lowerQuery))) ||
+      (p.title && p.title.toLowerCase().includes(lowerQuery)) ||
+      (p.artist && p.artist.toLowerCase().includes(lowerQuery))
     );
   }
   async toggleLike(userId: string): Promise<{ likes: number, isLiked: boolean }> {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Masonry from 'react-masonry-css';
-import { Play, Heart, Eye } from 'lucide-react';
+import { Play, Heart, Eye, Music2 } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { getFilterClass } from '@/lib/filters';
@@ -41,28 +41,48 @@ function GridItem({ post, onClick }: { post: Post, onClick?: () => void }) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const handleMouseEnter = () => {
     setIsHovered(true);
-    videoRef.current?.play().catch(() => {});
+    if (post.type !== 'audio') {
+        videoRef.current?.play().catch(() => {});
+    }
   };
   const handleMouseLeave = () => {
     setIsHovered(false);
-    videoRef.current?.pause();
-    if (videoRef.current) videoRef.current.currentTime = 0;
+    if (post.type !== 'audio') {
+        videoRef.current?.pause();
+        if (videoRef.current) videoRef.current.currentTime = 0;
+    }
   };
   return (
     <div
-      className="relative mb-4 rounded-xl overflow-hidden bg-card border border-white/5 group cursor-pointer aspect-[9/16]"
+      className={cn(
+        "relative mb-4 rounded-xl overflow-hidden bg-card border border-white/5 group cursor-pointer",
+        post.type === 'audio' ? "aspect-square" : "aspect-[9/16]"
+      )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={onClick}
     >
-      <video
-        ref={videoRef}
-        src={post.videoUrl}
-        className={cn("w-full h-full object-cover", getFilterClass(post.filter))}
-        muted
-        loop
-        playsInline
-      />
+      {post.type === 'audio' ? (
+        <>
+          <img
+            src={post.coverArtUrl || post.user?.avatar}
+            alt={post.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm p-1.5 rounded-full">
+            <Music2 className="w-4 h-4 text-white" />
+          </div>
+        </>
+      ) : (
+        <video
+          ref={videoRef}
+          src={post.videoUrl}
+          className={cn("w-full h-full object-cover", getFilterClass(post.filter))}
+          muted
+          loop
+          playsInline
+        />
+      )}
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300" />
       {/* Stats Overlay */}

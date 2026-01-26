@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VideoCard } from './VideoCard';
+import { AudioCard } from './AudioCard';
 import type { Post } from '@shared/types';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,11 +16,11 @@ interface VideoModalProps {
   hasNext?: boolean;
   hasPrev?: boolean;
 }
-export function VideoModal({ 
-  post, 
-  isOpen, 
-  onClose, 
-  onDelete, 
+export function VideoModal({
+  post,
+  isOpen,
+  onClose,
+  onDelete,
   onUpdate,
   onNext,
   onPrev,
@@ -50,17 +51,31 @@ export function VideoModal({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md p-0 bg-black border-none overflow-hidden h-[80vh] md:h-[85vh] flex flex-col items-center justify-center">
-        <DialogTitle className="sr-only">Video Player</DialogTitle>
+        <DialogTitle className="sr-only">Player</DialogTitle>
         <div className="relative w-full h-full group/modal">
-            <VideoCard
-                key={post.id} // Force re-mount on post change
+            {post.type === 'audio' ? (
+              <AudioCard
+                key={post.id}
                 post={post}
                 isActive={isOpen}
                 isMuted={isMuted}
                 toggleMute={() => setIsMuted(!isMuted)}
                 onDelete={handleDelete}
                 onUpdate={onUpdate}
-            />
+                autoplayEnabled={true}
+              />
+            ) : (
+              <VideoCard
+                key={post.id}
+                post={post}
+                isActive={isOpen}
+                isMuted={isMuted}
+                toggleMute={() => setIsMuted(!isMuted)}
+                onDelete={handleDelete}
+                onUpdate={onUpdate}
+                autoplayEnabled={true}
+              />
+            )}
             {/* Close Button Overlay */}
             <button
                 onClick={onClose}
