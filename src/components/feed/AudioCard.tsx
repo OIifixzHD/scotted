@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,6 +14,12 @@ import { PostOptions } from './PostOptions';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { Slider } from '@/components/ui/slider';
 import { AudioVisualizer } from '@/components/ui/audio-visualizer';
+import { PromoteDialog } from '@/components/feed/PromoteDialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 interface AudioCardProps {
   post: Post;
   isActive: boolean;
@@ -47,6 +53,8 @@ export function AudioCard({
   const [showExplosion, setShowExplosion] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const isOwner = user?.id === post.userId;
   // Sync with props
   useEffect(() => {
     if (user) {
@@ -206,27 +214,67 @@ export function AudioCard({
                 </Avatar>
             </Link>
         </div>
-        <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
-          <div className={cn(
-            "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40",
-            isLiked ? "text-red-500" : "text-white"
-          )}>
-            <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
-          </div>
-          <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
-        </button>
-        <button onClick={() => setIsCommentsOpen(true)} className="flex flex-col items-center gap-1 group">
-          <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
-            <MessageCircle className="w-7 h-7 fill-white/10" />
-          </div>
-          <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
-        </button>
-        <button onClick={() => setIsShareOpen(true)} className="flex flex-col items-center gap-1 group">
-          <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
-            <Share2 className="w-7 h-7" />
-          </div>
-          <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
-        </button>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
+                  <div className={cn(
+                    "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40",
+                    isLiked ? "text-red-500" : "text-white"
+                  )}>
+                    <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
+                  </div>
+                  <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+                <p>Like</p>
+            </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button onClick={() => setIsCommentsOpen(true)} className="flex flex-col items-center gap-1 group">
+                  <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                    <MessageCircle className="w-7 h-7 fill-white/10" />
+                  </div>
+                  <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+                <p>Comment</p>
+            </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <button onClick={() => setIsShareOpen(true)} className="flex flex-col items-center gap-1 group">
+                  <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                    <Share2 className="w-7 h-7" />
+                  </div>
+                  <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+                <p>Share</p>
+            </TooltipContent>
+        </Tooltip>
+        {/* Promote Button (Owner Only) */}
+        {isOwner && (
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        onClick={() => setIsPromoteDialogOpen(true)}
+                        className="flex flex-col items-center gap-1 group"
+                    >
+                        <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-yellow-500/20 group-hover:text-yellow-400 group-active:scale-90 border border-transparent group-hover:border-yellow-500/50 shadow-lg">
+                            <Rocket className="w-7 h-7" />
+                        </div>
+                        <span className="text-xs font-medium text-white text-shadow group-hover:text-yellow-400">Promote</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Promote Post</p>
+                </TooltipContent>
+            </Tooltip>
+        )}
         <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
       </div>
       {/* Bottom Caption */}
@@ -245,6 +293,14 @@ export function AudioCard({
         open={isCommentsOpen}
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
+      />
+      <PromoteDialog
+        open={isPromoteDialogOpen}
+        onOpenChange={setIsPromoteDialogOpen}
+        post={post}
+        onSuccess={(updatedPost) => {
+          onUpdate?.(updatedPost);
+        }}
       />
     </div>
   );

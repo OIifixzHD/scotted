@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from '@/components/feed/EditPostDialog';
+import { PromoteDialog } from '@/components/feed/PromoteDialog';
 import { getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import { UserHoverCard } from '@/components/ui/user-hover-card';
@@ -77,11 +78,13 @@ export function VideoCard({
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [progress, setProgress] = useState(0);
+  // Dialog States
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isGiftOpen, setIsGiftOpen] = useState(false);
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   const hasViewedRef = useRef(false);
   const isOwner = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
@@ -548,6 +551,25 @@ export function VideoCard({
                     <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
                 </Tooltip>
             )}
+            {/* Promote Button (Owner Only) */}
+            {isOwner && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            onClick={() => setIsPromoteDialogOpen(true)}
+                            className="flex flex-col items-center gap-1 group"
+                        >
+                            <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-yellow-500/20 group-hover:text-yellow-400 group-active:scale-90 border border-transparent group-hover:border-yellow-500/50 shadow-lg">
+                                <Rocket className="w-7 h-7" />
+                            </div>
+                            <span className="text-xs font-medium text-white text-shadow group-hover:text-yellow-400">Promote</span>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                        <p>Promote Post</p>
+                    </TooltipContent>
+                </Tooltip>
+            )}
             {/* View Count */}
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -627,6 +649,15 @@ export function VideoCard({
           <EditPostDialog
             open={isEditDialogOpen}
             onOpenChange={setIsEditDialogOpen}
+            post={post}
+            onSuccess={(updatedPost) => {
+              onUpdate?.(updatedPost);
+            }}
+          />
+          {/* Promote Dialog */}
+          <PromoteDialog
+            open={isPromoteDialogOpen}
+            onOpenChange={setIsPromoteDialogOpen}
             post={post}
             onSuccess={(updatedPost) => {
               onUpdate?.(updatedPost);
