@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from '@/components/feed/EditPostDialog';
+import { PromoteDialog } from '@/components/feed/PromoteDialog';
 import { getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import { UserHoverCard } from '@/components/ui/user-hover-card';
@@ -98,6 +99,7 @@ export function VideoCard({
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   const [isGiftOpen, setIsGiftOpen] = useState(false);
   const hasViewedRef = useRef(false);
   const isOwner = user?.id === post.userId;
@@ -695,6 +697,15 @@ export function VideoCard({
               onUpdate?.(updatedPost);
             }}
           />
+          {/* Promote Dialog */}
+          <PromoteDialog
+            open={isPromoteDialogOpen}
+            onOpenChange={setIsPromoteDialogOpen}
+            post={post}
+            onSuccess={(updatedPost) => {
+              onUpdate?.(updatedPost);
+            }}
+          />
         </motion.div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-64 bg-card/95 backdrop-blur-xl border-white/10 text-foreground">
@@ -729,6 +740,12 @@ export function VideoCard({
             </ContextMenuItem>
         ))}
         <ContextMenuSeparator className="bg-white/10" />
+        {isOwner && (
+          <ContextMenuItem onClick={() => setIsPromoteDialogOpen(true)} className="text-yellow-400 focus:text-yellow-400">
+            <Rocket className="mr-2 h-4 w-4" />
+            Promote
+          </ContextMenuItem>
+        )}
         {user && !isOwner && (
           <>
             <ContextMenuItem onClick={handleNotInterested}>

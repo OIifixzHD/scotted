@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc, Gift } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc, Gift, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,6 +21,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { GiftDialog } from './GiftDialog';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  ContextMenuLabel,
+} from "@/components/ui/context-menu";
+import { PromoteDialog } from './PromoteDialog';
+import { ReportDialog } from '@/components/profile/ReportDialog';
+import { EditPostDialog } from './EditPostDialog';
 interface AudioCardProps {
   post: Post;
   isActive: boolean;
@@ -59,7 +70,15 @@ export function AudioCard({
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [isGiftOpen, setIsGiftOpen] = useState(false);
+  // Context Menu & Dialog States
+  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   const isOwner = user?.id === post.userId;
+  const isAdmin = user?.isAdmin;
+  const canDelete = isOwner || isAdmin;
+  const canEdit = isOwner || isAdmin;
   // Sync with props
   useEffect(() => {
     if (user) {
@@ -138,184 +157,314 @@ export function AudioCard({
       setLikeCount(prevLiked ? likeCount : likeCount);
     }
   };
+  const handleCopyLink = async () => {
+    const url = `${window.location.origin}/post/${post.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    } catch (err) {
+      toast.error("Failed to copy link");
+    }
+  };
+  const handleNotInterested = async () => {
+    if (!user) return;
+    try {
+      await api(`/api/users/${user.id}/not-interested`, {
+        method: 'POST',
+        body: JSON.stringify({ postId: post.id })
+      });
+      toast.success("Post hidden");
+      onHide?.();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to hide post");
+    }
+  };
+  const handleDelete = async () => {
+    if (!user) return;
+    if (!confirm("Are you sure you want to delete this post?")) return;
+    try {
+      await api(`/api/posts/${post.id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ userId: user.id })
+      });
+      toast.success("Post deleted");
+      onDelete?.();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete post");
+    }
+  };
+  const handlePlaybackRateChange = (rate: number) => {
+    setPlaybackRate(rate);
+    if (audioRef.current) {
+        audioRef.current.playbackRate = rate;
+    }
+  };
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
   return (
-    <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl flex flex-col">
-      <audio
-        ref={audioRef}
-        src={post.audioUrl}
-        loop
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={() => setIsPlaying(false)}
-      />
-      {/* Background Blur */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src={post.coverArtUrl || post.user?.avatar}
-          alt="Background"
-          className="w-full h-full object-cover opacity-30 blur-3xl scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90" />
-      </div>
-      {/* Content */}
-      <div className="relative z-10 flex-1 flex flex-col p-6 justify-center items-center text-center space-y-8">
-        {/* Visualizer Background */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
-             <AudioVisualizer isPlaying={isPlaying} barCount={30} className="h-64 gap-1" />
-        </div>
-        {/* Cover Art */}
-        <motion.div
-          animate={{ rotate: isPlaying ? 360 : 0 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear", repeatType: "loop" }}
-          className={cn(
-            "w-64 h-64 rounded-full shadow-2xl border-4 border-white/10 overflow-hidden relative z-10",
-            !isPlaying && "animation-play-state: paused"
-          )}
-        >
-          {post.coverArtUrl ? (
-            <img src={post.coverArtUrl} alt="Cover" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
-              <Music2 className="w-24 h-24 text-white/50" />
-            </div>
-          )}
-          {/* Center Hole for Vinyl Look */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-black rounded-full border border-white/20" />
-        </motion.div>
-        {/* Metadata */}
-        <div className="space-y-2 max-w-xs relative z-10">
-          <h2 className="text-2xl font-bold text-white truncate">{post.title || "Untitled Track"}</h2>
-          <p className="text-lg text-muted-foreground truncate">{post.artist || post.user?.name}</p>
-        </div>
-        {/* Progress & Controls */}
-        <div className="w-full max-w-xs space-y-4 relative z-10">
-          <div className="space-y-1">
-            <Slider
-              value={[progress]}
-              max={100}
-              step={0.1}
-              onValueChange={handleSeek}
-              className="cursor-pointer"
+    <ContextMenu>
+      <ContextMenuTrigger className="w-full h-full">
+        <div className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl flex flex-col">
+          <audio
+            ref={audioRef}
+            src={post.audioUrl}
+            loop
+            onTimeUpdate={handleTimeUpdate}
+            onEnded={() => setIsPlaying(false)}
+          />
+          {/* Background Blur */}
+          <div className="absolute inset-0 z-0">
+            <img
+              src={post.coverArtUrl || post.user?.avatar}
+              alt="Background"
+              className="w-full h-full object-cover opacity-30 blur-3xl scale-110"
             />
-            <div className="flex justify-between text-xs text-muted-foreground font-mono">
-              <span>{formatTime(audioRef.current?.currentTime || 0)}</span>
-              <span>{formatTime(duration)}</span>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90" />
+          </div>
+          {/* Content */}
+          <div className="relative z-10 flex-1 flex flex-col p-6 justify-center items-center text-center space-y-8">
+            {/* Visualizer Background */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-50">
+                 <AudioVisualizer isPlaying={isPlaying} barCount={30} className="h-64 gap-1" />
+            </div>
+            {/* Cover Art */}
+            <motion.div
+              animate={{ rotate: isPlaying ? 360 : 0 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear", repeatType: "loop" }}
+              className={cn(
+                "w-64 h-64 rounded-full shadow-2xl border-4 border-white/10 overflow-hidden relative z-10",
+                !isPlaying && "animation-play-state: paused"
+              )}
+            >
+              {post.coverArtUrl ? (
+                <img src={post.coverArtUrl} alt="Cover" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                  <Music2 className="w-24 h-24 text-white/50" />
+                </div>
+              )}
+              {/* Center Hole for Vinyl Look */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-black rounded-full border border-white/20" />
+            </motion.div>
+            {/* Metadata */}
+            <div className="space-y-2 max-w-xs relative z-10">
+              <h2 className="text-2xl font-bold text-white truncate">{post.title || "Untitled Track"}</h2>
+              <p className="text-lg text-muted-foreground truncate">{post.artist || post.user?.name}</p>
+            </div>
+            {/* Progress & Controls */}
+            <div className="w-full max-w-xs space-y-4 relative z-10">
+              <div className="space-y-1">
+                <Slider
+                  value={[progress]}
+                  max={100}
+                  step={0.1}
+                  onValueChange={handleSeek}
+                  className="cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground font-mono">
+                  <span>{formatTime(audioRef.current?.currentTime || 0)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+              <div className="flex justify-center items-center gap-6">
+                <button
+                  onClick={togglePlay}
+                  className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-glow"
+                >
+                  {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
+                </button>
+              </div>
             </div>
           </div>
-          <div className="flex justify-center items-center gap-6">
-            <button
-              onClick={togglePlay}
-              className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-glow"
-            >
-              {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Right Sidebar Actions */}
-      <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
-        <div className="flex flex-col items-center gap-1">
-            <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
-                <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
-                    <AvatarImage src={post.user?.avatar} />
-                    <AvatarFallback>{post.user?.name?.substring(0, 2)}</AvatarFallback>
-                </Avatar>
-            </Link>
-        </div>
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
-                  <div className={cn(
-                    "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40",
-                    isLiked ? "text-red-500" : "text-white"
-                  )}>
-                    <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
-                  </div>
-                  <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
-                </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-                <p>Like</p>
-            </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <button onClick={() => setIsCommentsOpen(true)} className="flex flex-col items-center gap-1 group">
-                  <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
-                    <MessageCircle className="w-7 h-7 fill-white/10" />
-                  </div>
-                  <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
-                </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-                <p>Comment</p>
-            </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <button onClick={() => setIsShareOpen(true)} className="flex flex-col items-center gap-1 group">
-                  <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
-                    <Share2 className="w-7 h-7" />
-                  </div>
-                  <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
-                </button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-                <p>Share</p>
-            </TooltipContent>
-        </Tooltip>
-        {/* Gift Button */}
-        {!isOwner && (
+          {/* Right Sidebar Actions */}
+          <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
+            <div className="flex flex-col items-center gap-1">
+                <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
+                    <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
+                        <AvatarImage src={post.user?.avatar} />
+                        <AvatarFallback>{post.user?.name?.substring(0, 2)}</AvatarFallback>
+                    </Avatar>
+                </Link>
+            </div>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button onClick={() => setIsGiftOpen(true)} className="flex flex-col items-center gap-1 group">
-                        <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
-                            <Gift className="w-6 h-6 md:w-7 md:h-7" />
-                        </div>
-                        <span className="text-xs font-medium text-white text-shadow">Gift</span>
+                    <button onClick={handleLike} className="flex flex-col items-center gap-1 group">
+                      <div className={cn(
+                        "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40",
+                        isLiked ? "text-red-500" : "text-white"
+                      )}>
+                        <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
                     </button>
                 </TooltipTrigger>
-                <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
+                <TooltipContent side="left">
+                    <p>Like</p>
+                </TooltipContent>
             </Tooltip>
-        )}
-        <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
-      </div>
-      {/* Bottom Caption */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/90 to-transparent z-10">
-        <div className="max-w-[80%]">
-          <p className="text-sm text-white/90 line-clamp-2">{post.caption}</p>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button onClick={() => setIsCommentsOpen(true)} className="flex flex-col items-center gap-1 group">
+                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                        <MessageCircle className="w-7 h-7 fill-white/10" />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Comment</p>
+                </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button onClick={() => setIsShareOpen(true)} className="flex flex-col items-center gap-1 group">
+                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                        <Share2 className="w-7 h-7" />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Share</p>
+                </TooltipContent>
+            </Tooltip>
+            {/* Gift Button */}
+            {!isOwner && (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button onClick={() => setIsGiftOpen(true)} className="flex flex-col items-center gap-1 group">
+                            <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
+                                <Gift className="w-6 h-6 md:w-7 md:h-7" />
+                            </div>
+                            <span className="text-xs font-medium text-white text-shadow">Gift</span>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
+                </Tooltip>
+            )}
+            <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
+          </div>
+          {/* Bottom Caption */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/90 to-transparent z-10">
+            <div className="max-w-[80%]">
+              <p className="text-sm text-white/90 line-clamp-2">{post.caption}</p>
+            </div>
+          </div>
+          {/* Volume Control */}
+          <div className="absolute top-4 right-4 z-30 pt-safe">
+            <VolumeControl
+              volume={volume}
+              isMuted={isMuted}
+              onVolumeChange={onVolumeChange || (() => {})}
+              onToggleMute={toggleMute}
+            />
+          </div>
+          {/* Effects & Dialogs */}
+          <AnimatePresence>
+            {showExplosion && <LikeExplosion />}
+          </AnimatePresence>
+          <ShareDialog open={isShareOpen} onOpenChange={setIsShareOpen} postId={post.id} />
+          <CommentsSheet
+            postId={post.id}
+            open={isCommentsOpen}
+            onOpenChange={setIsCommentsOpen}
+            onCommentAdded={() => setCommentCount(prev => prev + 1)}
+          />
+          <GiftDialog
+            open={isGiftOpen}
+            onOpenChange={setIsGiftOpen}
+            postId={post.id}
+            authorId={post.userId}
+          />
+          <PromoteDialog
+            open={isPromoteDialogOpen}
+            onOpenChange={setIsPromoteDialogOpen}
+            post={post}
+            onSuccess={(updatedPost) => {
+              onUpdate?.(updatedPost);
+            }}
+          />
+          <ReportDialog
+            open={isReportDialogOpen}
+            onClose={() => setIsReportDialogOpen(false)}
+            targetId={post.id}
+            targetType="post"
+            targetName="this post"
+          />
+          <EditPostDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            post={post}
+            onSuccess={(updatedPost) => {
+              onUpdate?.(updatedPost);
+            }}
+          />
         </div>
-      </div>
-      {/* Volume Control */}
-      <div className="absolute top-4 right-4 z-30 pt-safe">
-        <VolumeControl
-          volume={volume}
-          isMuted={isMuted}
-          onVolumeChange={onVolumeChange || (() => {})}
-          onToggleMute={toggleMute}
-        />
-      </div>
-      {/* Effects & Dialogs */}
-      <AnimatePresence>
-        {showExplosion && <LikeExplosion />}
-      </AnimatePresence>
-      <ShareDialog open={isShareOpen} onOpenChange={setIsShareOpen} postId={post.id} />
-      <CommentsSheet
-        postId={post.id}
-        open={isCommentsOpen}
-        onOpenChange={setIsCommentsOpen}
-        onCommentAdded={() => setCommentCount(prev => prev + 1)}
-      />
-      <GiftDialog
-        open={isGiftOpen}
-        onOpenChange={setIsGiftOpen}
-        postId={post.id}
-        authorId={post.userId}
-      />
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-64 bg-card/95 backdrop-blur-xl border-white/10 text-foreground">
+        <ContextMenuItem onClick={handleLike}>
+          <Heart className={cn("mr-2 h-4 w-4", isLiked && "fill-red-500 text-red-500")} />
+          {isLiked ? "Unlike" : "Like"}
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => setIsCommentsOpen(true)}>
+          <MessageCircle className="mr-2 h-4 w-4" />
+          Comment
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => setIsShareOpen(true)}>
+          <Share2 className="mr-2 h-4 w-4" />
+          Share
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleCopyLink}>
+          <LinkIcon className="mr-2 h-4 w-4" />
+          Copy Link
+        </ContextMenuItem>
+        <ContextMenuSeparator className="bg-white/10" />
+        <ContextMenuLabel>Playback Speed</ContextMenuLabel>
+        {[0.5, 1.0, 1.5, 2.0].map((rate) => (
+            <ContextMenuItem key={rate} onClick={() => handlePlaybackRateChange(rate)}>
+                <div className="flex items-center justify-between w-full">
+                    <span>{rate}x</span>
+                    {playbackRate === rate && <Check className="h-4 w-4" />}
+                </div>
+            </ContextMenuItem>
+        ))}
+        <ContextMenuSeparator className="bg-white/10" />
+        {isOwner && (
+          <ContextMenuItem onClick={() => setIsPromoteDialogOpen(true)} className="text-yellow-400 focus:text-yellow-400">
+            <Rocket className="mr-2 h-4 w-4" />
+            Promote
+          </ContextMenuItem>
+        )}
+        {user && !isOwner && (
+          <>
+            <ContextMenuItem onClick={handleNotInterested}>
+              <Ban className="mr-2 h-4 w-4" />
+              Not Interested
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => setIsReportDialogOpen(true)} className="text-yellow-500 focus:text-yellow-500">
+              <Flag className="mr-2 h-4 w-4" />
+              Report
+            </ContextMenuItem>
+          </>
+        )}
+        {canEdit && (
+          <ContextMenuItem onClick={() => setIsEditDialogOpen(true)}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Post
+          </ContextMenuItem>
+        )}
+        {canDelete && (
+          <ContextMenuItem onClick={handleDelete} className="text-red-500 focus:text-red-500">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </ContextMenuItem>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
