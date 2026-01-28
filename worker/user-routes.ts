@@ -144,6 +144,24 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     userGrowth.forEach(p => delete p.dateStr);
     activity.forEach(p => delete p.dateStr);
+    // Echoes Distribution
+    const echoBuckets = { '0': 0, '1-100': 0, '101-1k': 0, '1k-5k': 0, '5k+': 0 };
+    users.forEach(u => {
+        const e = u.echoes || 0;
+        if (e === 0) echoBuckets['0']++;
+        else if (e <= 100) echoBuckets['1-100']++;
+        else if (e <= 1000) echoBuckets['101-1k']++;
+        else if (e <= 5000) echoBuckets['1k-5k']++;
+        else echoBuckets['5k+']++;
+    });
+    const echoesDistribution: ChartDataPoint[] = Object.entries(echoBuckets).map(([name, value]) => ({ name, value }));
+    // Content Types
+    const typeCounts = { video: 0, audio: 0 };
+    posts.forEach(p => {
+        if (p.type === 'audio') typeCounts.audio++;
+        else typeCounts.video++;
+    });
+    const contentTypes: ChartDataPoint[] = Object.entries(typeCounts).map(([name, value]) => ({ name, value }));
     const stats: AdminStats = {
         totalUsers,
         totalPosts,
@@ -153,7 +171,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         totalComments,
         totalEchoes,
         userGrowth,
-        activity
+        activity,
+        echoesDistribution,
+        contentTypes
     };
     return ok(c, stats);
   });

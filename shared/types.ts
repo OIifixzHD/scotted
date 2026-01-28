@@ -156,7 +156,9 @@ export interface AdminStats {
   totalEngagement: number;
   totalLikes: number;
   totalComments: number;
-  totalEchoes: number; // Added for economy analytics
+  totalEchoes: number;
   userGrowth: ChartDataPoint[];
   activity: ChartDataPoint[];
+  echoesDistribution: ChartDataPoint[]; // Added for economy analytics
+  contentTypes: ChartDataPoint[]; // Added for content analytics
 }

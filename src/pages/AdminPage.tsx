@@ -26,14 +26,14 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone, Sparkles } from "lucide-react";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone, Sparkles, PieChart as PieChartIcon } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { AdminPostTable } from '@/components/admin/AdminPostTable';
 import { VideoModal } from '@/components/feed/VideoModal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -219,6 +219,7 @@ export function AdminPage() {
     const scoreB = (b.likes * 2) + (b.comments * 3) + ((b.views || 0) * 0.5);
     return scoreB - scoreA;
   }).slice(0, 5);
+  const COLORS = ['#7c3aed', '#2dd4bf', '#f472b6', '#fbbf24'];
   if (isAuthLoading || (!currentUser?.isAdmin && currentUser?.name !== 'AdminUser001')) {
     return (
       <div className="flex justify-center py-20">
@@ -549,6 +550,80 @@ export function AdminPage() {
                         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+            {/* New Economy & Content Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Echoes Distribution */}
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
+                <div className="flex items-center gap-2 mb-6">
+                  <Sparkles className="w-5 h-5 text-yellow-400" />
+                  <h3 className="text-lg font-bold">Echoes Wealth Distribution</h3>
+                </div>
+                <div className="flex-1 w-full min-h-[250px]">
+                  {chartsReady && stats?.echoesDistribution ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.echoesDistribution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                        <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                          itemStyle={{ color: '#fff' }}
+                        />
+                        <Bar dataKey="value" fill="#fbbf24" radius={[4, 4, 0, 0]} name="Users" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Content Mix */}
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
+                <div className="flex items-center gap-2 mb-6">
+                  <PieChartIcon className="w-5 h-5 text-pink-400" />
+                  <h3 className="text-lg font-bold">Content Mix</h3>
+                </div>
+                <div className="flex-1 w-full min-h-[250px]">
+                  {chartsReady && stats?.contentTypes ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.contentTypes}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {stats.contentTypes.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                          itemStyle={{ color: '#fff' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex justify-center gap-4 mt-4">
+                    {stats?.contentTypes.map((entry, index) => (
+                      <div key={entry.name} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                        <span className="text-sm text-muted-foreground capitalize">{entry.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
