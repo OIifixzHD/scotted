@@ -174,13 +174,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { followers, avatarDecoration, badge, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle } = await c.req.json() as Partial<User>;
+    const { followers, avatarDecoration, badge, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle, echoes } = await c.req.json() as Partial<User>;
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
     }
     const updates: Partial<User> = {};
     if (followers !== undefined) updates.followers = followers;
+    if (echoes !== undefined) updates.echoes = echoes;
     if (avatarDecoration !== undefined) updates.avatarDecoration = avatarDecoration;
     if (badge !== undefined) updates.badge = badge;
     if (bannerStyle !== undefined) updates.bannerStyle = bannerStyle;

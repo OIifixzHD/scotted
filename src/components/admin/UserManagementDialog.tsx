@@ -29,6 +29,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
   const [bio, setBio] = useState('');
   const [avatar, setAvatar] = useState('');
   const [followers, setFollowers] = useState(0);
+  const [echoes, setEchoes] = useState(0);
   const [avatarDecoration, setAvatarDecoration] = useState('none');
   const [badge, setBadge] = useState('none');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -44,6 +45,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
       setBio(user.bio || '');
       setAvatar(user.avatar || '');
       setFollowers(user.followers || 0);
+      setEchoes(user.echoes || 0);
       setAvatarDecoration(user.avatarDecoration || 'none');
       setBadge(user.badge || 'none');
       setIsAdmin(user.isAdmin || false);
@@ -65,6 +67,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         updates.bio = bio;
         updates.avatar = avatar;
         updates.followers = followers;
+        updates.echoes = echoes;
         updates.avatarDecoration = avatarDecoration;
         updates.badge = badge;
         updates.isAdmin = isAdmin;
@@ -72,7 +75,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         let bannedUntil = 0;
         if (banDurationType === 'preset') {
           const durationDays = parseInt(banDuration);
-          bannedUntil = durationDays === -1 
+          bannedUntil = durationDays === -1
             ? 32503680000000 // Permanent (Year 3000)
             : Date.now() + (durationDays * 24 * 60 * 60 * 1000);
         } else {
@@ -96,11 +99,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         method: 'PUT',
         body: JSON.stringify(updates)
       });
-
       if (currentUser && user.id === currentUser.id) {
         await refreshUser();
       }
-
       let successMessage = 'User updated';
       if (mode === 'ban') successMessage = 'User banned';
       if (mode === 'unban') successMessage = 'User unbanned';
@@ -167,9 +168,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="name">Display Name</Label>
                   <div className="flex items-center gap-2">
-                    <Input 
-                      id="name" 
-                      value={name} 
+                    <Input
+                      id="name"
+                      value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="bg-secondary/50 border-white/10"
                     />
@@ -178,9 +179,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="avatar">Avatar URL</Label>
-                  <Input 
-                    id="avatar" 
-                    value={avatar} 
+                  <Input
+                    id="avatar"
+                    value={avatar}
                     onChange={(e) => setAvatar(e.target.value)}
                     className="bg-secondary/50 border-white/10"
                     placeholder="https://..."
@@ -188,11 +189,21 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="followers">Followers</Label>
-                  <Input 
-                    id="followers" 
-                    type="number" 
-                    value={followers} 
+                  <Input
+                    id="followers"
+                    type="number"
+                    value={followers}
                     onChange={(e) => setFollowers(parseInt(e.target.value) || 0)}
+                    className="bg-secondary/50 border-white/10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="echoes">Echoes Balance</Label>
+                  <Input
+                    id="echoes"
+                    type="number"
+                    value={echoes}
+                    onChange={(e) => setEchoes(parseInt(e.target.value) || 0)}
                     className="bg-secondary/50 border-white/10"
                   />
                 </div>
@@ -212,7 +223,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Award className="w-3 h-3 text-primary" />
                     Badge Icon
@@ -235,9 +246,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="bio">Bio</Label>
-                  <Textarea 
-                    id="bio" 
-                    value={bio} 
+                  <Textarea
+                    id="bio"
+                    value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     className="bg-secondary/50 border-white/10 min-h-[80px]"
                   />
@@ -251,8 +262,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                   </Label>
                   <p className="text-xs text-purple-200/70">Grant full system control</p>
                 </div>
-                <Switch 
-                  checked={isAdmin} 
+                <Switch
+                  checked={isAdmin}
                   onCheckedChange={setIsAdmin}
                   className="data-[state=checked]:bg-purple-500"
                 />
@@ -267,8 +278,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
               </div>
               <div className="space-y-2">
                 <Label>Duration Type</Label>
-                <Select 
-                  value={banDurationType} 
+                <Select
+                  value={banDurationType}
                   onValueChange={(val: 'preset' | 'custom') => setBanDurationType(val)}
                 >
                   <SelectTrigger className="bg-secondary/50 border-white/10">
@@ -300,18 +311,18 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Value</Label>
-                    <Input 
-                      type="number" 
-                      min="1" 
-                      value={customBanValue} 
+                    <Input
+                      type="number"
+                      min="1"
+                      value={customBanValue}
                       onChange={(e) => setCustomBanValue(e.target.value)}
                       className="bg-secondary/50 border-white/10"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Unit</Label>
-                    <Select 
-                      value={customBanUnit} 
+                    <Select
+                      value={customBanUnit}
                       onValueChange={(val: 'seconds' | 'minutes' | 'hours' | 'days') => setCustomBanUnit(val)}
                     >
                       <SelectTrigger className="bg-secondary/50 border-white/10">
@@ -329,7 +340,7 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
               )}
               <div className="space-y-2">
                 <Label>Reason</Label>
-                <Input 
+                <Input
                   placeholder="e.g. Spam, Harassment"
                   value={banReason}
                   onChange={(e) => setBanReason(e.target.value)}
@@ -347,8 +358,8 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button 
-            onClick={handleSave} 
+          <Button
+            onClick={handleSave}
             disabled={isLoading}
             variant={mode === 'ban' ? 'destructive' : 'default'}
             className={mode === 'edit' || mode === 'unban' ? 'bg-primary hover:bg-primary/90' : ''}
