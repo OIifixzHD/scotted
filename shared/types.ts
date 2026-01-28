@@ -81,6 +81,7 @@ export interface Post {
   comments: number;
   shares: number;
   views?: number; // Added for view tracking
+  promotedUntil?: number; // Timestamp when promotion expires
   user?: User; // Hydrated user data
   tags?: string[];
   createdAt: number;

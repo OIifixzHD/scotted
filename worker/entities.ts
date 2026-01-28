@@ -205,6 +205,7 @@ export class PostEntity extends IndexedEntity<Post> {
     comments: 0,
     shares: 0,
     views: 0,
+    promotedUntil: 0,
     createdAt: 0,
     commentsList: [],
     soundId: 'default-sound',
@@ -523,6 +524,14 @@ export class PostEntity extends IndexedEntity<Post> {
   async getComments(): Promise<Comment[]> {
     const state = await this.getState();
     return state.commentsList || [];
+  }
+  async promote(durationMs: number): Promise<Post> {
+    const now = Date.now();
+    const newState = await this.mutate(s => ({
+        ...s,
+        promotedUntil: now + durationMs
+    }));
+    return newState;
   }
 }
 // CHAT BOARD ENTITY
