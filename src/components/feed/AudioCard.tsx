@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc, Gift, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Music2, Gift, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,6 +32,7 @@ import {
 import { PromoteDialog } from './PromoteDialog';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from './EditPostDialog';
+import { UserHoverCard } from '@/components/ui/user-hover-card';
 interface AudioCardProps {
   post: Post;
   isActive: boolean;
@@ -79,6 +80,7 @@ export function AudioCard({
   const isAdmin = user?.isAdmin;
   const canDelete = isOwner || isAdmin;
   const canEdit = isOwner || isAdmin;
+  const isPromoted = (post.promotedUntil || 0) > Date.now();
   // Sync with props
   useEffect(() => {
     if (user) {
@@ -206,6 +208,27 @@ export function AudioCard({
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+  const renderCaption = (text: string) => {
+    if (!text) return [];
+    // Split by whitespace but keep delimiters to preserve formatting
+    const parts = text.split(/(\s+)/);
+    return parts.map((part, index) => {
+      if (part.startsWith('#') && part.length > 1) {
+        const tag = part.substring(1);
+        return (
+          <Link
+            key={index}
+            to={`/tag/${encodeURIComponent(tag)}`}
+            className="text-primary font-bold hover:underline hover:text-primary/80 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {part}
+          </Link>
+        );
+      }
+      return part;
+    });
+  };
   return (
     <ContextMenu>
       <ContextMenuTrigger className="w-full h-full">
@@ -225,6 +248,16 @@ export function AudioCard({
               className="w-full h-full object-cover opacity-30 blur-3xl scale-110"
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90" />
+          </div>
+          {/* Badges Container */}
+          <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none pt-safe">
+              {/* Promoted Badge */}
+              {isPromoted && (
+                  <div className="px-2 py-1 bg-yellow-500/90 backdrop-blur-md rounded border border-yellow-400/50 text-[10px] font-bold text-black flex items-center gap-1 w-fit shadow-glow">
+                      <Rocket className="w-3 h-3 fill-black" />
+                      PROMOTED
+                  </div>
+              )}
           </div>
           {/* Content */}
           <div className="relative z-10 flex-1 flex flex-col p-6 justify-center items-center text-center space-y-8">
@@ -284,12 +317,14 @@ export function AudioCard({
           {/* Right Sidebar Actions */}
           <div className="absolute right-4 bottom-24 flex flex-col items-center gap-6 z-20">
             <div className="flex flex-col items-center gap-1">
-                <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
-                    <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
-                        <AvatarImage src={post.user?.avatar} />
-                        <AvatarFallback>{post.user?.name?.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
-                </Link>
+                <UserHoverCard userId={post.userId} asChild>
+                    <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
+                        <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
+                            <AvatarImage src={post.user?.avatar} />
+                            <AvatarFallback>{post.user?.name?.substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                    </Link>
+                </UserHoverCard>
             </div>
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -352,7 +387,7 @@ export function AudioCard({
           {/* Bottom Caption */}
           <div className="absolute bottom-0 left-0 right-0 p-4 pb-6 bg-gradient-to-t from-black/90 to-transparent z-10">
             <div className="max-w-[80%]">
-              <p className="text-sm text-white/90 line-clamp-2">{post.caption}</p>
+              <p className="text-sm text-white/90 line-clamp-2">{renderCaption(post.caption)}</p>
             </div>
           </div>
           {/* Volume Control */}

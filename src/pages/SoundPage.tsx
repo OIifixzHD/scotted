@@ -15,8 +15,6 @@ interface SoundDetails {
   playCount: number;
   artist: string;
 }
-// Mock audio URL for preview purposes
-const MOCK_AUDIO_URL = "https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/win.ogg";
 export function SoundPage() {
   const { id } = useParams<{ id: string }>();
   const { user, login } = useAuth();
@@ -24,6 +22,7 @@ export function SoundPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [audioSrc, setAudioSrc] = useState<string>('');
   // Audio Playback State
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -38,6 +37,18 @@ export function SoundPage() {
         const res = await api<{ sound: SoundDetails, posts: Post[] }>(`/api/sounds/${id}`);
         setSound(res.sound);
         setPosts(res.posts);
+        // Determine audio source
+        // 1. Try to find an audio post with this sound
+        const audioPost = res.posts.find(p => p.type === 'audio' && p.audioUrl);
+        if (audioPost) {
+            setAudioSrc(audioPost.audioUrl!);
+        } else {
+            // 2. Fallback to a video post
+            const videoPost = res.posts.find(p => p.videoUrl);
+            if (videoPost) {
+                setAudioSrc(videoPost.videoUrl!);
+            }
+        }
       } catch (error) {
         console.error('Failed to fetch sound details:', error);
       } finally {
@@ -63,7 +74,10 @@ export function SoundPage() {
     };
   }, []);
   const togglePlay = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !audioSrc) {
+        if (!audioSrc) toast.error("No audio source available for this sound");
+        return;
+    }
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
@@ -161,7 +175,7 @@ export function SoundPage() {
           {/* Hidden Audio Element */}
           <audio
             ref={audioRef}
-            src={MOCK_AUDIO_URL}
+            src={audioSrc}
             onEnded={handleAudioEnded}
           />
           {/* Sound Header */}
