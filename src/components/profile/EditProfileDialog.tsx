@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Camera, Palette, Lock } from "lucide-react";
+import { Loader2, Camera, Palette, Lock, Sparkles, ShoppingBag, Check } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -18,13 +18,23 @@ interface EditProfileDialogProps {
   onOpenChange: (open: boolean) => void;
   currentUser: User;
 }
+const DECORATIONS = [
+  { id: 'none', label: 'None', cost: 0 },
+  { id: 'gold-border', label: 'Gold Border', cost: 100 },
+  { id: 'neon-glow', label: 'Neon Glow', cost: 250 },
+  { id: 'blue-fire', label: 'Blue Fire', cost: 500 },
+  { id: 'rainbow-ring', label: 'Rainbow Ring', cost: 1000 },
+  { id: 'cyber-glitch', label: 'Cyber Glitch', cost: 2000 },
+];
 export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfileDialogProps) {
-  const { login } = useAuth();
+  const { login, refreshUser } = useAuth();
   const [displayName, setDisplayName] = useState(currentUser.displayName || currentUser.name);
   const [bio, setBio] = useState(currentUser.bio || '');
   const [avatar, setAvatar] = useState(currentUser.avatar || '');
   const [bannerStyle, setBannerStyle] = useState(currentUser.bannerStyle || 'default');
+  const [avatarDecoration, setAvatarDecoration] = useState(currentUser.avatarDecoration || 'none');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
   // Cropper State
   const [tempImage, setTempImage] = useState<string | null>(null);
   useEffect(() => {
@@ -33,6 +43,7 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
       setBio(currentUser.bio || '');
       setAvatar(currentUser.avatar || '');
       setBannerStyle(currentUser.bannerStyle || 'default');
+      setAvatarDecoration(currentUser.avatarDecoration || 'none');
       setTempImage(null);
     }
   }, [open, currentUser]);
@@ -58,6 +69,27 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
   const handleCropCancel = () => {
     setTempImage(null);
   };
+  const handlePurchase = async (decorationId: string, cost: number) => {
+    if ((currentUser.echoes || 0) < cost) {
+        toast.error("Insufficient Echoes!");
+        return;
+    }
+    setPurchasingId(decorationId);
+    try {
+        const updatedUser = await api<User>(`/api/users/${currentUser.id}/purchase-decoration`, {
+            method: 'POST',
+            body: JSON.stringify({ decorationId, cost })
+        });
+        login(updatedUser); // Update global context
+        setAvatarDecoration(decorationId); // Auto-select
+        toast.success("Purchased & Equipped!");
+    } catch (error) {
+        console.error(error);
+        toast.error(error instanceof Error ? error.message : "Purchase failed");
+    } finally {
+        setPurchasingId(null);
+    }
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim()) {
@@ -66,10 +98,10 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     }
     setIsSubmitting(true);
     try {
-      // Only send user-editable fields. Badges and decorations are admin-only.
+      // Only send user-editable fields.
       const updatedUser = await api<User>(`/api/users/${currentUser.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ displayName, bio, avatar, bannerStyle })
+        body: JSON.stringify({ displayName, bio, avatar, bannerStyle, avatarDecoration })
       });
       login(updatedUser);
       toast.success("Profile updated successfully");
@@ -89,9 +121,10 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
     { value: 'ocean', label: 'Ocean (Blue/Teal)' },
     { value: 'midnight', label: 'Midnight (Gray/Black)' },
   ];
+  const unlocked = currentUser.unlockedDecorations || ['none'];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-card border-white/10 text-foreground max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] bg-card border-white/10 text-foreground max-h-[90vh] overflow-y-auto">
         {tempImage ? (
           <>
             <DialogHeader>
@@ -113,13 +146,13 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
             <DialogHeader>
               <DialogTitle>Edit Profile</DialogTitle>
               <DialogDescription>
-                Update your public profile information. Changes will be visible immediately.
+                Update your public profile information.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6 py-4">
               <div className="flex flex-col items-center gap-4">
                 <div className="relative group cursor-pointer">
-                  <div className={cn("rounded-full transition-all duration-300", getDecorationClass(currentUser.avatarDecoration))}>
+                  <div className={cn("rounded-full transition-all duration-300", getDecorationClass(avatarDecoration))}>
                     <Avatar className="w-24 h-24 border-2 border-white/10 group-hover:border-primary transition-colors">
                         <AvatarImage src={avatar} />
                         <AvatarFallback>{displayName.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -148,26 +181,12 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username" className="flex items-center gap-2">
-                  Username
-                  <Lock className="w-3 h-3 text-muted-foreground" />
-                </Label>
-                <Input
-                  id="username"
-                  value={`@${currentUser.name}`}
-                  readOnly
-                  disabled
-                  className="bg-secondary/20 border-white/5 text-muted-foreground cursor-not-allowed"
-                />
-                <p className="text-xs text-muted-foreground">Username cannot be changed.</p>
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
                 <Textarea
                   id="bio"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="bg-secondary/50 border-white/10 min-h-[100px]"
+                  className="bg-secondary/50 border-white/10 min-h-[80px]"
                 />
               </div>
               <div className="space-y-2">
@@ -187,6 +206,65 @@ export function EditProfileDialog({ open, onOpenChange, currentUser }: EditProfi
                         ))}
                     </SelectContent>
                 </Select>
+              </div>
+              {/* Decoration Marketplace */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                    <Label className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-yellow-400" />
+                        Avatar Ring
+                    </Label>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        Balance: <span className="text-yellow-400 font-bold">{currentUser.echoes || 0}</span>
+                    </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-1">
+                    {DECORATIONS.map((deco) => {
+                        const isOwned = unlocked.includes(deco.id);
+                        const isSelected = avatarDecoration === deco.id;
+                        return (
+                            <div 
+                                key={deco.id} 
+                                className={cn(
+                                    "p-3 rounded-lg border flex flex-col items-center gap-2 transition-all",
+                                    isSelected 
+                                        ? "bg-primary/10 border-primary" 
+                                        : "bg-secondary/20 border-white/5 hover:bg-secondary/40"
+                                )}
+                            >
+                                <div className={cn("w-12 h-12 rounded-full bg-black/50", getDecorationClass(deco.id))} />
+                                <span className="text-xs font-medium">{deco.label}</span>
+                                {isOwned ? (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={isSelected ? "default" : "outline"}
+                                        className={cn("w-full h-7 text-xs", isSelected ? "bg-primary" : "border-white/10")}
+                                        onClick={() => setAvatarDecoration(deco.id)}
+                                    >
+                                        {isSelected ? <Check className="w-3 h-3 mr-1" /> : null}
+                                        {isSelected ? "Equipped" : "Equip"}
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        className="w-full h-7 text-xs bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border border-yellow-500/20"
+                                        onClick={() => handlePurchase(deco.id, deco.cost)}
+                                        disabled={purchasingId === deco.id}
+                                    >
+                                        {purchasingId === deco.id ? <Loader2 className="w-3 h-3 animate-spin" /> : (
+                                            <>
+                                                <ShoppingBag className="w-3 h-3 mr-1" /> {deco.cost}
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

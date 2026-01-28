@@ -49,6 +49,7 @@ export class UserEntity extends IndexedEntity<User> {
     createdAt: 0,
     echoes: 0,
     avatarDecoration: "none",
+    unlockedDecorations: ["none"],
     badge: "none",
     directMessages: {},
     settings: {
@@ -139,15 +140,50 @@ export class UserEntity extends IndexedEntity<User> {
     }));
     return newState.echoes || 0;
   }
+  /**
+   * Deduct Echoes
+   */
+  async deductEchoes(amount: number): Promise<number> {
+    const state = await this.getState();
+    if ((state.echoes || 0) < amount) {
+        throw new Error("Insufficient Echoes");
+    }
+    const newState = await this.mutate(s => ({
+      ...s,
+      echoes: (s.echoes || 0) - amount
+    }));
+    return newState.echoes || 0;
+  }
+  /**
+   * Purchase Decoration
+   */
+  async purchaseDecoration(decorationId: string, cost: number): Promise<User> {
+    const state = await this.getState();
+    const unlocked = state.unlockedDecorations || ['none'];
+    if (unlocked.includes(decorationId)) {
+        return state; // Already owned
+    }
+    // Deduct cost first (will throw if insufficient)
+    await this.deductEchoes(cost);
+    // Add to unlocked list
+    const newState = await this.mutate(s => ({
+        ...s,
+        unlockedDecorations: [...(s.unlockedDecorations || ['none']), decorationId]
+    }));
+    return newState;
+  }
   protected override async ensureState(): Promise<User> {
     const s = await super.ensureState();
     // Migration logic: Ensure settings object exists for legacy users
     if (!s.settings) {
       const defaults = UserEntity.initialState.settings!;
       s.settings = { ...defaults };
-      // We update the internal state but don't force a save to avoid write costs on read.
-      // The next mutation will save it.
       this._state = s;
+    }
+    // Migration: Ensure unlockedDecorations exists
+    if (!s.unlockedDecorations) {
+        s.unlockedDecorations = ['none'];
+        this._state = s;
     }
     return s;
   }

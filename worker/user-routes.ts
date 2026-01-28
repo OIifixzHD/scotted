@@ -44,6 +44,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       followingIds: [],
       echoes: 0,
       avatarDecoration: 'none',
+      unlockedDecorations: ['none'],
       badge: 'none',
       bannerStyle: 'default',
       isAdmin: false,
@@ -1324,5 +1325,62 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
     }
     return ok(c, await chatEntity.sendMessage(userId, text?.trim() || '', mediaUrl, mediaType));
+  });
+
+  // --- ECONOMY ---
+  app.post('/api/posts/:id/gift', async (c) => {
+    const postId = c.req.param('id');
+    const { senderId, amount } = await c.req.json() as { senderId: string, amount: number };
+    if (!senderId || !amount || amount <= 0) return bad(c, 'Invalid sender or amount');
+
+    const postEntity = new PostEntity(c.env, postId);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const post = await postEntity.getState();
+
+    const senderEntity = new UserEntity(c.env, senderId);
+    if (!await senderEntity.exists()) return notFound(c, 'Sender not found');
+
+    const authorEntity = new UserEntity(c.env, post.userId);
+    if (!await authorEntity.exists()) return notFound(c, 'Author not found');
+
+    try {
+        const newBalance = await senderEntity.deductEchoes(amount);
+        await authorEntity.addEchoes(amount);
+        
+        // Notify author
+        const notif: Notification = {
+            id: crypto.randomUUID(),
+            userId: post.userId,
+            actorId: senderId,
+            type: 'gift',
+            postId: postId,
+            read: false,
+            createdAt: Date.now(),
+            data: { amount }
+        };
+        await NotificationEntity.create(c.env, notif);
+
+        return ok(c, { success: true, newBalance });
+    } catch (e) {
+        return bad(c, e instanceof Error ? e.message : 'Transaction failed');
+    }
+  });
+
+  app.post('/api/users/:id/purchase-decoration', async (c) => {
+    const userId = c.req.param('id');
+    const { decorationId, cost } = await c.req.json() as { decorationId: string, cost: number };
+    
+    if (!decorationId || cost === undefined) return bad(c, 'Invalid decoration or cost');
+
+    const userEntity = new UserEntity(c.env, userId);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+
+    try {
+        const updatedUser = await userEntity.purchaseDecoration(decorationId, cost);
+        const { password, ...safeUser } = updatedUser;
+        return ok(c, safeUser);
+    } catch (e) {
+        return bad(c, e instanceof Error ? e.message : 'Purchase failed');
+    }
   });
 }

@@ -29,6 +29,7 @@ export interface User {
   followingIds?: string[]; // Added for social graph
   echoes?: number; // Virtual Currency
   avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc. (Ring)
+  unlockedDecorations?: string[]; // List of owned decoration IDs
   badge?: string; // 'verified-pro', 'owner', 'crystal', etc. (Icon)
   bannerStyle?: string; // 'default', 'cosmic', 'neon', 'sunset', 'ocean', 'midnight'
   isAdmin?: boolean;
@@ -113,12 +114,13 @@ export interface Notification {
   id: string;
   userId: string; // Recipient
   actorId: string; // Who performed the action
-  type: 'like' | 'comment' | 'follow';
+  type: 'like' | 'comment' | 'follow' | 'gift';
   postId?: string; // Optional, for like/comment
   read: boolean;
   createdAt: number;
   actor?: User; // Hydrated
   post?: Post; // Hydrated (optional)
+  data?: any; // Extra data (e.g. gift amount)
 }
 export interface Report {
   id: string;
