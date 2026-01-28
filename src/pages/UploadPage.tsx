@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,8 +28,12 @@ const TEXT_COLORS = [
 ];
 export function UploadPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [postType, setPostType] = useState<'video' | 'audio'>('video');
+  // Sound State (from URL or default)
+  const [soundId, setSoundId] = useState(searchParams.get('soundId') || 'default-sound');
+  const [soundName, setSoundName] = useState(searchParams.get('soundName') || 'Original Audio');
   // Common State
   const [caption, setCaption] = useState('');
   const [tags, setTags] = useState('');
@@ -51,6 +55,16 @@ export function UploadPage() {
   const [coverArtPreview, setCoverArtPreview] = useState<string>('');
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
+  // Sync with URL params if they change
+  useEffect(() => {
+    const sid = searchParams.get('soundId');
+    const sname = searchParams.get('soundName');
+    if (sid) {
+        setSoundId(sid);
+        setSoundName(sname || 'Original Audio');
+        setPostType('video'); // Force video mode when using a sound
+    }
+  }, [searchParams]);
   // Cleanup preview URLs
   useEffect(() => {
     return () => {
@@ -140,6 +154,11 @@ export function UploadPage() {
     setNewText('');
     setActiveOverlayId(newOverlay.id);
   };
+  const handleClearSound = () => {
+    setSoundId('default-sound');
+    setSoundName('Original Audio');
+    navigate('/upload', { replace: true }); // Clear URL params
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -172,6 +191,8 @@ export function UploadPage() {
       if (postType === 'video') {
         formData.append('filter', selectedFilter);
         formData.append('overlays', JSON.stringify(overlays));
+        formData.append('soundId', soundId);
+        formData.append('soundName', soundName);
         // Large file fallback logic
         const SAFE_UPLOAD_LIMIT = 100 * 1024 * 1024; // 100MB
         if (videoFile!.size > SAFE_UPLOAD_LIMIT) {
@@ -231,6 +252,22 @@ export function UploadPage() {
                 <Card className="p-6 bg-card/50 backdrop-blur-sm border-white/5">
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <TabsContent value="video" className="mt-0 space-y-6">
+                      {/* Sound Badge */}
+                      {soundId !== 'default-sound' && (
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary animate-fade-in">
+                            <Music2 className="w-4 h-4" />
+                            <span className="text-sm font-medium">Using Sound: {soundName}</span>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 ml-auto hover:bg-primary/20" 
+                                onClick={handleClearSound}
+                            >
+                                <X className="w-3 h-3" />
+                            </Button>
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <Film className="w-4 h-4 text-primary" />

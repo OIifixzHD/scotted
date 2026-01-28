@@ -6,7 +6,7 @@ import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShareDialog } from './ShareDialog';
 import { CommentsSheet } from './CommentsSheet';
 import { useAuth } from '@/context/AuthContext';
@@ -57,6 +57,7 @@ export function AudioCard({
   autoplayEnabled = true
 }: AudioCardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -217,6 +218,9 @@ export function AudioCard({
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+  const handleUseSound = () => {
+    navigate(`/upload?soundId=${post.id}&soundName=${encodeURIComponent(post.title || '')}`);
   };
   const renderCaption = (text: string) => {
     if (!text) return [];
@@ -461,6 +465,10 @@ export function AudioCard({
         <ContextMenuItem onClick={handleCopyLink}>
           <LinkIcon className="mr-2 h-4 w-4" />
           Copy Link
+        </ContextMenuItem>
+        <ContextMenuItem onClick={handleUseSound} className="text-purple-400 focus:text-purple-400">
+          <Music2 className="mr-2 h-4 w-4" />
+          Use Sound
         </ContextMenuItem>
         <ContextMenuSeparator className="bg-white/10" />
         <ContextMenuLabel>Playback Speed</ContextMenuLabel>

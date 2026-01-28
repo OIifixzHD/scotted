@@ -18,6 +18,7 @@ import { VideoModal } from '@/components/feed/VideoModal';
 import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ProfileShareDialog } from '@/components/profile/ProfileShareDialog';
 import { SavedSoundsList } from '@/components/profile/SavedSoundsList';
+import { Confetti } from '@/components/ui/confetti';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -31,6 +32,7 @@ export function ProfilePage() {
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   // Video Modal State
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -76,7 +78,13 @@ export function ProfilePage() {
         });
         // Update global context with new followingIds
         login(updatedCurrentUser);
-        toast.success(isFollowing ? `Unfollowed ${user.name}` : `Following ${user.name}`);
+        if (!isFollowing) {
+            setShowConfetti(true);
+            setTimeout(() => setShowConfetti(false), 3000);
+            toast.success(`Following ${user.name}`);
+        } else {
+            toast.success(`Unfollowed ${user.name}`);
+        }
     } catch (error) {
         console.error('Failed to follow user:', error);
         // Revert optimistic update
@@ -183,7 +191,8 @@ export function ProfilePage() {
   }
   const handle = user.name.toLowerCase().replace(/\s/g, '');
   return (
-    <div className="h-full overflow-y-auto pb-20 md:pb-0">
+    <div className="h-full overflow-y-auto pb-20 md:pb-0 relative">
+      <Confetti active={showConfetti} />
       <div className="max-w-7xl mx-auto px-0 md:px-6 lg:px-8 py-0 md:py-10 lg:py-12">
         <div className="space-y-8">
           {/* Profile Header */}

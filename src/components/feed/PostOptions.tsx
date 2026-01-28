@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3, Gift } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3, Gift, Music2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@shared/types";
 import { api } from "@/lib/api-client";
@@ -17,6 +17,7 @@ import { EditPostDialog } from "@/components/feed/EditPostDialog";
 import { PromoteDialog } from "@/components/feed/PromoteDialog";
 import { InsightsDialog } from "@/components/feed/InsightsDialog";
 import { GiftDialog } from "./GiftDialog";
+import { useNavigate } from 'react-router-dom';
 interface PostOptionsProps {
   post: Post;
   onDelete?: () => void;
@@ -25,6 +26,7 @@ interface PostOptionsProps {
 }
 export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -35,6 +37,7 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
   const isAdmin = user?.isAdmin;
   const canDelete = isOwner || isAdmin;
   const canEdit = isOwner || isAdmin;
+  const hasSound = post.type === 'audio' || (post.soundId && post.soundId !== 'default-sound');
   const handleDelete = async () => {
     if (!user) return;
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -76,6 +79,11 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
       toast.error("Failed to hide post");
     }
   };
+  const handleUseSound = () => {
+    const sId = post.type === 'audio' ? post.id : post.soundId;
+    const sName = post.type === 'audio' ? post.title : post.soundName;
+    navigate(`/upload?soundId=${sId}&soundName=${encodeURIComponent(sName || '')}`);
+  };
   return (
     <>
       <DropdownMenu>
@@ -93,6 +101,12 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
             <LinkIcon className="w-4 h-4 mr-2" />
             Copy Link
           </DropdownMenuItem>
+          {hasSound && (
+            <DropdownMenuItem onClick={handleUseSound} className="cursor-pointer text-purple-400 focus:text-purple-400">
+              <Music2 className="w-4 h-4 mr-2" />
+              Use Sound
+            </DropdownMenuItem>
+          )}
           {isOwner && (
             <>
               <DropdownMenuItem onClick={() => setIsInsightsOpen(true)} className="cursor-pointer text-blue-400 focus:text-blue-400">

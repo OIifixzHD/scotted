@@ -1,13 +1,13 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Rocket, PictureInPicture } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Rocket, PictureInPicture, Music2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShareDialog } from './ShareDialog';
 import { CommentsSheet } from './CommentsSheet';
 import { useAuth } from '@/context/AuthContext';
@@ -69,6 +69,7 @@ export function VideoCard({
   autoplayEnabled = true
 }: VideoCardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -105,6 +106,7 @@ export function VideoCard({
   const canDelete = isOwner || isAdmin;
   const canEdit = isOwner || isAdmin;
   const isPromoted = (post.promotedUntil || 0) > Date.now();
+  const hasSound = post.soundId && post.soundId !== 'default-sound';
   // Sync with prop updates and user auth state
   useEffect(() => {
     if (user) {
@@ -372,6 +374,9 @@ export function VideoCard({
       console.error("Failed to toggle PiP", error);
       toast.error("PiP not supported or failed");
     }
+  };
+  const handleUseSound = () => {
+    navigate(`/upload?soundId=${post.soundId}&soundName=${encodeURIComponent(post.soundName || '')}`);
   };
   const renderCaption = (text: string) => {
     if (!text) return [];
@@ -706,6 +711,12 @@ export function VideoCard({
           <PictureInPicture className="mr-2 h-4 w-4" />
           Picture in Picture
         </ContextMenuItem>
+        {hasSound && (
+          <ContextMenuItem onClick={handleUseSound} className="text-purple-400 focus:text-purple-400">
+            <Music2 className="mr-2 h-4 w-4" />
+            Use Sound
+          </ContextMenuItem>
+        )}
         <ContextMenuSeparator className="bg-white/10" />
         <ContextMenuLabel>Playback Speed</ContextMenuLabel>
         {[0.5, 1.0, 1.5, 2.0].map((rate) => (
