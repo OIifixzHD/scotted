@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc, Rocket } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Music2, MoreHorizontal, Disc } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,13 +14,13 @@ import { PostOptions } from './PostOptions';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { Slider } from '@/components/ui/slider';
 import { AudioVisualizer } from '@/components/ui/audio-visualizer';
-import { PromoteDialog } from '@/components/feed/PromoteDialog';
 import { VolumeControl } from '@/components/ui/volume-control';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { GiftDialog } from './GiftDialog';
 interface AudioCardProps {
   post: Post;
   isActive: boolean;
@@ -58,7 +58,7 @@ export function AudioCard({
   const [showExplosion, setShowExplosion] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const [isGiftOpen, setIsGiftOpen] = useState(false);
   const isOwner = user?.id === post.userId;
   // Sync with props
   useEffect(() => {
@@ -154,9 +154,9 @@ export function AudioCard({
       />
       {/* Background Blur */}
       <div className="absolute inset-0 z-0">
-        <img 
-          src={post.coverArtUrl || post.user?.avatar} 
-          alt="Background" 
+        <img
+          src={post.coverArtUrl || post.user?.avatar}
+          alt="Background"
           className="w-full h-full object-cover opacity-30 blur-3xl scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90" />
@@ -207,7 +207,7 @@ export function AudioCard({
             </div>
           </div>
           <div className="flex justify-center items-center gap-6">
-            <button 
+            <button
               onClick={togglePlay}
               className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-glow"
             >
@@ -268,23 +268,18 @@ export function AudioCard({
                 <p>Share</p>
             </TooltipContent>
         </Tooltip>
-        {/* Promote Button (Owner Only) */}
-        {isOwner && (
+        {/* Gift Button */}
+        {!isOwner && (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button 
-                        onClick={() => setIsPromoteDialogOpen(true)}
-                        className="flex flex-col items-center gap-1 group"
-                    >
-                        <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-yellow-500/20 group-hover:text-yellow-400 group-active:scale-90 border border-transparent group-hover:border-yellow-500/50 shadow-lg">
-                            <Rocket className="w-7 h-7" />
+                    <button onClick={() => setIsGiftOpen(true)} className="flex flex-col items-center gap-1 group">
+                        <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
+                            <Gift className="w-6 h-6 md:w-7 md:h-7" />
                         </div>
-                        <span className="text-xs font-medium text-white text-shadow group-hover:text-yellow-400">Promote</span>
+                        <span className="text-xs font-medium text-white text-shadow">Gift</span>
                     </button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
-                    <p>Promote Post</p>
-                </TooltipContent>
+                <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
             </Tooltip>
         )}
         <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
@@ -297,7 +292,7 @@ export function AudioCard({
       </div>
       {/* Volume Control */}
       <div className="absolute top-4 right-4 z-30 pt-safe">
-        <VolumeControl 
+        <VolumeControl
           volume={volume}
           isMuted={isMuted}
           onVolumeChange={onVolumeChange || (() => {})}
@@ -315,13 +310,11 @@ export function AudioCard({
         onOpenChange={setIsCommentsOpen}
         onCommentAdded={() => setCommentCount(prev => prev + 1)}
       />
-      <PromoteDialog
-        open={isPromoteDialogOpen}
-        onOpenChange={setIsPromoteDialogOpen}
-        post={post}
-        onSuccess={(updatedPost) => {
-          onUpdate?.(updatedPost);
-        }}
+      <GiftDialog
+        open={isGiftOpen}
+        onOpenChange={setIsGiftOpen}
+        postId={post.id}
+        authorId={post.userId}
       />
     </div>
   );

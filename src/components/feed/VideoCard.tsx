@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import { LikeExplosion } from '@/components/ui/like-explosion';
 import { ReportDialog } from '@/components/profile/ReportDialog';
 import { EditPostDialog } from '@/components/feed/EditPostDialog';
-import { PromoteDialog } from '@/components/feed/PromoteDialog';
 import { getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import { UserHoverCard } from '@/components/ui/user-hover-card';
@@ -100,7 +99,6 @@ export function VideoCard({
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isGiftOpen, setIsGiftOpen] = useState(false);
-  const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   const hasViewedRef = useRef(false);
   const isOwner = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
@@ -407,7 +405,7 @@ export function VideoCard({
           className="relative w-full h-full md:max-w-md md:h-[calc(100%-2rem)] mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border-0 md:border border-white/5 shadow-2xl group/video"
         >
           {/* Video Player */}
-          <div 
+          <div
             className="absolute inset-0 cursor-pointer bg-gray-900"
             onClick={togglePlay}
             onDoubleClick={handleDoubleTap}
@@ -435,9 +433,9 @@ export function VideoCard({
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900 z-10">
                     <AlertCircle className="w-12 h-12 mb-2 opacity-50" />
                     <p className="text-sm mb-4">Video unavailable</p>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={handleRetry}
                         className="border-white/10 hover:bg-white/5"
                     >
@@ -522,12 +520,12 @@ export function VideoCard({
             </AnimatePresence>
           </div>
           {/* Interactive Progress Bar */}
-          <div 
+          <div
             className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end pb-safe"
             onClick={handleSeek}
           >
             <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-               <div 
+               <div
                  className="h-full bg-primary transition-all duration-100 ease-linear relative"
                  style={{ width: `${progress}%` }}
                >
@@ -555,7 +553,7 @@ export function VideoCard({
             </div>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button 
+                    <button
                       onClick={handleLike}
                       className="flex flex-col items-center gap-1 group"
                     >
@@ -574,7 +572,7 @@ export function VideoCard({
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button 
+                    <button
                       onClick={() => setIsCommentsOpen(true)}
                       className="flex flex-col items-center gap-1 group"
                     >
@@ -590,7 +588,7 @@ export function VideoCard({
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button 
+                    <button
                       onClick={handleShare}
                       className="flex flex-col items-center gap-1 group"
                     >
@@ -616,25 +614,6 @@ export function VideoCard({
                         </button>
                     </TooltipTrigger>
                     <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
-                </Tooltip>
-            )}
-            {/* Promote Button (Owner Only) */}
-            {isOwner && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button 
-                            onClick={() => setIsPromoteDialogOpen(true)}
-                            className="flex flex-col items-center gap-1 group"
-                        >
-                            <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-yellow-500/20 group-hover:text-yellow-400 group-active:scale-90 border border-transparent group-hover:border-yellow-500/50 shadow-lg">
-                                <Rocket className="w-6 h-6 md:w-7 md:h-7" />
-                            </div>
-                            <span className="text-xs font-medium text-white text-shadow group-hover:text-yellow-400">Promote</span>
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left">
-                        <p>Promote Post</p>
-                    </TooltipContent>
                 </Tooltip>
             )}
             {/* View Count */}
@@ -672,7 +651,7 @@ export function VideoCard({
           </div>
           {/* Volume Control */}
           <div className="absolute top-4 right-4 z-30 pt-safe">
-            <VolumeControl 
+            <VolumeControl
               volume={volume}
               isMuted={isMuted}
               onVolumeChange={onVolumeChange || (() => {})}
@@ -680,10 +659,10 @@ export function VideoCard({
             />
           </div>
           {/* Share Dialog */}
-          <ShareDialog 
-            open={isShareOpen} 
-            onOpenChange={setIsShareOpen} 
-            postId={post.id} 
+          <ShareDialog
+            open={isShareOpen}
+            onOpenChange={setIsShareOpen}
+            postId={post.id}
           />
           {/* Comments Sheet */}
           <CommentsSheet
@@ -711,15 +690,6 @@ export function VideoCard({
           <EditPostDialog
             open={isEditDialogOpen}
             onOpenChange={setIsEditDialogOpen}
-            post={post}
-            onSuccess={(updatedPost) => {
-              onUpdate?.(updatedPost);
-            }}
-          />
-          {/* Promote Dialog */}
-          <PromoteDialog
-            open={isPromoteDialogOpen}
-            onOpenChange={setIsPromoteDialogOpen}
             post={post}
             onSuccess={(updatedPost) => {
               onUpdate?.(updatedPost);
