@@ -182,14 +182,15 @@ export function ProfilePage() {
   }
   const handle = user.name.toLowerCase().replace(/\s/g, '');
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
+    <div className="h-full overflow-y-auto pb-20 md:pb-0">
+      <div className="max-w-7xl mx-auto px-0 md:px-6 lg:px-8 py-0 md:py-10 lg:py-12">
         <div className="space-y-8">
           {/* Profile Header */}
           <div className="relative">
             {/* Banner */}
             <div className={cn(
-              "h-48 md:h-64 w-full rounded-2xl overflow-hidden relative transition-all duration-500",
+              "w-full overflow-hidden relative transition-all duration-500",
+              "h-32 md:h-64 md:rounded-2xl",
               getBannerStyle(user.bannerStyle)
             )}>
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
@@ -198,34 +199,35 @@ export function ProfilePage() {
             </div>
             {/* Profile Info */}
             <div className="px-4 md:px-8 pb-4">
-              <div className="relative -mt-16 mb-4 flex flex-col md:flex-row md:items-end gap-4 md:gap-8">
-                <div className={cn("rounded-full transition-all duration-300", getDecorationClass(user.avatarDecoration))}>
-                  <Avatar className="w-32 h-32">
+              <div className="relative -mt-12 md:-mt-16 mb-4 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 text-center md:text-left">
+                <div className={cn("rounded-full transition-all duration-300 shrink-0", getDecorationClass(user.avatarDecoration))}>
+                  <Avatar className="w-24 h-24 md:w-32 md:h-32 border-4 border-background">
                     <AvatarImage src={user.avatar} className="object-cover" />
                     <AvatarFallback className="text-2xl bg-purple-900 text-white">
                       {user.displayName?.substring(0, 2).toUpperCase() || user.name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <div className="flex-1 space-y-2 pt-2 md:pt-0">
+                <div className="flex-1 space-y-2 pt-2 md:pt-0 w-full">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+                      <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center justify-center md:justify-start gap-2">
                         {user.displayName || user.name}
-                        {getBadgeIcon(user.badge, "w-6 h-6")}
+                        {getBadgeIcon(user.badge, "w-5 h-5 md:w-6 md:h-6")}
                       </h1>
                       <p className="text-muted-foreground">@{handle}</p>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 justify-center md:justify-start w-full md:w-auto">
                       {isOwnProfile ? (
                         <>
                           <Button
                             variant="outline"
-                            className="border-white/10 text-white hover:bg-white/5 gap-2"
+                            className="border-white/10 text-white hover:bg-white/5 gap-2 flex-1 md:flex-none"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
-                            Edit Profile
+                            <span className="md:hidden">Edit</span>
+                            <span className="hidden md:inline">Edit Profile</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -234,7 +236,6 @@ export function ProfilePage() {
                           >
                             <Link to="/settings">
                               <Settings className="w-4 h-4" />
-                              Settings
                             </Link>
                           </Button>
                           <Button
@@ -243,13 +244,15 @@ export function ProfilePage() {
                             onClick={logout}
                           >
                             <LogOut className="w-4 h-4" />
-                            Log Out
                           </Button>
                         </>
                       ) : (
                         <>
                           <Button
-                            className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
+                            className={cn(
+                              "flex-1 md:flex-none",
+                              isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"
+                            )}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
                           >
@@ -257,7 +260,7 @@ export function ProfilePage() {
                           </Button>
                           <Button
                             variant="outline"
-                            className="border-white/10 text-white hover:bg-white/5 gap-2"
+                            className="border-white/10 text-white hover:bg-white/5 gap-2 flex-1 md:flex-none"
                             onClick={handleMessage}
                             disabled={isMessageLoading}
                           >
@@ -304,12 +307,12 @@ export function ProfilePage() {
                 </div>
               </div>
               {/* Bio & Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
-                <div className="md:col-span-2 space-y-4">
-                  <p className="text-base text-white/90 leading-relaxed max-w-2xl">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mt-6">
+                <div className="md:col-span-2 space-y-4 text-center md:text-left">
+                  <p className="text-base text-white/90 leading-relaxed max-w-2xl mx-auto md:mx-0">
                     {user.bio || "No bio yet."}
                   </p>
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                  <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
                       <span>Cyber City, Net</span>
@@ -331,25 +334,25 @@ export function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-start md:justify-end gap-8 text-center">
+                <div className="flex items-center justify-center md:justify-end gap-6 md:gap-8 text-center">
                   <div>
-                    <div className="text-2xl font-bold text-white">{followerCount.toLocaleString()}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Followers</div>
+                    <div className="text-xl md:text-2xl font-bold text-white">{followerCount.toLocaleString()}</div>
+                    <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Followers</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-white">{user.following?.toLocaleString() ?? 0}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Following</div>
+                    <div className="text-xl md:text-2xl font-bold text-white">{user.following?.toLocaleString() ?? 0}</div>
+                    <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Following</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-white">{(posts.length * 124).toLocaleString()}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Likes</div>
+                    <div className="text-xl md:text-2xl font-bold text-white">{(posts.length * 124).toLocaleString()}</div>
+                    <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Likes</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-yellow-400 flex items-center justify-center gap-1">
-                        <Sparkles className="w-5 h-5" />
+                    <div className="text-xl md:text-2xl font-bold text-yellow-400 flex items-center justify-center gap-1">
+                        <Sparkles className="w-4 h-4 md:w-5 md:h-5" />
                         {(user.echoes || 0).toLocaleString()}
                     </div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Echoes</div>
+                    <div className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Echoes</div>
                   </div>
                 </div>
               </div>
@@ -357,7 +360,7 @@ export function ProfilePage() {
           </div>
           {/* Content Tabs or Private Message */}
           {canViewContent ? (
-            <Tabs defaultValue="videos" className="w-full">
+            <Tabs defaultValue="videos" className="w-full px-4 md:px-0">
               <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
                 <TabsTrigger
                   value="videos"
@@ -386,7 +389,7 @@ export function ProfilePage() {
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 border-t border-white/10">
+            <div className="flex flex-col items-center justify-center py-20 border-t border-white/10 mx-4 md:mx-0">
               <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
                 <Lock className="w-8 h-8 text-muted-foreground" />
               </div>

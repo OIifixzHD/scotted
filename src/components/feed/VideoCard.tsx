@@ -350,7 +350,7 @@ export function VideoCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="relative w-full h-full max-w-md mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border border-white/5 shadow-2xl group/video"
+          className="relative w-full h-full md:max-w-md md:h-[calc(100%-2rem)] mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border-0 md:border border-white/5 shadow-2xl group/video"
         >
           {/* Video Player */}
           <div
@@ -407,7 +407,7 @@ export function VideoCard({
                 </div>
             )}
             {/* Badges Container */}
-            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
+            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none pt-safe">
                 {/* HD Badge */}
                 {!hasError && !isBuffering && (
                     <div className="px-2 py-1 bg-black/40 backdrop-blur-md rounded border border-white/10 text-[10px] font-bold text-white/80 w-fit">
@@ -456,7 +456,7 @@ export function VideoCard({
           </div>
           {/* Interactive Progress Bar */}
           <div
-            className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end"
+            className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end pb-safe"
             onClick={handleSeek}
           >
             <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
@@ -470,11 +470,11 @@ export function VideoCard({
             </div>
           </div>
           {/* Right Sidebar Actions */}
-          <div className="absolute right-4 bottom-12 flex flex-col items-center gap-6 z-20">
+          <div className="absolute right-2 md:right-4 bottom-20 md:bottom-12 flex flex-col items-center gap-4 md:gap-6 z-20 pb-safe">
             <div className="flex flex-col items-center gap-1">
                 <UserHoverCard userId={post.userId} asChild>
                     <Link to={`/profile/${post.userId}`} className="relative cursor-pointer transition-transform hover:scale-105 active:scale-95">
-                        <Avatar className="w-12 h-12 border-2 border-white shadow-lg">
+                        <Avatar className="w-10 h-10 md:w-12 md:h-12 border-2 border-white shadow-lg">
                             <AvatarImage src={post.user?.avatar} />
                             <AvatarFallback>{post.user?.displayName?.substring(0, 2) || post.user?.name?.substring(0, 2) || 'U'}</AvatarFallback>
                         </Avatar>
@@ -493,10 +493,10 @@ export function VideoCard({
                       className="flex flex-col items-center gap-1 group"
                     >
                       <div className={cn(
-                        "p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
+                        "p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm transition-all duration-200 group-hover:bg-black/40 group-active:scale-90",
                         isLiked ? "text-red-500" : "text-white"
                       )}>
-                        <Heart className={cn("w-7 h-7", isLiked && "fill-current")} />
+                        <Heart className={cn("w-6 h-6 md:w-7 md:h-7", isLiked && "fill-current")} />
                       </div>
                       <span className="text-xs font-medium text-white text-shadow">{likeCount}</span>
                     </button>
@@ -511,8 +511,8 @@ export function VideoCard({
                       onClick={() => setIsCommentsOpen(true)}
                       className="flex flex-col items-center gap-1 group"
                     >
-                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
-                        <MessageCircle className="w-7 h-7 fill-white/10" />
+                      <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
+                        <MessageCircle className="w-6 h-6 md:w-7 md:h-7 fill-white/10" />
                       </div>
                       <span className="text-xs font-medium text-white text-shadow">{commentCount}</span>
                     </button>
@@ -527,8 +527,8 @@ export function VideoCard({
                       onClick={handleShare}
                       className="flex flex-col items-center gap-1 group"
                     >
-                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
-                        <Share2 className="w-7 h-7" />
+                      <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40 group-active:scale-90">
+                        <Share2 className="w-6 h-6 md:w-7 md:h-7" />
                       </div>
                       <span className="text-xs font-medium text-white text-shadow">{shareCount}</span>
                     </button>
@@ -542,8 +542,8 @@ export function VideoCard({
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button onClick={() => setIsGiftOpen(true)} className="flex flex-col items-center gap-1 group">
-                            <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
-                                <Gift className="w-7 h-7" />
+                            <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
+                                <Gift className="w-6 h-6 md:w-7 md:h-7" />
                             </div>
                             <span className="text-xs font-medium text-white text-shadow">Gift</span>
                         </button>
@@ -559,8 +559,8 @@ export function VideoCard({
                             onClick={() => setIsPromoteDialogOpen(true)}
                             className="flex flex-col items-center gap-1 group"
                         >
-                            <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-yellow-500/20 group-hover:text-yellow-400 group-active:scale-90 border border-transparent group-hover:border-yellow-500/50 shadow-lg">
-                                <Rocket className="w-7 h-7" />
+                            <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-yellow-500/20 group-hover:text-yellow-400 group-active:scale-90 border border-transparent group-hover:border-yellow-500/50 shadow-lg">
+                                <Rocket className="w-6 h-6 md:w-7 md:h-7" />
                             </div>
                             <span className="text-xs font-medium text-white text-shadow group-hover:text-yellow-400">Promote</span>
                         </button>
@@ -574,8 +574,8 @@ export function VideoCard({
             <Tooltip>
                 <TooltipTrigger asChild>
                     <div className="flex flex-col items-center gap-1 group">
-                      <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
-                        <Eye className="w-7 h-7" />
+                      <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                        <Eye className="w-6 h-6 md:w-7 md:h-7" />
                       </div>
                       <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
                     </div>
@@ -588,7 +588,7 @@ export function VideoCard({
             <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
           </div>
           {/* Bottom Info Area */}
-          <div className="absolute bottom-1 left-0 right-0 p-4 pb-8 z-10 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-20 md:pb-8 z-10 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none pb-safe">
             <div className="max-w-[80%] space-y-2 pointer-events-auto">
               <UserHoverCard userId={post.userId} asChild>
                   <Link to={`/profile/${post.userId}`} className="flex items-center gap-2 group/name w-fit">
@@ -608,7 +608,7 @@ export function VideoCard({
               <TooltipTrigger asChild>
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-                    className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30"
+                    className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30 pt-safe"
                   >
                     {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                   </button>

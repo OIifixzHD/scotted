@@ -74,8 +74,8 @@ export function MobileNav() {
                 {item.highlight ? (
                   <div className={cn(
                     "p-2 rounded-xl transition-all duration-200",
-                    isActive 
-                      ? "bg-primary text-white shadow-glow" 
+                    isActive
+                      ? "bg-primary text-white shadow-glow"
                       : "bg-white/10 text-white hover:bg-white/20"
                   )}>
                     <item.icon className="w-6 h-6" />

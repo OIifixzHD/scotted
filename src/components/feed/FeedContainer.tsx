@@ -176,13 +176,13 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   return (
     <div
         ref={containerRef}
-        className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black"
+        className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black overscroll-contain"
     >
       {posts.map((post, index) => (
         <div
             key={post.id}
             data-id={post.id}
-            className="h-full w-full flex items-center justify-center snap-start snap-always py-4 md:py-8"
+            className="h-full w-full flex items-center justify-center snap-start snap-always py-0 md:py-8"
         >
           {post.type === 'audio' ? (
             <AudioCard

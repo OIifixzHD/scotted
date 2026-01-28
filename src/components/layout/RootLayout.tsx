@@ -71,9 +71,9 @@ export function RootLayout() {
     return <BannedPage />;
   }
   return (
-    <SidebarProvider defaultOpen={true} className="h-screen w-full bg-background overflow-hidden">
+    <SidebarProvider defaultOpen={true} className="h-dvh w-full bg-background overflow-hidden">
       <AppSidebar />
-      <SidebarInset className="flex flex-col h-full overflow-hidden relative bg-background">
+      <SidebarInset className="h-dvh w-full relative flex flex-col overflow-hidden bg-background">
         {/* Global Announcement Banner */}
         {systemSettings?.announcement && (
           <AnnouncementBanner
@@ -84,7 +84,10 @@ export function RootLayout() {
         <BalanceDisplay />
         <AnimatedBackground />
         <GlobalContextMenu>
-          <main className="flex-1 h-full overflow-hidden pb-16 md:pb-0 relative z-10">
+          {/* Main Content Area */}
+          {/* On mobile, we add bottom padding to account for the fixed MobileNav */}
+          {/* On desktop, we don't need extra padding as the sidebar is on the left */}
+          <main className="flex-1 h-full w-full overflow-hidden relative z-10 pb-16 md:pb-0">
             <AnimatePresence mode="wait">
               <PageTransition key={location.pathname}>
                 <Outlet />
