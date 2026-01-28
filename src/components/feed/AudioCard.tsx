@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, Pause, Music2, Gift, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Music2, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +20,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { GiftDialog } from './GiftDialog';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -70,7 +69,6 @@ export function AudioCard({
   const [showExplosion, setShowExplosion] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isGiftOpen, setIsGiftOpen] = useState(false);
   // Context Menu & Dialog States
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -368,20 +366,20 @@ export function AudioCard({
                     <p>Share</p>
                 </TooltipContent>
             </Tooltip>
-            {/* Gift Button */}
-            {!isOwner && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button onClick={() => setIsGiftOpen(true)} className="flex flex-col items-center gap-1 group">
-                            <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
-                                <Gift className="w-6 h-6 md:w-7 md:h-7" />
-                            </div>
-                            <span className="text-xs font-medium text-white text-shadow">Gift</span>
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
-                </Tooltip>
-            )}
+            {/* View Count */}
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="flex flex-col items-center gap-1 group">
+                      <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
+                        <Eye className="w-6 h-6 md:w-7 md:h-7" />
+                      </div>
+                      <span className="text-xs font-medium text-white text-shadow">{viewCount}</span>
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                    <p>Views</p>
+                </TooltipContent>
+            </Tooltip>
             <PostOptions post={post} onDelete={onDelete} onUpdate={onUpdate} onHide={onHide} />
           </div>
           {/* Bottom Caption */}
@@ -409,12 +407,6 @@ export function AudioCard({
             open={isCommentsOpen}
             onOpenChange={setIsCommentsOpen}
             onCommentAdded={() => setCommentCount(prev => prev + 1)}
-          />
-          <GiftDialog
-            open={isGiftOpen}
-            onOpenChange={setIsGiftOpen}
-            postId={post.id}
-            authorId={post.userId}
           />
           <PromoteDialog
             open={isPromoteDialogOpen}
@@ -450,7 +442,7 @@ export function AudioCard({
           <MessageCircle className="mr-2 h-4 w-4" />
           Comment
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => setIsShareOpen(true)}>
+        <ContextMenuItem onClick={handleShare}>
           <Share2 className="mr-2 h-4 w-4" />
           Share
         </ContextMenuItem>

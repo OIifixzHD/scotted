@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Gift, Rocket, PictureInPicture } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Rocket, PictureInPicture } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
@@ -20,7 +20,6 @@ import { PromoteDialog } from '@/components/feed/PromoteDialog';
 import { getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import { UserHoverCard } from '@/components/ui/user-hover-card';
-import { GiftDialog } from './GiftDialog';
 import { TapHeart } from '@/components/ui/tap-heart';
 import { VolumeControl } from '@/components/ui/volume-control';
 import { v4 as uuidv4 } from 'uuid';
@@ -100,7 +99,6 @@ export function VideoCard({
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
-  const [isGiftOpen, setIsGiftOpen] = useState(false);
   const hasViewedRef = useRef(false);
   const isOwner = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
@@ -604,20 +602,6 @@ export function VideoCard({
                     <p>Share</p>
                 </TooltipContent>
             </Tooltip>
-            {/* Gift Button */}
-            {!isOwner && (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button onClick={() => setIsGiftOpen(true)} className="flex flex-col items-center gap-1 group">
-                            <div className="p-2 md:p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-pink-500/20 group-hover:text-pink-400 group-active:scale-90">
-                                <Gift className="w-6 h-6 md:w-7 md:h-7" />
-                            </div>
-                            <span className="text-xs font-medium text-white text-shadow">Gift</span>
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="left"><p>Send Gift</p></TooltipContent>
-                </Tooltip>
-            )}
             {/* View Count */}
             <Tooltip>
                 <TooltipTrigger asChild>
@@ -672,13 +656,6 @@ export function VideoCard({
             open={isCommentsOpen}
             onOpenChange={setIsCommentsOpen}
             onCommentAdded={() => setCommentCount(prev => prev + 1)}
-          />
-          {/* Gift Dialog */}
-          <GiftDialog
-            open={isGiftOpen}
-            onOpenChange={setIsGiftOpen}
-            postId={post.id}
-            authorId={post.userId}
           />
           {/* Report Dialog */}
           <ReportDialog

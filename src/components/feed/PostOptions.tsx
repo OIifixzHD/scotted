@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3 } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3, Gift } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@shared/types";
 import { api } from "@/lib/api-client";
@@ -16,6 +16,7 @@ import { ReportDialog } from "@/components/profile/ReportDialog";
 import { EditPostDialog } from "@/components/feed/EditPostDialog";
 import { PromoteDialog } from "@/components/feed/PromoteDialog";
 import { InsightsDialog } from "@/components/feed/InsightsDialog";
+import { GiftDialog } from "./GiftDialog";
 interface PostOptionsProps {
   post: Post;
   onDelete?: () => void;
@@ -29,6 +30,7 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
   const [isInsightsOpen, setIsInsightsOpen] = useState(false);
+  const [isGiftOpen, setIsGiftOpen] = useState(false);
   const isOwner = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
   const canDelete = isOwner || isAdmin;
@@ -111,6 +113,10 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
           )}
           {user && !isOwner && (
             <>
+              <DropdownMenuItem onClick={() => setIsGiftOpen(true)} className="cursor-pointer text-pink-400 focus:text-pink-400">
+                <Gift className="w-4 h-4 mr-2" />
+                Send Gift
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleNotInterested} className="cursor-pointer">
                 <Ban className="w-4 h-4 mr-2" />
                 Not Interested
@@ -163,6 +169,12 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
         open={isInsightsOpen}
         onOpenChange={setIsInsightsOpen}
         post={post}
+      />
+      <GiftDialog
+        open={isGiftOpen}
+        onOpenChange={setIsGiftOpen}
+        postId={post.id}
+        authorId={post.userId}
       />
     </>
   );
