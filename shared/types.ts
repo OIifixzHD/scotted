@@ -28,6 +28,7 @@ export interface User {
   following?: number;
   followingIds?: string[]; // Added for social graph
   echoes?: number; // Virtual Currency
+  lastDailyReward?: number; // Timestamp of last daily reward claim
   avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc. (Ring)
   unlockedDecorations?: string[]; // List of owned decoration IDs
   badge?: string; // 'verified-pro', 'owner', 'crystal', etc. (Icon)
