@@ -104,6 +104,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const totalLikes = posts.reduce((acc, p) => acc + (p.likes || 0), 0);
     const totalComments = posts.reduce((acc, p) => acc + (p.comments || 0), 0);
     const totalEngagement = totalLikes + totalComments;
+    const totalEchoes = users.reduce((acc, u) => acc + (u.echoes || 0), 0);
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -149,6 +150,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         totalEngagement,
         totalLikes,
         totalComments,
+        totalEchoes,
         userGrowth,
         activity
     };

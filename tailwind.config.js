@@ -123,6 +123,10 @@ export default {
                     'background-size': '200% 200%',
                     'background-position': 'right center'
                 }
+            },
+            'pulse-slow': {
+                '0%, 100%': { opacity: '1' },
+                '50%': { opacity: '0.5' }
             }
   		},
   		animation: {
@@ -134,6 +138,7 @@ export default {
             'marquee': 'marquee 10s linear infinite',
             'spin-slow': 'spin-slow 3s linear infinite',
             'gradient-xy': 'gradient-xy 15s ease infinite',
+            'pulse-slow': 'pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
   		},
   		backgroundImage: {
   			'gradient-primary': 'linear-gradient(135deg, #7c3aed, #2dd4bf)',

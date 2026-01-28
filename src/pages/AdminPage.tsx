@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone } from "lucide-react";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { AdminPostTable } from '@/components/admin/AdminPostTable';
@@ -482,6 +482,18 @@ export function AdminPage() {
                   </p>
                 </CardContent>
               </Card>
+              <Card className="bg-card/50 backdrop-blur-sm border-white/10">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Echoes</CardTitle>
+                  <Sparkles className="h-4 w-4 text-yellow-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.totalEchoes?.toLocaleString() ?? '-'}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Currency in circulation
+                  </p>
+                </CardContent>
+              </Card>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Growth Chart */}
@@ -672,23 +684,23 @@ export function AdminPage() {
             </div>
           </TabsContent>
         </Tabs>
+        <UserManagementDialog
+            open={dialogOpen}
+            onClose={() => setDialogOpen(false)}
+            user={selectedUser}
+            mode={dialogMode}
+            onSuccess={fetchData}
+        />
+        <VideoModal
+            post={selectedPost}
+            isOpen={!!selectedPost}
+            onClose={() => setSelectedPost(null)}
+            onDelete={() => {
+                if (selectedPost) handleDeletePost(selectedPost.id);
+                setSelectedPost(null);
+            }}
+        />
       </div>
-      <UserManagementDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        user={selectedUser}
-        mode={dialogMode}
-        onSuccess={fetchData}
-      />
-      <VideoModal
-        post={selectedPost}
-        isOpen={!!selectedPost}
-        onClose={() => setSelectedPost(null)}
-        onDelete={() => {
-            if (selectedPost) handleDeletePost(selectedPost.id);
-            setSelectedPost(null);
-        }}
-      />
     </div>
   );
 }
