@@ -17,6 +17,12 @@ export interface UserSettings {
     reducedMotion: boolean;
   };
 }
+export interface SavedSound {
+  id: string;
+  name: string;
+  artist: string;
+  coverUrl?: string;
+}
 export interface User {
   id: string;
   name: string; // Username/Handle (Immutable)
@@ -42,6 +48,7 @@ export interface User {
   blockedUserIds?: string[];
   // Phase 4: Personalization
   notInterestedPostIds?: string[];
+  savedSounds?: SavedSound[]; // Added for sound favorites
   createdAt?: number; // Added for analytics
   directMessages?: Record<string, string>; // targetUserId -> chatId
   settings?: UserSettings;

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { UserEntity, ChatBoardEntity, PostEntity, NotificationEntity, ReportEntity, SystemEntity, SystemSettings } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay, Chat, UserSettings } from "@shared/types";
+import type { User, Notification, Post, Report, Comment, ChartDataPoint, AdminStats, TextOverlay, Chat, UserSettings, SavedSound } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'Pulse API' }}));
   // --- SYSTEM SETTINGS ---
@@ -54,6 +54,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       bannedBy: "",
       blockedUserIds: [],
       notInterestedPostIds: [],
+      savedSounds: [],
       createdAt: Date.now(),
       directMessages: {},
       settings: {
@@ -353,16 +354,44 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/sounds/:id', async (c) => {
     const id = c.req.param('id');
+    await PostEntity.ensureSeed(c.env);
+    await UserEntity.ensureSeed(c.env); // Ensure users exist for artist lookup
+    // Fetch posts to find usage of this sound
+    const page = await PostEntity.list(c.env, null, 1000);
+    const soundPosts = page.items.filter(p => p.soundId === id);
+    let soundName = 'Original Audio';
+    let artist = 'Pulse Artist';
+    let playCount = 0;
+    if (soundPosts.length > 0) {
+        const firstPost = soundPosts[0];
+        soundName = firstPost.soundName || 'Original Audio';
+        // Infer artist
+        if (firstPost.type === 'audio') {
+             artist = firstPost.artist || 'Unknown Artist';
+        } else if (firstPost.userId) {
+             // Try to fetch user for video posts
+             const uEntity = new UserEntity(c.env, firstPost.userId);
+             if (await uEntity.exists()) {
+                 const u = await uEntity.getState();
+                 artist = u.displayName || u.name;
+             }
+        }
+        // Calculate play count
+        playCount = soundPosts.reduce((acc, p) => acc + (p.views || 0), 0);
+    } else {
+        // Fallback for empty/mock sounds
+        if (id !== 'default-sound') {
+             soundName = `Sound Track ${id.substring(0, 4)}`;
+        }
+    }
     const sound = {
         id,
-        name: id === 'default-sound' ? 'Original Audio' : `Sound Track ${id.substring(0, 4)}`,
-        playCount: 1200000,
-        artist: 'Pulse Artist'
+        name: soundName,
+        playCount: Math.max(playCount, 0),
+        artist
     };
-    await PostEntity.ensureSeed(c.env);
-    await UserEntity.ensureSeed(c.env);
-    const page = await PostEntity.list(c.env, null, 50);
-    const hydratedPosts = await Promise.all(page.items.map(async (post) => {
+    // Hydrate posts
+    const hydratedPosts = await Promise.all(soundPosts.map(async (post) => {
         if (post.userId) {
             const userEntity = new UserEntity(c.env, post.userId);
             if (await userEntity.exists()) {
@@ -374,6 +403,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return post;
     }));
     return ok(c, { sound, posts: hydratedPosts });
+  });
+  app.post('/api/sounds/favorite', async (c) => {
+      const { userId, sound } = await c.req.json() as { userId: string, sound: SavedSound };
+      if (!userId || !sound || !sound.id) return bad(c, 'Invalid data');
+      const userEntity = new UserEntity(c.env, userId);
+      if (!await userEntity.exists()) return notFound(c, 'User not found');
+      const updatedUser = await userEntity.toggleSoundFavorite(sound);
+      const { password, ...safeUser } = updatedUser;
+      return ok(c, safeUser);
   });
   // --- USERS ---
   app.get('/api/users', async (c) => {
@@ -423,12 +461,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { displayName, bio, avatar, bannerStyle, settings } = await c.req.json() as {
+    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration } = await c.req.json() as {
         displayName?: string;
         bio?: string;
         avatar?: string;
         bannerStyle?: string;
         settings?: UserSettings;
+        avatarDecoration?: string;
     };
     if (displayName !== undefined && !displayName.trim()) {
       return bad(c, 'Display Name cannot be empty');
@@ -453,6 +492,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             bio: bio?.trim() ?? s.bio,
             avatar: avatar || s.avatar,
             bannerStyle: bannerStyle || s.bannerStyle,
+            avatarDecoration: avatarDecoration || s.avatarDecoration,
             settings: newSettings
         };
     });

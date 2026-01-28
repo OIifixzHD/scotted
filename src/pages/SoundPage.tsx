@@ -3,10 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { VideoGrid } from '@/components/feed/VideoGrid';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api-client';
-import type { Post } from '@shared/types';
-import { Loader2, Music2, Play, Pause, Plus, Volume2 } from 'lucide-react';
+import type { Post, User } from '@shared/types';
+import { Loader2, Music2, Play, Pause, Plus, Volume2, Bookmark, Check } from 'lucide-react';
 import { VideoModal } from '@/components/feed/VideoModal';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 interface SoundDetails {
   id: string;
   name: string;
@@ -17,9 +19,11 @@ interface SoundDetails {
 const MOCK_AUDIO_URL = "https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/win.ogg";
 export function SoundPage() {
   const { id } = useParams<{ id: string }>();
+  const { user, login } = useAuth();
   const [sound, setSound] = useState<SoundDetails | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
   // Audio Playback State
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -42,6 +46,12 @@ export function SoundPage() {
     };
     fetchSoundData();
   }, [id]);
+  // Check if favorite
+  useEffect(() => {
+    if (user && sound) {
+        setIsFavorite(user.savedSounds?.some(s => s.id === sound.id) || false);
+    }
+  }, [user, sound]);
   // Cleanup audio on unmount
   useEffect(() => {
     const audio = audioRef.current;
@@ -88,6 +98,37 @@ export function SoundPage() {
   const handlePrev = () => {
     if (selectedVideoIndex !== null && selectedVideoIndex > 0) {
         setSelectedVideoIndex(selectedVideoIndex - 1);
+    }
+  };
+  const handleToggleFavorite = async () => {
+    if (!user) {
+        toast.error("Please log in to save sounds");
+        return;
+    }
+    if (!sound) return;
+    // Infer cover url from first post or default
+    const coverUrl = posts.length > 0
+        ? (posts[0].coverArtUrl || posts[0].user?.avatar)
+        : undefined;
+    const soundData = {
+        id: sound.id,
+        name: sound.name,
+        artist: sound.artist,
+        coverUrl
+    };
+    try {
+        // Optimistic update
+        setIsFavorite(!isFavorite);
+        const updatedUser = await api<User>('/api/sounds/favorite', {
+            method: 'POST',
+            body: JSON.stringify({ userId: user.id, sound: soundData })
+        });
+        login(updatedUser); // Update context
+        toast.success(isFavorite ? "Removed from favorites" : "Added to favorites");
+    } catch (e) {
+        console.error(e);
+        setIsFavorite(!isFavorite); // Revert
+        toast.error("Failed to update favorites");
     }
   };
   if (loading) {
@@ -186,8 +227,13 @@ export function SoundPage() {
                     Use this Sound
                   </Link>
                 </Button>
-                <Button variant="outline" className="border-white/10 hover:bg-white/5">
-                  Add to Favorites
+                <Button
+                    variant={isFavorite ? "default" : "outline"}
+                    className={cn("gap-2", isFavorite ? "bg-secondary text-white hover:bg-secondary/80" : "border-white/10 hover:bg-white/5")}
+                    onClick={handleToggleFavorite}
+                >
+                    {isFavorite ? <Check className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                    {isFavorite ? "Saved" : "Add to Favorites"}
                 </Button>
               </div>
             </div>

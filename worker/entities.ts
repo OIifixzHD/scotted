@@ -3,7 +3,7 @@
  */
 import { IndexedEntity, Index, Entity } from "./core-utils";
 import type { Env } from "./core-utils";
-import type { User, Chat, ChatMessage, Post, Comment, Notification, Report, UserSettings } from "@shared/types";
+import type { User, Chat, ChatMessage, Post, Comment, Notification, Report, UserSettings, SavedSound } from "@shared/types";
 import { MOCK_CHAT_MESSAGES, MOCK_CHATS, MOCK_USERS, MOCK_POSTS } from "@shared/mock-data";
 // Helper type matching the one in core-utils (which isn't exported)
 type Doc<T> = { v: number; data: T };
@@ -46,6 +46,7 @@ export class UserEntity extends IndexedEntity<User> {
     blockedUserIds: [],
     bannerStyle: "default",
     notInterestedPostIds: [],
+    savedSounds: [],
     createdAt: 0,
     echoes: 0,
     lastDailyReward: 0,
@@ -195,6 +196,22 @@ export class UserEntity extends IndexedEntity<User> {
         nextReward: now + cooldown
     };
   }
+  /**
+   * Toggle Sound Favorite
+   */
+  async toggleSoundFavorite(sound: SavedSound): Promise<User> {
+    return this.mutate(state => {
+      const saved = state.savedSounds || [];
+      const exists = saved.some(s => s.id === sound.id);
+      let newSaved: SavedSound[];
+      if (exists) {
+        newSaved = saved.filter(s => s.id !== sound.id);
+      } else {
+        newSaved = [...saved, sound];
+      }
+      return { ...state, savedSounds: newSaved };
+    });
+  }
   protected override async ensureState(): Promise<User> {
     const s = await super.ensureState();
     // Migration logic: Ensure settings object exists for legacy users
@@ -211,6 +228,11 @@ export class UserEntity extends IndexedEntity<User> {
     // Migration: Ensure lastDailyReward exists
     if (s.lastDailyReward === undefined) {
         s.lastDailyReward = 0;
+        this._state = s;
+    }
+    // Migration: Ensure savedSounds exists
+    if (!s.savedSounds) {
+        s.savedSounds = [];
         this._state = s;
     }
     return s;

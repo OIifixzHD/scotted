@@ -17,6 +17,7 @@ import { getBadgeIcon } from '@/components/ui/badge-icons';
 import { VideoModal } from '@/components/feed/VideoModal';
 import { ProfileSkeleton } from '@/components/skeletons/ProfileSkeleton';
 import { ProfileShareDialog } from '@/components/profile/ProfileShareDialog';
+import { SavedSoundsList } from '@/components/profile/SavedSoundsList';
 export function ProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -374,6 +375,12 @@ export function ProfilePage() {
                 >
                   Liked
                 </TabsTrigger>
+                <TabsTrigger
+                  value="sounds"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
+                >
+                  Sounds
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="videos" className="mt-0">
                 <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
@@ -385,6 +392,15 @@ export function ProfilePage() {
                   <div className="py-20 text-center text-muted-foreground">
                     <p>Liked videos are private.</p>
                   </div>
+                )}
+              </TabsContent>
+              <TabsContent value="sounds" className="mt-0">
+                {isOwnProfile ? (
+                    <SavedSoundsList sounds={user.savedSounds || []} />
+                ) : (
+                    <div className="py-20 text-center text-muted-foreground">
+                        <p>Saved sounds are private.</p>
+                    </div>
                 )}
               </TabsContent>
             </Tabs>
