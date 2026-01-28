@@ -47,6 +47,7 @@ export class UserEntity extends IndexedEntity<User> {
     bannerStyle: "default",
     notInterestedPostIds: [],
     createdAt: 0,
+    echoes: 0,
     avatarDecoration: "none",
     badge: "none",
     directMessages: {},
@@ -127,6 +128,16 @@ export class UserEntity extends IndexedEntity<User> {
       ...s,
       directMessages: { ...(s.directMessages || {}), [targetId]: chatId }
     }));
+  }
+  /**
+   * Add Echoes (Virtual Currency)
+   */
+  async addEchoes(amount: number): Promise<number> {
+    const newState = await this.mutate(s => ({
+      ...s,
+      echoes: (s.echoes || 0) + amount
+    }));
+    return newState.echoes || 0;
   }
   protected override async ensureState(): Promise<User> {
     const s = await super.ensureState();

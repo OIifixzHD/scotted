@@ -27,6 +27,7 @@ export interface User {
   followers?: number;
   following?: number;
   followingIds?: string[]; // Added for social graph
+  echoes?: number; // Virtual Currency
   avatarDecoration?: string; // 'gold-border', 'neon-glow', 'blue-fire', etc. (Ring)
   badge?: string; // 'verified-pro', 'owner', 'crystal', etc. (Icon)
   bannerStyle?: string; // 'default', 'cosmic', 'neon', 'sunset', 'ocean', 'midnight'

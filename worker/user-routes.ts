@@ -42,6 +42,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       followers: 0,
       following: 0,
       followingIds: [],
+      echoes: 0,
       avatarDecoration: 'none',
       badge: 'none',
       bannerStyle: 'default',
@@ -514,10 +515,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 newBadge = 'none';
             }
         }
+        // Echoes Reward (100 for new follower)
+        const echoesChange = (change > 0) ? 100 : 0;
         return {
             ...user,
             followers: newFollowers,
-            badge: newBadge
+            badge: newBadge,
+            echoes: (user.echoes || 0) + echoesChange
         };
     });
     // Check target user settings before notifying
@@ -1049,6 +1053,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 };
                 await NotificationEntity.create(c.env, notif);
             }
+            // Echoes Reward (50 for like)
+            await targetUserEntity.addEchoes(50);
         }
     }
     return ok(c, result);
@@ -1074,6 +1080,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const postEntity = new PostEntity(c.env, id);
     if (!await postEntity.exists()) return notFound(c, 'Post not found');
     const views = await postEntity.incrementViews();
+    // Echoes Reward (25 for view)
+    const post = await postEntity.getState();
+    if (post.userId) {
+        const authorEntity = new UserEntity(c.env, post.userId);
+        await authorEntity.addEchoes(25);
+    }
     return ok(c, { views });
   });
   // --- COMMENTS ---
@@ -1113,6 +1125,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             };
             await NotificationEntity.create(c.env, notif);
         }
+        // Echoes Reward (75 for comment)
+        await targetUserEntity.addEchoes(75);
     }
     return ok(c, comment);
   });

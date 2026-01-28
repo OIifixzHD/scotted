@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from '@/lib/api-client';
 import type { User, Post } from '@shared/types';
-import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2, MessageCircle, Lock } from 'lucide-react';
+import { Loader2, MapPin, Link as LinkIcon, Calendar, LogOut, Edit, Settings, MoreVertical, Ban, Flag, Share2, MessageCircle, Lock, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { EditProfileDialog } from '@/components/profile/EditProfileDialog';
@@ -219,16 +219,16 @@ export function ProfilePage() {
                     <div className="flex gap-3">
                       {isOwnProfile ? (
                         <>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={() => setIsEditDialogOpen(true)}
                           >
                             <Edit className="w-4 h-4" />
                             Edit Profile
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             asChild
                           >
@@ -237,8 +237,8 @@ export function ProfilePage() {
                               Settings
                             </Link>
                           </Button>
-                          <Button 
-                            variant="destructive" 
+                          <Button
+                            variant="destructive"
                             className="bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 gap-2"
                             onClick={logout}
                           >
@@ -248,15 +248,15 @@ export function ProfilePage() {
                         </>
                       ) : (
                         <>
-                          <Button 
+                          <Button
                             className={isFollowing ? "bg-secondary text-white hover:bg-secondary/80" : "bg-primary hover:bg-primary/90"}
                             onClick={handleFollow}
                             disabled={isFollowLoading}
                           >
                             {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isFollowing ? "Following" : "Follow")}
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             className="border-white/10 text-white hover:bg-white/5 gap-2"
                             onClick={handleMessage}
                             disabled={isMessageLoading}
@@ -264,9 +264,9 @@ export function ProfilePage() {
                             {isMessageLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />}
                             Message
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="border border-white/10 text-white hover:bg-white/5"
                             onClick={() => setIsShareDialogOpen(true)}
                           >
@@ -290,9 +290,9 @@ export function ProfilePage() {
                         </>
                       )}
                       {isOwnProfile && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="border border-white/10 text-white hover:bg-white/5"
                           onClick={() => setIsShareDialogOpen(true)}
                         >
@@ -316,9 +316,9 @@ export function ProfilePage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <a 
-                        href={`https://pulse.aurelia.so/${handle}`} 
-                        target="_blank" 
+                      <a
+                        href={`https://pulse.aurelia.so/${handle}`}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
@@ -344,6 +344,13 @@ export function ProfilePage() {
                     <div className="text-2xl font-bold text-white">{(posts.length * 124).toLocaleString()}</div>
                     <div className="text-xs text-muted-foreground uppercase tracking-wider">Likes</div>
                   </div>
+                  <div>
+                    <div className="text-2xl font-bold text-yellow-400 flex items-center justify-center gap-1">
+                        <Sparkles className="w-5 h-5" />
+                        {(user.echoes || 0).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Echoes</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -352,14 +359,14 @@ export function ProfilePage() {
           {canViewContent ? (
             <Tabs defaultValue="videos" className="w-full">
               <TabsList className="w-full justify-start bg-transparent border-b border-white/10 rounded-none h-auto p-0 mb-6">
-                <TabsTrigger 
-                  value="videos" 
+                <TabsTrigger
+                  value="videos"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
                 >
                   Videos
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="liked" 
+                <TabsTrigger
+                  value="liked"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-6 py-3 text-base"
                 >
                   Liked
@@ -393,17 +400,17 @@ export function ProfilePage() {
       </div>
       {/* Edit Profile Dialog */}
       {currentUser && (
-        <EditProfileDialog 
-          open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen} 
-          currentUser={currentUser} 
+        <EditProfileDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          currentUser={currentUser}
         />
       )}
       {/* Report Dialog */}
       {user && (
-        <ReportDialog 
-          open={isReportDialogOpen} 
-          onClose={() => setIsReportDialogOpen(false)} 
+        <ReportDialog
+          open={isReportDialogOpen}
+          onClose={() => setIsReportDialogOpen(false)}
           targetId={user.id}
           targetType="user"
           targetName={user.name}
