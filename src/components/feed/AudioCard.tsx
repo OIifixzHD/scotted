@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Play, Pause, Music2, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, Pause, Music2, Rocket, Link as LinkIcon, Trash2, Edit, Flag, Ban, Check, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Post } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -66,6 +66,7 @@ export function AudioCard({
   const [likeCount, setLikeCount] = useState(post.likes);
   const [commentCount, setCommentCount] = useState(post.comments);
   const [shareCount, setShareCount] = useState(post.shares || 0);
+  const [viewCount, setViewCount] = useState(post.views || 0);
   const [showExplosion, setShowExplosion] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -87,6 +88,7 @@ export function AudioCard({
     setLikeCount(post.likes);
     setCommentCount(post.comments);
     setShareCount(post.shares || 0);
+    setViewCount(post.views || 0);
   }, [post, user]);
   // Playback Logic
   useEffect(() => {
@@ -155,6 +157,16 @@ export function AudioCard({
     } catch (e) {
       setIsLiked(prevLiked);
       setLikeCount(prevLiked ? likeCount : likeCount);
+    }
+  };
+  const handleShare = async () => {
+    setIsShareOpen(true);
+    setShareCount(prev => prev + 1);
+    try {
+        const res = await api<{ shares: number }>(`/api/posts/${post.id}/share`, { method: 'POST' });
+        setShareCount(res.shares);
+    } catch (e) {
+        console.error("Failed to track share", e);
     }
   };
   const handleCopyLink = async () => {
@@ -355,7 +367,7 @@ export function AudioCard({
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button onClick={() => setIsShareOpen(true)} className="flex flex-col items-center gap-1 group">
+                    <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
                       <div className="p-3 rounded-full bg-black/20 backdrop-blur-sm text-white transition-all duration-200 group-hover:bg-black/40">
                         <Share2 className="w-7 h-7" />
                       </div>
