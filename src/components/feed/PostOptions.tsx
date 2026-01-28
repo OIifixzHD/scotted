@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@shared/types";
 import { api } from "@/lib/api-client";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { ReportDialog } from "@/components/profile/ReportDialog";
 import { EditPostDialog } from "@/components/feed/EditPostDialog";
 import { PromoteDialog } from "@/components/feed/PromoteDialog";
+import { InsightsDialog } from "@/components/feed/InsightsDialog";
 interface PostOptionsProps {
   post: Post;
   onDelete?: () => void;
@@ -27,6 +28,7 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
   const isOwner = user?.id === post.userId;
   const isAdmin = user?.isAdmin;
   const canDelete = isOwner || isAdmin;
@@ -90,10 +92,16 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
             Copy Link
           </DropdownMenuItem>
           {isOwner && (
-            <DropdownMenuItem onClick={() => setIsPromoteDialogOpen(true)} className="cursor-pointer text-yellow-400 focus:text-yellow-400">
-              <Rocket className="w-4 h-4 mr-2" />
-              Promote
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onClick={() => setIsInsightsOpen(true)} className="cursor-pointer text-blue-400 focus:text-blue-400">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                View Insights
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsPromoteDialogOpen(true)} className="cursor-pointer text-yellow-400 focus:text-yellow-400">
+                <Rocket className="w-4 h-4 mr-2" />
+                Promote
+              </DropdownMenuItem>
+            </>
           )}
           {canEdit && (
             <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)} className="cursor-pointer">
@@ -150,6 +158,11 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
         onSuccess={(updatedPost) => {
           onUpdate?.(updatedPost);
         }}
+      />
+      <InsightsDialog
+        open={isInsightsOpen}
+        onOpenChange={setIsInsightsOpen}
+        post={post}
       />
     </>
   );
