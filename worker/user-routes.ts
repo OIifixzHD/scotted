@@ -693,6 +693,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return post;
     }));
     hydratedPosts.sort((a, b) => {
+        const now = Date.now();
+        const isPromotedA = (a.promotedUntil || 0) > now;
+        const isPromotedB = (b.promotedUntil || 0) > now;
+        // Promoted posts first
+        if (isPromotedA && !isPromotedB) return -1;
+        if (!isPromotedA && isPromotedB) return 1;
         const scoreA = (a.likes * 2) + (a.comments * 3) + ((a.views || 0) * 0.5);
         const scoreB = (b.likes * 2) + (b.comments * 3) + ((b.views || 0) * 0.5);
         if (scoreA === scoreB) {
@@ -819,6 +825,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     } catch (e) {
         console.error("Upload error:", e);
         return bad(c, 'Failed to process upload: ' + (e instanceof Error ? e.message : String(e)));
+    }
+  });
+  app.post('/api/posts/:id/promote', async (c) => {
+    const id = c.req.param('id');
+    const { userId } = await c.req.json() as { userId: string };
+    if (!userId) return bad(c, 'userId required');
+    const postEntity = new PostEntity(c.env, id);
+    if (!await postEntity.exists()) return notFound(c, 'Post not found');
+    const post = await postEntity.getState();
+    if (post.userId !== userId) return bad(c, 'Unauthorized');
+    const userEntity = new UserEntity(c.env, userId);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+    try {
+        const COST = 750;
+        const DURATION = 24 * 60 * 60 * 1000; // 24 hours
+        const newBalance = await userEntity.deductEchoes(COST);
+        const updatedPost = await postEntity.promote(DURATION);
+        return ok(c, { success: true, balance: newBalance, post: updatedPost });
+    } catch (e) {
+        return bad(c, e instanceof Error ? e.message : 'Promotion failed');
     }
   });
   app.get('/api/content/video/:id', async (c) => {
@@ -1326,27 +1352,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return ok(c, await chatEntity.sendMessage(userId, text?.trim() || '', mediaUrl, mediaType));
   });
-
   // --- ECONOMY ---
   app.post('/api/posts/:id/gift', async (c) => {
     const postId = c.req.param('id');
     const { senderId, amount } = await c.req.json() as { senderId: string, amount: number };
     if (!senderId || !amount || amount <= 0) return bad(c, 'Invalid sender or amount');
-
     const postEntity = new PostEntity(c.env, postId);
     if (!await postEntity.exists()) return notFound(c, 'Post not found');
     const post = await postEntity.getState();
-
     const senderEntity = new UserEntity(c.env, senderId);
     if (!await senderEntity.exists()) return notFound(c, 'Sender not found');
-
     const authorEntity = new UserEntity(c.env, post.userId);
     if (!await authorEntity.exists()) return notFound(c, 'Author not found');
-
     try {
         const newBalance = await senderEntity.deductEchoes(amount);
         await authorEntity.addEchoes(amount);
-        
         // Notify author
         const notif: Notification = {
             id: crypto.randomUUID(),
@@ -1359,22 +1379,17 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             data: { amount }
         };
         await NotificationEntity.create(c.env, notif);
-
         return ok(c, { success: true, newBalance });
     } catch (e) {
         return bad(c, e instanceof Error ? e.message : 'Transaction failed');
     }
   });
-
   app.post('/api/users/:id/purchase-decoration', async (c) => {
     const userId = c.req.param('id');
     const { decorationId, cost } = await c.req.json() as { decorationId: string, cost: number };
-    
     if (!decorationId || cost === undefined) return bad(c, 'Invalid decoration or cost');
-
     const userEntity = new UserEntity(c.env, userId);
     if (!await userEntity.exists()) return notFound(c, 'User not found');
-
     try {
         const updatedUser = await userEntity.purchaseDecoration(decorationId, cost);
         const { password, ...safeUser } = updatedUser;
@@ -1383,15 +1398,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, e instanceof Error ? e.message : 'Purchase failed');
     }
   });
-
   // --- GAMIFICATION ---
   app.post('/api/economy/daily-reward', async (c) => {
     const { userId } = await c.req.json() as { userId: string };
     if (!userId) return bad(c, 'userId required');
-
     const userEntity = new UserEntity(c.env, userId);
     if (!await userEntity.exists()) return notFound(c, 'User not found');
-
     try {
         const result = await userEntity.claimDailyReward(100); // 100 Echoes reward
         return ok(c, result);
@@ -1399,19 +1411,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, e instanceof Error ? e.message : 'Failed to claim reward');
     }
   });
-
   app.get('/api/economy/leaderboard', async (c) => {
     await UserEntity.ensureSeed(c.env);
     // Fetch a large batch to sort in memory (Durable Objects don't support complex queries natively)
     const page = await UserEntity.list(c.env, null, 1000);
     const users = page.items;
-
     // Sort by Echoes descending
     users.sort((a, b) => (b.echoes || 0) - (a.echoes || 0));
-
     // Top 50
     const topUsers = users.slice(0, 50).map(({ password, settings, directMessages, blockedUserIds, ...safeUser }) => safeUser);
-
     return ok(c, topUsers);
   });
 }

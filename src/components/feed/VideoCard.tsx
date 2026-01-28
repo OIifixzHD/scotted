@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Gift } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Gift, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
@@ -87,6 +87,7 @@ export function VideoCard({
   const isAdmin = user?.isAdmin;
   const canDelete = isOwner || isAdmin;
   const canEdit = isOwner || isAdmin;
+  const isPromoted = (post.promotedUntil || 0) > Date.now();
   // Sync with prop updates and user auth state
   useEffect(() => {
     if (user) {
@@ -402,12 +403,22 @@ export function VideoCard({
                     <Loader2 className="w-12 h-12 text-white/70 animate-spin drop-shadow-lg" />
                 </div>
             )}
-            {/* HD Badge */}
-            {!hasError && !isBuffering && (
-                <div className="absolute top-4 left-4 z-20 px-2 py-1 bg-black/40 backdrop-blur-md rounded border border-white/10 text-[10px] font-bold text-white/80 pointer-events-none">
-                    HD
-                </div>
-            )}
+            {/* Badges Container */}
+            <div className="absolute top-4 left-4 z-20 flex flex-col gap-2 pointer-events-none">
+                {/* HD Badge */}
+                {!hasError && !isBuffering && (
+                    <div className="px-2 py-1 bg-black/40 backdrop-blur-md rounded border border-white/10 text-[10px] font-bold text-white/80 w-fit">
+                        HD
+                    </div>
+                )}
+                {/* Promoted Badge */}
+                {isPromoted && (
+                    <div className="px-2 py-1 bg-yellow-500/90 backdrop-blur-md rounded border border-yellow-400/50 text-[10px] font-bold text-black flex items-center gap-1 w-fit shadow-glow">
+                        <Rocket className="w-3 h-3 fill-black" />
+                        PROMOTED
+                    </div>
+                )}
+            </div>
             {/* Unmute Hint */}
             <AnimatePresence>
                 {/* Show unmute hint if video is playing, currently muted */}
