@@ -22,6 +22,11 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
     const saved = localStorage.getItem('pulse_mute_preference');
     return saved !== null ? saved === 'true' : true;
   });
+  // Initialize volume state from localStorage
+  const [volume, setVolume] = useState(() => {
+    const saved = localStorage.getItem('pulse_volume_level');
+    return saved !== null ? parseFloat(saved) : 1.0;
+  });
   // Initialize autoplay state from localStorage
   const [autoplayEnabled] = useState(() => {
     const saved = localStorage.getItem('pulse_autoplay');
@@ -33,6 +38,10 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   useEffect(() => {
     localStorage.setItem('pulse_mute_preference', String(isMuted));
   }, [isMuted]);
+  // Persist volume preference
+  useEffect(() => {
+    localStorage.setItem('pulse_volume_level', String(volume));
+  }, [volume]);
   useEffect(() => {
     const fetchFeed = async () => {
       try {
@@ -115,6 +124,12 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const handlePostHide = (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (newVolume > 0 && isMuted) {
+      setIsMuted(false);
+    }
+  };
   if (loading) {
     return (
       <div className="h-full w-full bg-black py-4 md:py-8">
@@ -174,13 +189,13 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   }
   const activeIndex = posts.findIndex(p => p.id === activeVideoId);
   return (
-    <div
+    <div 
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black overscroll-contain"
     >
       {posts.map((post, index) => (
-        <div
-            key={post.id}
+        <div 
+            key={post.id} 
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-0 md:py-8"
         >
@@ -189,7 +204,9 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
               post={post}
               isActive={activeVideoId === post.id}
               isMuted={isMuted}
+              volume={volume}
               toggleMute={() => setIsMuted(!isMuted)}
+              onVolumeChange={handleVolumeChange}
               onDelete={() => handlePostDelete(post.id)}
               onUpdate={handlePostUpdate}
               onHide={() => handlePostHide(post.id)}
@@ -200,7 +217,9 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
               post={post}
               isActive={activeVideoId === post.id}
               isMuted={isMuted}
+              volume={volume}
               toggleMute={() => setIsMuted(!isMuted)}
+              onVolumeChange={handleVolumeChange}
               onDelete={() => handlePostDelete(post.id)}
               onUpdate={handlePostUpdate}
               onHide={() => handlePostHide(post.id)}

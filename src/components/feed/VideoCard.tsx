@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Share2, Volume2, VolumeX, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Gift, Rocket } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, AlertCircle, Eye, RefreshCw, Loader2, Link as LinkIcon, Ban, Flag, Trash2, Edit, Check, Gift, Rocket, PictureInPicture } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getBadgeIcon } from '@/components/ui/badge-icons';
 import type { Post } from '@shared/types';
@@ -21,6 +21,9 @@ import { getFilterClass } from '@/lib/filters';
 import { OverlayCanvas } from '@/components/upload/OverlayCanvas';
 import { UserHoverCard } from '@/components/ui/user-hover-card';
 import { GiftDialog } from './GiftDialog';
+import { TapHeart } from '@/components/ui/tap-heart';
+import { VolumeControl } from '@/components/ui/volume-control';
+import { v4 as uuidv4 } from 'uuid';
 import {
   Tooltip,
   TooltipContent,
@@ -38,18 +41,28 @@ interface VideoCardProps {
   post: Post;
   isActive: boolean;
   isMuted: boolean;
+  volume?: number;
   toggleMute: () => void;
+  onVolumeChange?: (volume: number) => void;
   onDelete?: () => void;
   onUpdate?: (post: Post) => void;
   onHide?: () => void;
   shouldPreload?: boolean;
   autoplayEnabled?: boolean;
 }
+interface HeartAnimation {
+  id: string;
+  x: number;
+  y: number;
+  rotation: number;
+}
 export function VideoCard({
   post,
   isActive,
   isMuted,
+  volume = 1.0,
   toggleMute: propToggleMute,
+  onVolumeChange,
   onDelete,
   onUpdate,
   onHide,
@@ -58,10 +71,12 @@ export function VideoCard({
 }: VideoCardProps) {
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
-  const toggleMute = useCallback(() => {
+  const toggleMute = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
     }
@@ -78,6 +93,7 @@ export function VideoCard({
   const [hasError, setHasError] = useState(false);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [hearts, setHearts] = useState<HeartAnimation[]>([]);
   // Dialog States
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -107,8 +123,9 @@ export function VideoCard({
   useEffect(() => {
     const video = videoRef.current;
     if (!video || hasError) return;
-    // Sync muted state
+    // Sync muted state and volume
     video.muted = isMuted;
+    video.volume = volume;
     if (isActive) {
       if (autoplayEnabled) {
         const playPromise = video.play();
@@ -147,7 +164,13 @@ export function VideoCard({
       setProgress(0);
       setIsBuffering(false);
     }
-  }, [isActive, hasError, post.id, isMuted, autoplayEnabled]);
+  }, [isActive, hasError, post.id, isMuted, volume, autoplayEnabled]);
+  // Sync volume when prop changes while active
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = volume;
+    }
+  }, [volume]);
   const togglePlay = useCallback(() => {
     if (videoRef.current && !hasError) {
       if (isPlaying) {
@@ -243,15 +266,32 @@ export function VideoCard({
         console.error("Failed to track share", e);
     }
   };
-  const handleDoubleTap = () => {
+  const handleDoubleTap = (e: React.MouseEvent) => {
     if (!user) {
         toast.error("Please log in to like posts");
         return;
+    }
+    // Calculate position relative to container
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const rotation = Math.random() * 40 - 20; // Random rotation between -20 and 20 deg
+      const newHeart: HeartAnimation = {
+        id: uuidv4(),
+        x,
+        y,
+        rotation
+      };
+      setHearts(prev => [...prev, newHeart]);
     }
     triggerLikeEffects();
     if (!isLiked) {
         handleLike();
     }
+  };
+  const removeHeart = (id: string) => {
+    setHearts(prev => prev.filter(h => h.id !== id));
   };
   const handleError = () => {
     console.error(`Video failed to load: ${post.videoUrl}`);
@@ -322,6 +362,19 @@ export function VideoCard({
         videoRef.current.playbackRate = rate;
     }
   };
+  const togglePiP = async () => {
+    if (!videoRef.current) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else {
+        await videoRef.current.requestPictureInPicture();
+      }
+    } catch (error) {
+      console.error("Failed to toggle PiP", error);
+      toast.error("PiP not supported or failed");
+    }
+  };
   const renderCaption = (text: string) => {
     if (!text) return [];
     // Split by whitespace but keep delimiters to preserve formatting
@@ -347,13 +400,14 @@ export function VideoCard({
     <ContextMenu>
       <ContextMenuTrigger className="w-full h-full">
         <motion.div
+          ref={containerRef}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
           className="relative w-full h-full md:max-w-md md:h-[calc(100%-2rem)] mx-auto bg-black snap-start shrink-0 overflow-hidden md:rounded-xl border-0 md:border border-white/5 shadow-2xl group/video"
         >
           {/* Video Player */}
-          <div
+          <div 
             className="absolute inset-0 cursor-pointer bg-gray-900"
             onClick={togglePlay}
             onDoubleClick={handleDoubleTap}
@@ -381,9 +435,9 @@ export function VideoCard({
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-gray-900 z-10">
                     <AlertCircle className="w-12 h-12 mb-2 opacity-50" />
                     <p className="text-sm mb-4">Video unavailable</p>
-                    <Button
-                        variant="outline"
-                        size="sm"
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
                         onClick={handleRetry}
                         className="border-white/10 hover:bg-white/5"
                     >
@@ -440,7 +494,20 @@ export function VideoCard({
             <AnimatePresence>
               {showExplosion && <LikeExplosion />}
             </AnimatePresence>
-            {/* Big Heart Animation */}
+            {/* Tap Hearts */}
+            <AnimatePresence>
+              {hearts.map(heart => (
+                <TapHeart
+                  key={heart.id}
+                  id={heart.id}
+                  x={heart.x}
+                  y={heart.y}
+                  rotation={heart.rotation}
+                  onComplete={removeHeart}
+                />
+              ))}
+            </AnimatePresence>
+            {/* Big Heart Animation (Center) */}
             <AnimatePresence>
               {showHeartAnimation && (
                 <motion.div
@@ -455,12 +522,12 @@ export function VideoCard({
             </AnimatePresence>
           </div>
           {/* Interactive Progress Bar */}
-          <div
+          <div 
             className="absolute bottom-0 left-0 right-0 h-4 z-30 cursor-pointer group flex items-end pb-safe"
             onClick={handleSeek}
           >
             <div className="w-full h-1 bg-white/20 group-hover:h-2 transition-all duration-200">
-               <div
+               <div 
                  className="h-full bg-primary transition-all duration-100 ease-linear relative"
                  style={{ width: `${progress}%` }}
                >
@@ -488,7 +555,7 @@ export function VideoCard({
             </div>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button
+                    <button 
                       onClick={handleLike}
                       className="flex flex-col items-center gap-1 group"
                     >
@@ -507,7 +574,7 @@ export function VideoCard({
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button
+                    <button 
                       onClick={() => setIsCommentsOpen(true)}
                       className="flex flex-col items-center gap-1 group"
                     >
@@ -523,7 +590,7 @@ export function VideoCard({
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button
+                    <button 
                       onClick={handleShare}
                       className="flex flex-col items-center gap-1 group"
                     >
@@ -555,7 +622,7 @@ export function VideoCard({
             {isOwner && (
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <button
+                        <button 
                             onClick={() => setIsPromoteDialogOpen(true)}
                             className="flex flex-col items-center gap-1 group"
                         >
@@ -603,25 +670,20 @@ export function VideoCard({
               </p>
             </div>
           </div>
-          {/* Mute Toggle */}
-          <Tooltip>
-              <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleMute(); }}
-                    className="absolute top-4 right-4 p-2 rounded-full bg-black/20 backdrop-blur-md text-white/80 hover:bg-black/40 transition-colors z-30 pt-safe"
-                  >
-                    {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                  </button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                  <p>{isMuted ? "Unmute" : "Mute"}</p>
-              </TooltipContent>
-          </Tooltip>
+          {/* Volume Control */}
+          <div className="absolute top-4 right-4 z-30 pt-safe">
+            <VolumeControl 
+              volume={volume}
+              isMuted={isMuted}
+              onVolumeChange={onVolumeChange || (() => {})}
+              onToggleMute={toggleMute}
+            />
+          </div>
           {/* Share Dialog */}
-          <ShareDialog
-            open={isShareOpen}
-            onOpenChange={setIsShareOpen}
-            postId={post.id}
+          <ShareDialog 
+            open={isShareOpen} 
+            onOpenChange={setIsShareOpen} 
+            postId={post.id} 
           />
           {/* Comments Sheet */}
           <CommentsSheet
@@ -681,6 +743,10 @@ export function VideoCard({
         <ContextMenuItem onClick={handleCopyLink}>
           <LinkIcon className="mr-2 h-4 w-4" />
           Copy Link
+        </ContextMenuItem>
+        <ContextMenuItem onClick={togglePiP}>
+          <PictureInPicture className="mr-2 h-4 w-4" />
+          Picture in Picture
         </ContextMenuItem>
         <ContextMenuSeparator className="bg-white/10" />
         <ContextMenuLabel>Playback Speed</ContextMenuLabel>

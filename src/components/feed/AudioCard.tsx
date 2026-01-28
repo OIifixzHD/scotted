@@ -15,6 +15,7 @@ import { LikeExplosion } from '@/components/ui/like-explosion';
 import { Slider } from '@/components/ui/slider';
 import { AudioVisualizer } from '@/components/ui/audio-visualizer';
 import { PromoteDialog } from '@/components/feed/PromoteDialog';
+import { VolumeControl } from '@/components/ui/volume-control';
 import {
   Tooltip,
   TooltipContent,
@@ -24,7 +25,9 @@ interface AudioCardProps {
   post: Post;
   isActive: boolean;
   isMuted: boolean;
+  volume?: number;
   toggleMute: () => void;
+  onVolumeChange?: (volume: number) => void;
   onDelete?: () => void;
   onUpdate?: (post: Post) => void;
   onHide?: () => void;
@@ -34,7 +37,9 @@ export function AudioCard({
   post,
   isActive,
   isMuted,
+  volume = 1.0,
   toggleMute,
+  onVolumeChange,
   onDelete,
   onUpdate,
   onHide,
@@ -69,6 +74,7 @@ export function AudioCard({
     const audio = audioRef.current;
     if (!audio) return;
     audio.muted = isMuted;
+    audio.volume = volume;
     if (isActive && autoplayEnabled) {
       audio.play().catch(() => setIsPlaying(false));
       setIsPlaying(true);
@@ -76,7 +82,13 @@ export function AudioCard({
       audio.pause();
       setIsPlaying(false);
     }
-  }, [isActive, isMuted, autoplayEnabled]);
+  }, [isActive, isMuted, volume, autoplayEnabled]);
+  // Sync volume when prop changes while active
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
   const togglePlay = useCallback(() => {
     if (audioRef.current) {
       if (isPlaying) {
@@ -142,9 +154,9 @@ export function AudioCard({
       />
       {/* Background Blur */}
       <div className="absolute inset-0 z-0">
-        <img
-          src={post.coverArtUrl || post.user?.avatar}
-          alt="Background"
+        <img 
+          src={post.coverArtUrl || post.user?.avatar} 
+          alt="Background" 
           className="w-full h-full object-cover opacity-30 blur-3xl scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/90" />
@@ -195,7 +207,7 @@ export function AudioCard({
             </div>
           </div>
           <div className="flex justify-center items-center gap-6">
-            <button
+            <button 
               onClick={togglePlay}
               className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-transform shadow-glow"
             >
@@ -260,7 +272,7 @@ export function AudioCard({
         {isOwner && (
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <button
+                    <button 
                         onClick={() => setIsPromoteDialogOpen(true)}
                         className="flex flex-col items-center gap-1 group"
                     >
@@ -282,6 +294,15 @@ export function AudioCard({
         <div className="max-w-[80%]">
           <p className="text-sm text-white/90 line-clamp-2">{post.caption}</p>
         </div>
+      </div>
+      {/* Volume Control */}
+      <div className="absolute top-4 right-4 z-30 pt-safe">
+        <VolumeControl 
+          volume={volume}
+          isMuted={isMuted}
+          onVolumeChange={onVolumeChange || (() => {})}
+          onToggleMute={toggleMute}
+        />
       </div>
       {/* Effects & Dialogs */}
       <AnimatePresence>
