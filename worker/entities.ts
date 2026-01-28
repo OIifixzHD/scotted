@@ -48,6 +48,7 @@ export class UserEntity extends IndexedEntity<User> {
     notInterestedPostIds: [],
     createdAt: 0,
     echoes: 0,
+    lastDailyReward: 0,
     avatarDecoration: "none",
     unlockedDecorations: ["none"],
     badge: "none",
@@ -172,6 +173,28 @@ export class UserEntity extends IndexedEntity<User> {
     }));
     return newState;
   }
+  /**
+   * Claim Daily Reward
+   */
+  async claimDailyReward(amount: number): Promise<{ success: boolean, balance: number, nextReward: number }> {
+    const state = await this.getState();
+    const now = Date.now();
+    const lastReward = state.lastDailyReward || 0;
+    const cooldown = 24 * 60 * 60 * 1000; // 24 hours
+    if (now - lastReward < cooldown) {
+        throw new Error(`Reward not ready. Next reward in ${Math.ceil((lastReward + cooldown - now) / 60000)} minutes.`);
+    }
+    const newState = await this.mutate(s => ({
+        ...s,
+        echoes: (s.echoes || 0) + amount,
+        lastDailyReward: now
+    }));
+    return {
+        success: true,
+        balance: newState.echoes || 0,
+        nextReward: now + cooldown
+    };
+  }
   protected override async ensureState(): Promise<User> {
     const s = await super.ensureState();
     // Migration logic: Ensure settings object exists for legacy users
@@ -183,6 +206,11 @@ export class UserEntity extends IndexedEntity<User> {
     // Migration: Ensure unlockedDecorations exists
     if (!s.unlockedDecorations) {
         s.unlockedDecorations = ['none'];
+        this._state = s;
+    }
+    // Migration: Ensure lastDailyReward exists
+    if (s.lastDailyReward === undefined) {
+        s.lastDailyReward = 0;
         this._state = s;
     }
     return s;

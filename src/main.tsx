@@ -29,6 +29,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { RootLayout } from '@/components/layout/RootLayout'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { LeaderboardPage } from '@/pages/LeaderboardPage'
 const router = createBrowserRouter([
   {
     element: <Outlet />,
@@ -54,6 +55,10 @@ const router = createBrowserRouter([
           {
             path: "/discover",
             element: <DiscoverPage />,
+          },
+          {
+            path: "/leaderboard",
+            element: <LeaderboardPage />,
           },
           {
             path: "/upload",

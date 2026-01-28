@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn, LogOut, Settings, Shield } from "lucide-react";
+import { Home, Compass, PlusSquare, MessageCircle, User, Zap, LogIn, LogOut, Settings, Shield, Trophy } from "lucide-react";
 import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -80,6 +80,22 @@ export function AppSidebar(): JSX.Element {
                     <span className="flex items-center gap-3 cursor-pointer">
                       <Compass className="h-5 w-5" />
                       <span>Discover</span>
+                    </span>
+                  </SidebarMenuButton>
+                )}
+              </NavLink>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <NavLink to="/leaderboard">
+                {({ isActive }) => (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    className="h-12 px-4 text-base font-medium hover:bg-white/5 data-[active=true]:bg-white/10 data-[active=true]:text-purple-400 transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-3 cursor-pointer">
+                      <Trophy className="h-5 w-5" />
+                      <span>Leaderboard</span>
                     </span>
                   </SidebarMenuButton>
                 )}

@@ -1383,4 +1383,35 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return bad(c, e instanceof Error ? e.message : 'Purchase failed');
     }
   });
+
+  // --- GAMIFICATION ---
+  app.post('/api/economy/daily-reward', async (c) => {
+    const { userId } = await c.req.json() as { userId: string };
+    if (!userId) return bad(c, 'userId required');
+
+    const userEntity = new UserEntity(c.env, userId);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+
+    try {
+        const result = await userEntity.claimDailyReward(100); // 100 Echoes reward
+        return ok(c, result);
+    } catch (e) {
+        return bad(c, e instanceof Error ? e.message : 'Failed to claim reward');
+    }
+  });
+
+  app.get('/api/economy/leaderboard', async (c) => {
+    await UserEntity.ensureSeed(c.env);
+    // Fetch a large batch to sort in memory (Durable Objects don't support complex queries natively)
+    const page = await UserEntity.list(c.env, null, 1000);
+    const users = page.items;
+
+    // Sort by Echoes descending
+    users.sort((a, b) => (b.echoes || 0) - (a.echoes || 0));
+
+    // Top 50
+    const topUsers = users.slice(0, 50).map(({ password, settings, directMessages, blockedUserIds, ...safeUser }) => safeUser);
+
+    return ok(c, topUsers);
+  });
 }

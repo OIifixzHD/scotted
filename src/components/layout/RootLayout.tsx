@@ -14,6 +14,7 @@ import { GlobalContextMenu } from "./GlobalContextMenu";
 import { AnimatedBackground } from "./AnimatedBackground";
 import { AnnouncementBanner } from "@/components/ui/announcement-banner";
 import { api } from "@/lib/api-client";
+import { BalanceDisplay } from "@/components/layout/BalanceDisplay";
 interface SystemSettings {
   maintenanceMode: boolean;
   disableSignups: boolean;
@@ -80,6 +81,7 @@ export function RootLayout() {
             level={systemSettings.announcementLevel}
           />
         )}
+        <BalanceDisplay />
         <AnimatedBackground />
         <GlobalContextMenu>
           <main className="flex-1 h-full overflow-hidden pb-16 md:pb-0 relative z-10">
