@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Masonry from 'react-masonry-css';
-import { Play, Heart, Eye, Music2 } from 'lucide-react';
+import { Play, Heart, Eye, Music2, Loader2 } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { getFilterClass } from '@/lib/filters';
+import { useInView } from 'react-intersection-observer';
 interface VideoGridProps {
   posts: Post[];
   className?: string;
   onVideoClick?: (post: Post) => void;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loading?: boolean;
 }
-export function VideoGrid({ posts, className, onVideoClick }: VideoGridProps) {
+export function VideoGrid({ posts, className, onVideoClick, onLoadMore, hasMore, loading }: VideoGridProps) {
   const breakpointColumnsObj = {
     default: 4,
     1280: 3,
@@ -17,7 +21,23 @@ export function VideoGrid({ posts, className, onVideoClick }: VideoGridProps) {
     768: 2,
     640: 1
   };
+  const { ref: sentinelRef, inView } = useInView({
+      threshold: 0.1,
+      rootMargin: '200px',
+  });
+  useEffect(() => {
+      if (inView && hasMore && !loading && onLoadMore) {
+          onLoadMore();
+      }
+  }, [inView, hasMore, loading, onLoadMore]);
   if (!posts || posts.length === 0) {
+    if (loading) {
+        return (
+            <div className="w-full py-20 flex justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
     return (
       <div className="w-full py-20 text-center text-muted-foreground">
         <p>No videos found.</p>
@@ -25,15 +45,23 @@ export function VideoGrid({ posts, className, onVideoClick }: VideoGridProps) {
     );
   }
   return (
-    <Masonry
-      breakpointCols={breakpointColumnsObj}
-      className={cn("flex w-auto -ml-4", className)}
-      columnClassName="pl-4 bg-clip-padding"
-    >
-      {posts.map((post) => (
-        <GridItem key={post.id} post={post} onClick={() => onVideoClick?.(post)} />
-      ))}
-    </Masonry>
+    <div className="flex flex-col w-full">
+        <Masonry
+          breakpointCols={breakpointColumnsObj}
+          className={cn("flex w-auto -ml-4", className)}
+          columnClassName="pl-4 bg-clip-padding"
+        >
+          {posts.map((post) => (
+            <GridItem key={post.id} post={post} onClick={() => onVideoClick?.(post)} />
+          ))}
+        </Masonry>
+        {/* Sentinel */}
+        {onLoadMore && (
+            <div ref={sentinelRef} className="w-full py-8 flex justify-center">
+                {loading && hasMore && <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />}
+            </div>
+        )}
+    </div>
   );
 }
 function GridItem({ post, onClick }: { post: Post, onClick?: () => void }) {

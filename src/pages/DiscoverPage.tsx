@@ -16,6 +16,7 @@ import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { GridSkeleton } from '@/components/skeletons/GridSkeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useInfiniteFeed } from '@/hooks/use-infinite-feed';
 interface TrendingSound {
   id: string;
   name: string;
@@ -27,14 +28,23 @@ export function DiscoverPage() {
   const initialQuery = searchParams.get('q') || '';
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
-  const [trendingPosts, setTrendingPosts] = useState<Post[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
   const [trendingSounds, setTrendingSounds] = useState<TrendingSound[]>([]);
   const [searchResults, setSearchResults] = useState<{ users: User[], posts: Post[] }>({ users: [], posts: [] });
-  const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'video' | 'audio' | 'user'>('all');
-  // Search History State (Updated Key)
+  // Infinite Feed Hook for Trending
+  const trendingEndpoint = `/api/feed/trending${activeFilter !== 'all' ? `?type=${activeFilter}` : ''}`;
+  const { 
+      items: trendingPosts, 
+      loading: trendingLoading, 
+      loadMore: loadMoreTrending, 
+      hasMore: hasMoreTrending 
+  } = useInfiniteFeed<Post>({
+      endpoint: trendingEndpoint,
+      initialLimit: 12
+  });
+  // Search History State
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
     const saved = localStorage.getItem('scotted_recent_searches');
     return saved ? JSON.parse(saved) : [];
@@ -79,39 +89,24 @@ export function DiscoverPage() {
       return newHistory;
     });
   };
-  // Fetch Trending & Suggestions on mount or filter change
+  // Fetch Suggestions on mount
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchSuggestions = async () => {
       try {
-        setLoading(true);
-        const promises: Promise<any>[] = [
-          // 0: Trending Posts
-          (activeFilter !== 'user') 
-            ? api<{ items: Post[] }>(`/api/feed/trending${activeFilter !== 'all' ? `?type=${activeFilter}` : ''}`)
-            : Promise.resolve({ items: [] }),
-          // 1: Trending Sounds
-          (activeFilter === 'all' || activeFilter === 'audio')
-            ? api<TrendingSound[]>('/api/sounds/trending')
-            : Promise.resolve([]),
-          // 2: Suggested Users
-          (activeFilter === 'all' || activeFilter === 'user')
-            ? api<User[]>(`/api/users/suggested${currentUser ? `?userId=${currentUser.id}` : ''}`)
-            : Promise.resolve([])
-        ];
-        const [trendingRes, soundsRes, suggestedRes] = await Promise.all(promises);
-        setTrendingPosts(trendingRes.items || []);
+        const [soundsRes, suggestedRes] = await Promise.all([
+          api<TrendingSound[]>('/api/sounds/trending'),
+          api<User[]>(`/api/users/suggested${currentUser ? `?userId=${currentUser.id}` : ''}`)
+        ]);
         setTrendingSounds(soundsRes || []);
         setSuggestedUsers(suggestedRes || []);
       } catch (e) {
         console.error(e);
-      } finally {
-        setLoading(false);
       }
     };
     if (!debouncedQuery) {
-        fetchInitialData();
+        fetchSuggestions();
     }
-  }, [currentUser, activeFilter, debouncedQuery]);
+  }, [currentUser, debouncedQuery]);
   // Perform Search when debounced query changes
   useEffect(() => {
     if (!debouncedQuery) return;
@@ -223,15 +218,15 @@ export function DiscoverPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {recentSearches.map(term => (
-                            <Badge 
-                                key={term} 
-                                variant="outline" 
+                            <Badge
+                                key={term}
+                                variant="outline"
                                 className="px-3 py-1.5 text-sm cursor-pointer hover:bg-white/10 transition-colors flex items-center gap-2 border-white/10"
                                 onClick={() => setSearchQuery(term)}
                             >
                                 {term}
                                 <X 
-                                    className="w-3 h-3 text-muted-foreground hover:text-white" 
+                                    className="w-3 h-3 text-muted-foreground hover:text-white"
                                     onClick={(e) => removeFromHistory(term, e)}
                                 />
                             </Badge>
@@ -303,10 +298,16 @@ export function DiscoverPage() {
               {activeFilter !== 'user' && (
                   <div className="space-y-4">
                     <h2 className="font-bold text-lg">Popular {activeFilter === 'audio' ? 'Music' : activeFilter === 'video' ? 'Videos' : 'Content'}</h2>
-                    {loading ? (
+                    {trendingLoading && trendingPosts.length === 0 ? (
                       <GridSkeleton count={8} />
                     ) : (
-                      <VideoGrid posts={trendingPosts} onVideoClick={(p) => handleVideoClick(p, 'trending')} />
+                      <VideoGrid 
+                        posts={trendingPosts} 
+                        onVideoClick={(p) => handleVideoClick(p, 'trending')}
+                        onLoadMore={loadMoreTrending}
+                        hasMore={hasMoreTrending}
+                        loading={trendingLoading}
+                      />
                     )}
                   </div>
               )}

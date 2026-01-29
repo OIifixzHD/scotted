@@ -334,6 +334,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { users: safeUsers, posts: hydratedPosts });
   });
   app.get('/api/feed/trending', async (c) => {
+    const cursor = c.req.query('cursor');
+    const limit = c.req.query('limit');
     const type = c.req.query('type'); // 'video', 'audio'
     const userId = c.req.query('userId'); // For age check
     await PostEntity.ensureSeed(c.env);
@@ -347,7 +349,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             isAdult = !!u.isAdult;
         }
     }
-    const page = await PostEntity.list(c.env, null, 100);
+    const page = await PostEntity.list(c.env, cursor ?? null, limit ? Math.max(1, parseInt(limit)) : 20);
     let sortedPosts = page.items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     if (type === 'video' || type === 'audio') {
         sortedPosts = sortedPosts.filter(p => p.type === type);
@@ -367,13 +369,13 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
         return post;
     }));
-    return ok(c, { items: hydratedPosts });
+    return ok(c, { items: hydratedPosts, next: page.next });
   });
   app.get('/api/tags/:tagName', async (c) => {
     const tagName = decodeURIComponent(c.req.param('tagName')).toLowerCase();
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 1000);
-    const taggedPosts = page.items.filter(p =>
+    const taggedPosts = page.items.filter(p => 
       p.tags?.some(t => t.toLowerCase() === tagName)
     );
     const hydratedPosts = await Promise.all(taggedPosts.map(async (post) => {
@@ -388,10 +390,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return post;
     }));
     hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
-    return ok(c, {
-      tagName,
-      count: hydratedPosts.length,
-      posts: hydratedPosts
+    return ok(c, { 
+      tagName, 
+      count: hydratedPosts.length, 
+      posts: hydratedPosts 
     });
   });
   app.get('/api/sounds/trending', async (c) => {
@@ -523,9 +525,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration, dateOfBirth } = await c.req.json() as {
-        displayName?: string;
-        bio?: string;
+    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration, dateOfBirth } = await c.req.json() as { 
+        displayName?: string; 
+        bio?: string; 
         avatar?: string;
         bannerStyle?: string;
         settings?: UserSettings;
@@ -1379,15 +1381,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, page);
   });
   app.post('/api/chats', async (c) => {
-    const { title, visibility, canType, ownerId } = (await c.req.json()) as {
+    const { title, visibility, canType, ownerId } = (await c.req.json()) as { 
         title?: string;
         visibility?: 'public' | 'private';
         canType?: 'all' | 'participants' | 'admin';
-        ownerId?: string; // Passed from frontend or inferred? Better to infer from context if we had auth middleware, but here we trust input or require it.
+        ownerId?: string; 
     };
-    // In a real app, we'd get ownerId from the authenticated session.
-    // Here we assume the frontend sends the creator's ID as ownerId if available, or we might need to pass it.
-    // Let's assume the frontend sends `ownerId` (which is the creator).
     if (!title?.trim()) return bad(c, 'title required');
     const created = await ChatBoardEntity.create(c.env, {
         id: crypto.randomUUID(),
