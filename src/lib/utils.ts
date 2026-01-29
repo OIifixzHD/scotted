@@ -18,6 +18,10 @@ export function getDecorationClass(decoration?: string) {
     case 'blue-fire': return 'ring-2 ring-blue-500 shadow-[0_0_25px_rgba(59,130,246,0.8)] animate-pulse';
     case 'rainbow-ring': return 'ring-4 ring-transparent bg-gradient-to-r from-red-500 via-green-500 to-blue-500 bg-[length:200%_200%] animate-gradient-xy p-[2px]';
     case 'cyber-glitch': return 'ring-2 ring-cyan-400 shadow-[2px_2px_0px_rgba(255,0,0,0.5),-2px_-2px_0px_rgba(0,255,255,0.5)]';
+    case 'plasma-aura': return 'ring-2 ring-blue-500 shadow-[0_0_15px_5px_rgba(147,51,234,0.6)] animate-pulse';
+    case 'glitch-ring': return 'ring-2 ring-cyan-400 shadow-[2px_0_0_rgba(255,0,0,0.8),-2px_0_0_rgba(0,255,255,0.8)]';
+    case 'royal-gold': return 'ring-4 ring-yellow-500 bg-gradient-to-tr from-yellow-300 via-yellow-500 to-yellow-700 p-[2px]';
+    case 'cosmic-dust': return 'ring-2 ring-transparent shadow-[0_0_10px_rgba(255,255,255,0.8),0_0_20px_rgba(255,0,255,0.6),0_0_30px_rgba(0,255,255,0.6)]';
     default: return '';
   }
 }

@@ -14,6 +14,8 @@ export interface SystemSettings {
   readOnlyMode: boolean;
   announcement: string;
   announcementLevel: 'info' | 'warning' | 'destructive';
+  strictBanEnforcement: boolean;
+  minAge: number;
 }
 export class SystemEntity extends Entity<SystemSettings> {
   static readonly entityName = "system";
@@ -22,7 +24,9 @@ export class SystemEntity extends Entity<SystemSettings> {
     disableSignups: false,
     readOnlyMode: false,
     announcement: "",
-    announcementLevel: "info"
+    announcementLevel: "info",
+    strictBanEnforcement: false,
+    minAge: 13
   };
   async getSettings(): Promise<SystemSettings> {
     return this.getState();
@@ -58,7 +62,9 @@ export class UserEntity extends IndexedEntity<User> {
       notifications: { paused: false, newFollowers: true, interactions: true },
       privacy: { privateAccount: false },
       content: { autoplay: true, reducedMotion: false }
-    }
+    },
+    dateOfBirth: 0,
+    isAdult: false
   };
   static seedData = MOCK_USERS;
   /**
@@ -235,6 +241,11 @@ export class UserEntity extends IndexedEntity<User> {
         s.savedSounds = [];
         this._state = s;
     }
+    // Migration: Ensure dateOfBirth exists
+    if (s.dateOfBirth === undefined) {
+        s.dateOfBirth = 0;
+        this._state = s;
+    }
     return s;
   }
 }
@@ -261,7 +272,8 @@ export class PostEntity extends IndexedEntity<Post> {
     soundId: 'default-sound',
     soundName: 'Original Audio',
     filter: 'none',
-    overlays: []
+    overlays: [],
+    isMature: false
   };
   static seedData = MOCK_POSTS;
   async saveVideoBinary(stream: ReadableStream<Uint8Array>, mimeType: string): Promise<string> {
@@ -542,6 +554,14 @@ export class PostEntity extends IndexedEntity<Post> {
         promotedUntil: now + durationMs
     }));
     return newState;
+  }
+  protected override async ensureState(): Promise<Post> {
+    const s = await super.ensureState();
+    if (s.isMature === undefined) {
+        s.isMature = false;
+        this._state = s;
+    }
+    return s;
   }
 }
 // CHAT BOARD ENTITY

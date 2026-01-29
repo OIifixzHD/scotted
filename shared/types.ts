@@ -52,6 +52,9 @@ export interface User {
   createdAt?: number; // Added for analytics
   directMessages?: Record<string, string>; // targetUserId -> chatId
   settings?: UserSettings;
+  // Phase 5: Safety
+  dateOfBirth?: number; // Timestamp
+  isAdult?: boolean; // Computed or stored
 }
 export interface Comment {
   id: string;
@@ -97,6 +100,7 @@ export interface Post {
   soundName?: string;
   filter?: string; // Video filter ID (e.g., 'cyberpunk', 'noir')
   overlays?: TextOverlay[]; // Text overlays on the video
+  isMature?: boolean; // 18+ Content Flag
 }
 export interface Chat {
   id: string;

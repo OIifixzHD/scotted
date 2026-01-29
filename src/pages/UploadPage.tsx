@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Wand2, Palette, Plus, Image as ImageIcon } from 'lucide-react';
+import { Upload, Film, Type, Sparkles, X, Hash, CloudUpload, Music2, Wand2, Palette, Plus, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { cn, formatBytes } from '@/lib/utils';
 import { VIDEO_FILTERS, getFilterClass } from '@/lib/filters';
@@ -37,6 +38,7 @@ export function UploadPage() {
   // Common State
   const [caption, setCaption] = useState('');
   const [tags, setTags] = useState('');
+  const [isMature, setIsMature] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   // Video Mode State
@@ -188,6 +190,7 @@ export function UploadPage() {
       formData.append('type', postType);
       formData.append('caption', caption);
       formData.append('tags', tags);
+      formData.append('isMature', String(isMature));
       if (postType === 'video') {
         formData.append('filter', selectedFilter);
         formData.append('overlays', JSON.stringify(overlays));
@@ -303,7 +306,7 @@ export function UploadPage() {
                                 </p>
                                 <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                     <span>Any duration</span>
-                                    <span>���</span>
+                                    <span></span>
                                     <span>Max 100MB</span>
                                 </div>
                               </>
@@ -433,6 +436,20 @@ export function UploadPage() {
                         className="bg-secondary/50 border-white/10"
                         disabled={isSubmitting}
                       />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-red-500/20 bg-red-500/10">
+                        <div className="space-y-0.5">
+                            <Label className="flex items-center gap-2 text-red-400">
+                                <AlertTriangle className="w-4 h-4" />
+                                Contains 18+ Content
+                            </Label>
+                            <p className="text-xs text-red-300/70">Flag this content as mature.</p>
+                        </div>
+                        <Switch
+                            checked={isMature}
+                            onCheckedChange={setIsMature}
+                            className="data-[state=checked]:bg-red-500"
+                        />
                     </div>
                     {isSubmitting && (
                       <div className="space-y-2 animate-fade-in">

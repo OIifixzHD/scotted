@@ -24,10 +24,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (settings.disableSignups) {
         return c.json({ success: false, error: 'New signups are currently disabled by the administrator.' }, 403);
     }
-    const { username, password, bio } = await c.req.json() as { username?: string; password?: string; bio?: string };
+    const { username, password, bio, dateOfBirth } = await c.req.json() as { username?: string; password?: string; bio?: string; dateOfBirth?: number };
     if (!username?.trim() || !password?.trim()) {
       return bad(c, 'Username and password are required');
     }
+    if (!dateOfBirth) {
+        return bad(c, 'Date of birth is required');
+    }
+    // Age Validation
+    const now = Date.now();
+    const ageDiffMs = now - dateOfBirth;
+    const ageDate = new Date(ageDiffMs);
+    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+    if (age < (settings.minAge || 13)) {
+        return bad(c, `You must be at least ${settings.minAge || 13} years old to join.`);
+    }
+    const isAdult = age >= 18;
     const existing = await UserEntity.findByUsername(c.env, username.trim());
     if (existing) {
       return bad(c, 'Username already taken');
@@ -61,7 +73,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         notifications: { paused: false, newFollowers: true, interactions: true },
         privacy: { privateAccount: false },
         content: { autoplay: true, reducedMotion: false }
-      }
+      },
+      dateOfBirth,
+      isAdult
     };
     const created = await UserEntity.create(c.env, newUser);
     const { password: _, ...safeUser } = created;
@@ -270,8 +284,18 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/search', async (c) => {
     const q = c.req.query('q');
     const type = c.req.query('type'); // 'video', 'audio', 'user', 'all'
+    const userId = c.req.query('userId'); // For age check
     if (!q || q.trim().length === 0) {
       return ok(c, { users: [], posts: [] });
+    }
+    // Check user age
+    let isAdult = false;
+    if (userId) {
+        const userEntity = new UserEntity(c.env, userId);
+        if (await userEntity.exists()) {
+            const u = await userEntity.getState();
+            isAdult = !!u.isAdult;
+        }
     }
     const query = q.trim();
     let users: User[] = [];
@@ -286,6 +310,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         // Filter by specific post type if requested
         if (type === 'video' || type === 'audio') {
             posts = posts.filter(p => p.type === type);
+        }
+        // Filter mature content
+        if (!isAdult) {
+            posts = posts.filter(p => !p.isMature);
         }
     }
     const hydratedPosts = await Promise.all(posts.map(async (post) => {
@@ -307,12 +335,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/feed/trending', async (c) => {
     const type = c.req.query('type'); // 'video', 'audio'
+    const userId = c.req.query('userId'); // For age check
     await PostEntity.ensureSeed(c.env);
     await UserEntity.ensureSeed(c.env);
+    // Check user age
+    let isAdult = false;
+    if (userId) {
+        const userEntity = new UserEntity(c.env, userId);
+        if (await userEntity.exists()) {
+            const u = await userEntity.getState();
+            isAdult = !!u.isAdult;
+        }
+    }
     const page = await PostEntity.list(c.env, null, 100);
     let sortedPosts = page.items.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     if (type === 'video' || type === 'audio') {
         sortedPosts = sortedPosts.filter(p => p.type === type);
+    }
+    // Filter mature content
+    if (!isAdult) {
+        sortedPosts = sortedPosts.filter(p => !p.isMature);
     }
     const hydratedPosts = await Promise.all(sortedPosts.map(async (post) => {
         if (post.userId) {
@@ -481,13 +523,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration } = await c.req.json() as {
+    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration, dateOfBirth } = await c.req.json() as {
         displayName?: string;
         bio?: string;
         avatar?: string;
         bannerStyle?: string;
         settings?: UserSettings;
         avatarDecoration?: string;
+        dateOfBirth?: number;
     };
     if (displayName !== undefined && !displayName.trim()) {
       return bad(c, 'Display Name cannot be empty');
@@ -506,6 +549,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
                 content: { ...s.settings?.content, ...settings.content },
             };
         }
+        // Recalculate isAdult if DOB changes
+        let isAdult = s.isAdult;
+        if (dateOfBirth) {
+            const ageDiffMs = Date.now() - dateOfBirth;
+            const ageDate = new Date(ageDiffMs);
+            const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+            isAdult = age >= 18;
+        }
         return {
             ...s,
             displayName: displayName?.trim() || s.displayName || s.name,
@@ -513,7 +564,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             avatar: avatar || s.avatar,
             bannerStyle: bannerStyle || s.bannerStyle,
             avatarDecoration: avatarDecoration || s.avatarDecoration,
-            settings: newSettings
+            settings: newSettings,
+            dateOfBirth: dateOfBirth || s.dateOfBirth,
+            isAdult
         };
     });
     const { password, ...safeUser } = updated;
@@ -732,17 +785,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const userId = c.req.query('userId');
     const type = c.req.query('type'); // 'video', 'audio'
     let hiddenPostIds: string[] = [];
+    let isAdult = false;
     if (userId) {
         const userEntity = new UserEntity(c.env, userId);
         if (await userEntity.exists()) {
             const u = await userEntity.getState();
             hiddenPostIds = u.notInterestedPostIds || [];
+            isAdult = !!u.isAdult;
         }
     }
     const page = await PostEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : 20);
     let visibleItems = page.items.filter(p => !hiddenPostIds.includes(p.id));
     if (type === 'video' || type === 'audio') {
         visibleItems = visibleItems.filter(p => p.type === type);
+    }
+    // Filter mature content
+    if (!isAdult) {
+        visibleItems = visibleItems.filter(p => !p.isMature);
     }
     const hydratedPosts = await Promise.all(visibleItems.map(async (post) => {
         if (post.userId) {
@@ -784,7 +843,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 500);
     const followingPosts = page.items.filter(p => followingIds.includes(p.userId));
-    const hydratedPosts = await Promise.all(followingPosts.map(async (post) => {
+    // Filter mature content if user is not adult
+    const filteredPosts = user.isAdult ? followingPosts : followingPosts.filter(p => !p.isMature);
+    const hydratedPosts = await Promise.all(filteredPosts.map(async (post) => {
         if (post.userId) {
             const uEntity = new UserEntity(c.env, post.userId);
             if (await uEntity.exists()) {
@@ -811,6 +872,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const caption = body['caption'] as string || '';
         const tagsStr = body['tags'] as string || '';
         const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+        const isMature = body['isMature'] === 'true'; // Parse boolean from string
         if (!userId) return bad(c, 'userId required');
         const newPostId = crypto.randomUUID();
         const postEntity = new PostEntity(c.env, newPostId);
@@ -829,7 +891,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             views: 0,
             createdAt: Date.now(),
             commentsList: [],
-            overlays: []
+            overlays: [],
+            isMature
         };
         if (type === 'audio') {
             const audioFile = body['audioFile'];

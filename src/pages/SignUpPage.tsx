@@ -16,7 +16,8 @@ export function SignUpPage() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    bio: ''
+    bio: '',
+    dateOfBirth: ''
   });
   // Redirect if already logged in
   useEffect(() => {
@@ -26,15 +27,27 @@ export function SignUpPage() {
   }, [user, isAuthLoading, navigate]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.username || !formData.password) {
+    if (!formData.username || !formData.password || !formData.dateOfBirth) {
       toast.error('Please fill in all required fields');
       return;
+    }
+    // Client-side age check (UX only, server validates too)
+    const dob = new Date(formData.dateOfBirth);
+    const ageDiffMs = Date.now() - dob.getTime();
+    const ageDate = new Date(ageDiffMs);
+    const age = Math.abs(ageDate.getUTCFullYear() - 1970);
+    if (age < 13) {
+        toast.error("You must be at least 13 years old to join.");
+        return;
     }
     setIsLoading(true);
     try {
       const user = await api<User>('/api/auth/signup', {
         method: 'POST',
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+            ...formData,
+            dateOfBirth: dob.getTime()
+        })
       });
       login(user);
       // Navigation happens automatically via useEffect
@@ -85,6 +98,16 @@ export function SignUpPage() {
               className="bg-secondary/50 border-white/10"
               value={formData.password}
               onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="dob">Date of Birth</Label>
+            <Input
+              id="dob"
+              type="date"
+              className="bg-secondary/50 border-white/10"
+              value={formData.dateOfBirth}
+              onChange={e => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
             />
           </div>
           <div className="space-y-2">
