@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3, Gift, Music2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Flag, Link as LinkIcon, Loader2, Edit, Ban, Rocket, BarChart3, Gift, Music2, Pin, PinOff } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@shared/types";
 import { api } from "@/lib/api-client";
@@ -25,7 +25,7 @@ interface PostOptionsProps {
   onHide?: () => void;
 }
 export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsProps) {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
@@ -38,6 +38,7 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
   const canDelete = isOwner || isAdmin;
   const canEdit = isOwner || isAdmin;
   const hasSound = post.type === 'audio' || (post.soundId && post.soundId !== 'default-sound');
+  const isPinned = user?.pinnedPostIds?.includes(post.id);
   const handleDelete = async () => {
     if (!user) return;
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -84,6 +85,20 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
     const sName = post.type === 'audio' ? post.title : post.soundName;
     navigate(`/upload?soundId=${sId}&soundName=${encodeURIComponent(sName || '')}`);
   };
+  const handleTogglePin = async () => {
+    if (!user) return;
+    try {
+      const updatedUser = await api<any>(`/api/users/${user.id}/pin`, {
+        method: 'POST',
+        body: JSON.stringify({ postId: post.id, currentUserId: user.id })
+      });
+      login(updatedUser); // Update local user context
+      toast.success(isPinned ? "Post unpinned" : "Post pinned to profile");
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : "Failed to update pin");
+    }
+  };
   return (
     <>
       <DropdownMenu>
@@ -109,6 +124,17 @@ export function PostOptions({ post, onDelete, onUpdate, onHide }: PostOptionsPro
           )}
           {isOwner && (
             <>
+              <DropdownMenuItem onClick={handleTogglePin} className="cursor-pointer">
+                {isPinned ? (
+                  <>
+                    <PinOff className="w-4 h-4 mr-2" /> Unpin from Profile
+                  </>
+                ) : (
+                  <>
+                    <Pin className="w-4 h-4 mr-2" /> Pin to Profile
+                  </>
+                )}
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setIsInsightsOpen(true)} className="cursor-pointer text-blue-400 focus:text-blue-400">
                 <BarChart3 className="w-4 h-4 mr-2" />
                 View Insights

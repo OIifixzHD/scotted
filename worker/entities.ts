@@ -51,6 +51,7 @@ export class UserEntity extends IndexedEntity<User> {
     bannerStyle: "default",
     notInterestedPostIds: [],
     savedSounds: [],
+    pinnedPostIds: [],
     createdAt: 0,
     echoes: 0,
     lastDailyReward: 0,
@@ -127,6 +128,25 @@ export class UserEntity extends IndexedEntity<User> {
         const current = s.notInterestedPostIds || [];
         if (current.includes(postId)) return s;
         return { ...s, notInterestedPostIds: [...current, postId] };
+    });
+  }
+  /**
+   * Toggle Pin for a post
+   */
+  async togglePin(postId: string): Promise<User> {
+    return this.mutate(s => {
+      const currentPins = s.pinnedPostIds || [];
+      const isPinned = currentPins.includes(postId);
+      if (isPinned) {
+        // Unpin
+        return { ...s, pinnedPostIds: currentPins.filter(id => id !== postId) };
+      } else {
+        // Pin
+        if (currentPins.length >= 3) {
+          throw new Error("Maximum of 3 pinned posts allowed");
+        }
+        return { ...s, pinnedPostIds: [...currentPins, postId] };
+      }
     });
   }
   /**
@@ -244,6 +264,11 @@ export class UserEntity extends IndexedEntity<User> {
     // Migration: Ensure dateOfBirth exists
     if (s.dateOfBirth === undefined) {
         s.dateOfBirth = 0;
+        this._state = s;
+    }
+    // Migration: Ensure pinnedPostIds exists
+    if (!s.pinnedPostIds) {
+        s.pinnedPostIds = [];
         this._state = s;
     }
     return s;

@@ -47,7 +47,16 @@ export function ProfilePage() {
         ]);
         setUser(userData);
         setFollowerCount(userData.followers || 0);
-        setPosts(postsData.items);
+        // Sort posts: Pinned first, then by date descending
+        const pinnedIds = userData.pinnedPostIds || [];
+        const sortedPosts = postsData.items.sort((a, b) => {
+            const isAPinned = pinnedIds.includes(a.id);
+            const isBPinned = pinnedIds.includes(b.id);
+            if (isAPinned && !isBPinned) return -1;
+            if (!isAPinned && isBPinned) return 1;
+            return b.createdAt - a.createdAt;
+        });
+        setPosts(sortedPosts);
       } catch (error) {
         console.error('Failed to fetch profile:', error);
       } finally {
@@ -392,7 +401,11 @@ export function ProfilePage() {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="videos" className="mt-0">
-                <VideoGrid posts={posts} onVideoClick={handleVideoClick} />
+                <VideoGrid
+                    posts={posts}
+                    onVideoClick={handleVideoClick}
+                    pinnedPostIds={user.pinnedPostIds}
+                />
               </TabsContent>
               <TabsContent value="liked" className="mt-0">
                 {isOwnProfile ? (

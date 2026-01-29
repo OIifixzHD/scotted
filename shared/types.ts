@@ -49,6 +49,7 @@ export interface User {
   // Phase 4: Personalization
   notInterestedPostIds?: string[];
   savedSounds?: SavedSound[]; // Added for sound favorites
+  pinnedPostIds?: string[]; // Added for profile pinning
   createdAt?: number; // Added for analytics
   directMessages?: Record<string, string>; // targetUserId -> chatId
   settings?: UserSettings;

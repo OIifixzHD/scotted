@@ -67,6 +67,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       blockedUserIds: [],
       notInterestedPostIds: [],
       savedSounds: [],
+      pinnedPostIds: [],
       createdAt: Date.now(),
       directMessages: {},
       settings: {
@@ -732,6 +733,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!await userEntity.exists()) return notFound(c, 'User not found');
     await userEntity.markNotInterested(postId);
     return ok(c, { success: true });
+  });
+  app.post('/api/users/:id/pin', async (c) => {
+    const id = c.req.param('id');
+    const { postId, currentUserId } = await c.req.json() as { postId: string, currentUserId: string };
+    if (!postId || !currentUserId) return bad(c, 'postId and currentUserId required');
+    if (id !== currentUserId) return bad(c, 'Unauthorized');
+    const userEntity = new UserEntity(c.env, id);
+    if (!await userEntity.exists()) return notFound(c, 'User not found');
+    try {
+        const updatedUser = await userEntity.togglePin(postId);
+        const { password, ...safeUser } = updatedUser;
+        return ok(c, safeUser);
+    } catch (e) {
+        return bad(c, e instanceof Error ? e.message : 'Failed to toggle pin');
+    }
   });
   app.get('/api/users/:id/posts', async (c) => {
     const userId = c.req.param('id');

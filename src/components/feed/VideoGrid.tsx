@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Masonry from 'react-masonry-css';
-import { Play, Heart, Eye, Music2, Loader2 } from 'lucide-react';
+import { Play, Heart, Eye, Music2, Loader2, Pin } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { getFilterClass } from '@/lib/filters';
@@ -12,8 +12,9 @@ interface VideoGridProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   loading?: boolean;
+  pinnedPostIds?: string[];
 }
-export function VideoGrid({ posts, className, onVideoClick, onLoadMore, hasMore, loading }: VideoGridProps) {
+export function VideoGrid({ posts, className, onVideoClick, onLoadMore, hasMore, loading, pinnedPostIds }: VideoGridProps) {
   const breakpointColumnsObj = {
     default: 4,
     1280: 3,
@@ -52,7 +53,12 @@ export function VideoGrid({ posts, className, onVideoClick, onLoadMore, hasMore,
           columnClassName="pl-4 bg-clip-padding"
         >
           {posts.map((post) => (
-            <GridItem key={post.id} post={post} onClick={() => onVideoClick?.(post)} />
+            <GridItem
+                key={post.id}
+                post={post}
+                onClick={() => onVideoClick?.(post)}
+                isPinned={pinnedPostIds?.includes(post.id)}
+            />
           ))}
         </Masonry>
         {/* Sentinel */}
@@ -64,7 +70,7 @@ export function VideoGrid({ posts, className, onVideoClick, onLoadMore, hasMore,
     </div>
   );
 }
-function GridItem({ post, onClick }: { post: Post, onClick?: () => void }) {
+function GridItem({ post, onClick, isPinned }: { post: Post, onClick?: () => void, isPinned?: boolean }) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
   const handleMouseEnter = () => {
@@ -110,6 +116,13 @@ function GridItem({ post, onClick }: { post: Post, onClick?: () => void }) {
           loop
           playsInline
         />
+      )}
+      {/* Pinned Badge */}
+      {isPinned && (
+        <div className="absolute top-2 left-2 bg-primary/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg z-20 border border-white/20">
+            <Pin className="w-3 h-3 fill-white" />
+            Pinned
+        </div>
       )}
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-300" />
