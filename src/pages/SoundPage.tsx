@@ -9,6 +9,7 @@ import { VideoModal } from '@/components/feed/VideoModal';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
+import { useAudioSettings } from '@/hooks/use-audio-settings';
 interface SoundDetails {
   id: string;
   name: string;
@@ -26,6 +27,8 @@ export function SoundPage() {
   // Audio Playback State
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Global Audio Settings
+  const { volume, isMuted } = useAudioSettings();
   // Video Modal State
   const [selectedVideoIndex, setSelectedVideoIndex] = useState<number | null>(null);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
@@ -63,6 +66,13 @@ export function SoundPage() {
         setIsFavorite(user.savedSounds?.some(s => s.id === sound.id) || false);
     }
   }, [user, sound]);
+  // Sync audio element with global settings
+  useEffect(() => {
+    if (audioRef.current) {
+        audioRef.current.volume = volume;
+        audioRef.current.muted = isMuted;
+    }
+  }, [volume, isMuted]);
   // Cleanup audio on unmount
   useEffect(() => {
     const audio = audioRef.current;
@@ -82,6 +92,9 @@ export function SoundPage() {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
+      // Ensure volume/mute state is applied before playing
+      audioRef.current.volume = volume;
+      audioRef.current.muted = isMuted;
       audioRef.current.play().catch(e => console.error("Audio play failed", e));
       setIsPlaying(true);
     }
@@ -121,8 +134,8 @@ export function SoundPage() {
     }
     if (!sound) return;
     // Infer cover url from first post or default
-    const coverUrl = posts.length > 0
-        ? (posts[0].coverArtUrl || posts[0].user?.avatar)
+    const coverUrl = posts.length > 0 
+        ? (posts[0].coverArtUrl || posts[0].user?.avatar) 
         : undefined;
     const soundData = {
         id: sound.id,
@@ -181,7 +194,7 @@ export function SoundPage() {
           {/* Sound Header */}
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
             {/* Album Art / Icon */}
-            <div
+            <div 
                 className="relative group cursor-pointer"
                 onClick={togglePlay}
             >
@@ -241,8 +254,8 @@ export function SoundPage() {
                     Use this Sound
                   </Link>
                 </Button>
-                <Button
-                    variant={isFavorite ? "default" : "outline"}
+                <Button 
+                    variant={isFavorite ? "default" : "outline"} 
                     className={cn("gap-2", isFavorite ? "bg-secondary text-white hover:bg-secondary/80" : "border-white/10 hover:bg-white/5")}
                     onClick={handleToggleFavorite}
                 >

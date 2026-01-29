@@ -34,9 +34,9 @@ export function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'video' | 'audio' | 'user'>('all');
-  // Search History State
+  // Search History State (Updated Key)
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
-    const saved = localStorage.getItem('pulse_recent_searches');
+    const saved = localStorage.getItem('scotted_recent_searches');
     return saved ? JSON.parse(saved) : [];
   });
   // Video Modal State
@@ -63,19 +63,19 @@ export function DiscoverPage() {
     if (!term.trim()) return;
     setRecentSearches(prev => {
       const newHistory = [term, ...prev.filter(t => t !== term)].slice(0, 5);
-      localStorage.setItem('pulse_recent_searches', JSON.stringify(newHistory));
+      localStorage.setItem('scotted_recent_searches', JSON.stringify(newHistory));
       return newHistory;
     });
   };
   const clearHistory = () => {
     setRecentSearches([]);
-    localStorage.removeItem('pulse_recent_searches');
+    localStorage.removeItem('scotted_recent_searches');
   };
   const removeFromHistory = (term: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setRecentSearches(prev => {
       const newHistory = prev.filter(t => t !== term);
-      localStorage.setItem('pulse_recent_searches', JSON.stringify(newHistory));
+      localStorage.setItem('scotted_recent_searches', JSON.stringify(newHistory));
       return newHistory;
     });
   };
@@ -223,15 +223,15 @@ export function DiscoverPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {recentSearches.map(term => (
-                            <Badge
-                                key={term}
-                                variant="outline"
+                            <Badge 
+                                key={term} 
+                                variant="outline" 
                                 className="px-3 py-1.5 text-sm cursor-pointer hover:bg-white/10 transition-colors flex items-center gap-2 border-white/10"
                                 onClick={() => setSearchQuery(term)}
                             >
                                 {term}
-                                <X
-                                    className="w-3 h-3 text-muted-foreground hover:text-white"
+                                <X 
+                                    className="w-3 h-3 text-muted-foreground hover:text-white" 
                                     onClick={(e) => removeFromHistory(term, e)}
                                 />
                             </Badge>

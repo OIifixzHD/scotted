@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Film, Plus, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useAudioSettings } from '@/hooks/use-audio-settings';
 interface FeedContainerProps {
   endpoint?: string;
 }
@@ -17,31 +18,15 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const [error, setError] = useState<string | null>(null);
   // Track which video is currently in view
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  // Initialize mute state from localStorage
-  const [isMuted, setIsMuted] = useState(() => {
-    const saved = localStorage.getItem('pulse_mute_preference');
-    return saved !== null ? saved === 'true' : true;
-  });
-  // Initialize volume state from localStorage
-  const [volume, setVolume] = useState(() => {
-    const saved = localStorage.getItem('pulse_volume_level');
-    return saved !== null ? parseFloat(saved) : 1.0;
-  });
-  // Initialize autoplay state from localStorage
+  // Use global audio settings
+  const { isMuted, volume, toggleMute, setVolume } = useAudioSettings();
+  // Initialize autoplay state from localStorage (updated key)
   const [autoplayEnabled] = useState(() => {
-    const saved = localStorage.getItem('pulse_autoplay');
+    const saved = localStorage.getItem('scotted_autoplay');
     return saved !== 'false'; // Default to true if not set
   });
   const containerRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  // Persist mute preference
-  useEffect(() => {
-    localStorage.setItem('pulse_mute_preference', String(isMuted));
-  }, [isMuted]);
-  // Persist volume preference
-  useEffect(() => {
-    localStorage.setItem('pulse_volume_level', String(volume));
-  }, [volume]);
   useEffect(() => {
     const fetchFeed = async () => {
       try {
@@ -124,12 +109,6 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   const handlePostHide = (postId: string) => {
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
-  const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume);
-    if (newVolume > 0 && isMuted) {
-      setIsMuted(false);
-    }
-  };
   if (loading) {
     return (
       <div className="h-full w-full bg-black py-4 md:py-8">
@@ -189,13 +168,13 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
   }
   const activeIndex = posts.findIndex(p => p.id === activeVideoId);
   return (
-    <div 
+    <div
         ref={containerRef}
         className="h-full w-full overflow-y-scroll snap-y snap-mandatory no-scrollbar scroll-smooth bg-black overscroll-contain"
     >
       {posts.map((post, index) => (
-        <div 
-            key={post.id} 
+        <div
+            key={post.id}
             data-id={post.id}
             className="h-full w-full flex items-center justify-center snap-start snap-always py-0 md:py-8"
         >
@@ -205,8 +184,8 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
               isActive={activeVideoId === post.id}
               isMuted={isMuted}
               volume={volume}
-              toggleMute={() => setIsMuted(!isMuted)}
-              onVolumeChange={handleVolumeChange}
+              toggleMute={toggleMute}
+              onVolumeChange={setVolume}
               onDelete={() => handlePostDelete(post.id)}
               onUpdate={handlePostUpdate}
               onHide={() => handlePostHide(post.id)}
@@ -218,8 +197,8 @@ export function FeedContainer({ endpoint = '/api/feed' }: FeedContainerProps) {
               isActive={activeVideoId === post.id}
               isMuted={isMuted}
               volume={volume}
-              toggleMute={() => setIsMuted(!isMuted)}
-              onVolumeChange={handleVolumeChange}
+              toggleMute={toggleMute}
+              onVolumeChange={setVolume}
               onDelete={() => handlePostDelete(post.id)}
               onUpdate={handlePostUpdate}
               onHide={() => handlePostHide(post.id)}

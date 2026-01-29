@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api-client';
 import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import type { Post } from '@shared/types';
+import { useAudioSettings } from '@/hooks/use-audio-settings';
 export function PostPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(true);
+  const { isMuted, volume, toggleMute, setVolume } = useAudioSettings();
   useEffect(() => {
     const fetchPost = async () => {
       if (!id) return;
@@ -76,7 +77,9 @@ export function PostPage() {
                 post={post}
                 isActive={true}
                 isMuted={isMuted}
-                toggleMute={() => setIsMuted(!isMuted)}
+                volume={volume}
+                toggleMute={toggleMute}
+                onVolumeChange={setVolume}
                 autoplayEnabled={true}
                 onDelete={() => navigate('/')}
                 onUpdate={(updated) => setPost(updated)}

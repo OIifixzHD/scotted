@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { VideoCard } from './VideoCard';
 import { AudioCard } from './AudioCard';
 import type { Post } from '@shared/types';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAudioSettings } from '@/hooks/use-audio-settings';
 interface VideoModalProps {
   post: Post | null;
   isOpen: boolean;
@@ -27,7 +28,7 @@ export function VideoModal({
   hasNext,
   hasPrev
 }: VideoModalProps) {
-  const [isMuted, setIsMuted] = useState(false);
+  const { isMuted, volume, toggleMute, setVolume } = useAudioSettings();
   // Keyboard Navigation
   useEffect(() => {
     if (!isOpen) return;
@@ -59,7 +60,9 @@ export function VideoModal({
                 post={post}
                 isActive={isOpen}
                 isMuted={isMuted}
-                toggleMute={() => setIsMuted(!isMuted)}
+                volume={volume}
+                toggleMute={toggleMute}
+                onVolumeChange={setVolume}
                 onDelete={handleDelete}
                 onUpdate={onUpdate}
                 autoplayEnabled={true}
@@ -70,7 +73,9 @@ export function VideoModal({
                 post={post}
                 isActive={isOpen}
                 isMuted={isMuted}
-                toggleMute={() => setIsMuted(!isMuted)}
+                volume={volume}
+                toggleMute={toggleMute}
+                onVolumeChange={setVolume}
                 onDelete={handleDelete}
                 onUpdate={onUpdate}
                 autoplayEnabled={true}
