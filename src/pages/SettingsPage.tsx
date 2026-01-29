@@ -51,8 +51,8 @@ export function SettingsPage() {
     if (user?.settings) {
       setSettings(user.settings);
       // Sync local storage for immediate UI effects (theme/motion)
-      localStorage.setItem('pulse_autoplay', String(user.settings.content.autoplay));
-      localStorage.setItem('pulse_reduced_motion', String(user.settings.content.reducedMotion));
+      localStorage.setItem('scotted_autoplay', String(user.settings.content.autoplay));
+      localStorage.setItem('scotted_reduced_motion', String(user.settings.content.reducedMotion));
       if (user.settings.content.reducedMotion) {
         document.documentElement.classList.add('motion-reduce');
       } else {
@@ -284,8 +284,8 @@ export function SettingsPage() {
                   Notify me when someone follows my profile.
                 </p>
               </div>
-              <Switch 
-                checked={settings.notifications.newFollowers} 
+              <Switch
+                checked={settings.notifications.newFollowers}
                 onCheckedChange={(val) => handleNotificationChange('newFollowers', val)}
                 disabled={isUpdating}
               />
@@ -297,8 +297,8 @@ export function SettingsPage() {
                   Likes, comments, and mentions.
                 </p>
               </div>
-              <Switch 
-                checked={settings.notifications.interactions} 
+              <Switch
+                checked={settings.notifications.interactions}
                 onCheckedChange={(val) => handleNotificationChange('interactions', val)}
                 disabled={isUpdating}
               />

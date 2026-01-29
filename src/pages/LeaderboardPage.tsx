@@ -58,7 +58,7 @@ export function LeaderboardPage() {
           </div>
           <h1 className="text-4xl font-bold font-display text-white">Global Leaderboard</h1>
           <p className="text-muted-foreground max-w-md mx-auto">
-            The top earners and influencers on Pulse. Earn Echoes by creating content and engaging with the community.
+            The top earners and influencers on Scotted. Earn Echoes by creating content and engaging with the community.
           </p>
         </div>
         <div className="space-y-3">

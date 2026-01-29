@@ -17,7 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     const initAuth = async () => {
-      const storedUser = localStorage.getItem('pulse_user');
+      const storedUser = localStorage.getItem('scotted_user');
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
@@ -28,20 +28,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const freshUser = await api<User>(`/api/users/${parsed.id}`);
             if (mounted) {
               setUser(freshUser);
-              localStorage.setItem('pulse_user', JSON.stringify(freshUser));
+              localStorage.setItem('scotted_user', JSON.stringify(freshUser));
             }
           } catch (apiError) {
             console.error('Session validation failed:', apiError);
             // If validation fails (e.g. 404 user deleted), clear session
             if (mounted) {
-              localStorage.removeItem('pulse_user');
+              localStorage.removeItem('scotted_user');
               setUser(null);
             }
           }
         } catch (e) {
           console.error('Failed to parse stored user', e);
           if (mounted) {
-            localStorage.removeItem('pulse_user');
+            localStorage.removeItem('scotted_user');
             setUser(null);
           }
         }
@@ -55,26 +55,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const login = useCallback((userData: User) => {
     setUser(userData);
-    localStorage.setItem('pulse_user', JSON.stringify(userData));
+    localStorage.setItem('scotted_user', JSON.stringify(userData));
     toast.success(`Welcome back, ${userData.name}!`);
   }, []);
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('pulse_user');
+    localStorage.removeItem('scotted_user');
     toast.info('Logged out successfully');
   }, []);
-
   const refreshUser = useCallback(async () => {
     if (!user) return;
     try {
       const freshUser = await api<User>(`/api/users/${user.id}`);
       setUser(freshUser);
-      localStorage.setItem('pulse_user', JSON.stringify(freshUser));
+      localStorage.setItem('scotted_user', JSON.stringify(freshUser));
     } catch (error) {
       console.error('Failed to refresh user data:', error);
     }
   }, [user]);
-
   const value = useMemo(() => ({
     user,
     isLoading,

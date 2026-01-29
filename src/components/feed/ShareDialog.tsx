@@ -20,7 +20,7 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
   const [copied, setCopied] = React.useState(false);
   // In a real app, this would be the actual public URL
   const shareUrl = `${window.location.origin}/post/${postId}`;
-  const shareText = "Check out this amazing video on Pulse!";
+  const shareText = "Check out this amazing video on Scotted!";
   // Generate QR Code URL (Dark theme compatible)
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}&bgcolor=0f0f16&color=7c3aed&margin=10`;
   const handleCopy = async () => {
@@ -37,7 +37,7 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Pulse Video',
+          title: 'Scotted Video',
           text: shareText,
           url: shareUrl,
         });
@@ -63,7 +63,7 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
         url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
         break;
       case 'email':
-        url = `mailto:?subject=${encodeURIComponent("Watch this on Pulse")}&body=${encodedText}%0A%0A${encodedUrl}`;
+        url = `mailto:?subject=${encodeURIComponent("Watch this on Scotted")}&body=${encodedText}%0A%0A${encodedUrl}`;
         break;
     }
     if (url) {
@@ -75,7 +75,7 @@ export function ShareDialog({ open, onOpenChange, postId }: ShareDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-white/10 text-foreground">
         <DialogHeader>
-          <DialogTitle>Share Pulse</DialogTitle>
+          <DialogTitle>Share Scotted</DialogTitle>
           <DialogDescription>
             Share this vibe with your friends on social media or copy the link.
           </DialogDescription>

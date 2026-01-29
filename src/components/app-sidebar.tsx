@@ -34,10 +34,10 @@ export function AppSidebar(): JSX.Element {
     const interval = setInterval(fetchUnread, 60000);
     // Listen for read event to clear badge immediately
     const handleRead = () => setUnreadCount(0);
-    window.addEventListener('pulse:notifications-read', handleRead);
+    window.addEventListener('scotted:notifications-read', handleRead);
     return () => {
         clearInterval(interval);
-        window.removeEventListener('pulse:notifications-read', handleRead);
+        window.removeEventListener('scotted:notifications-read', handleRead);
     };
   }, [user]);
   return (
@@ -47,7 +47,7 @@ export function AppSidebar(): JSX.Element {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-teal-400 shadow-glow">
             <Zap className="h-6 w-6 text-white fill-white" />
           </div>
-          <GlitchText text="Pulse" className="text-2xl font-display tracking-tight" />
+          <GlitchText text="Scotted" className="text-2xl font-display tracking-tight" />
         </div>
       </SidebarHeader>
       <SidebarContent className="px-2">
@@ -218,7 +218,7 @@ export function AppSidebar(): JSX.Element {
           </div>
         ) : (
           <div className="rounded-xl bg-gradient-to-br from-purple-900/50 to-slate-900/50 p-4 border border-white/5 space-y-3">
-            <p className="text-sm text-white font-medium">Join the Pulse</p>
+            <p className="text-sm text-white font-medium">Join Scotted</p>
             <Button asChild className="w-full bg-primary hover:bg-primary/90 shadow-glow" size="sm">
               <Link to="/login">
                 <LogIn className="w-4 h-4 mr-2" />

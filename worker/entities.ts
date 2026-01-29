@@ -282,14 +282,14 @@ export class PostEntity extends IndexedEntity<Post> {
           const chunk = buffer.slice(0, CHUNK_SIZE);
           buffer = buffer.slice(CHUNK_SIZE);
           const key = `video:${this.id}:${chunkIndex}`;
-          await this.stub.put(key, chunk);
+          await this.stub.casPut(key, 0, chunk);
           chunkIndex++;
           totalLength += chunk.length;
         }
       }
       if (buffer.length > 0) {
         const key = `video:${this.id}:${chunkIndex}`;
-        await this.stub.put(key, buffer);
+        await this.stub.casPut(key, 0, buffer);
         chunkIndex++;
         totalLength += buffer.length;
       }
@@ -349,14 +349,14 @@ export class PostEntity extends IndexedEntity<Post> {
           const chunk = buffer.slice(0, CHUNK_SIZE);
           buffer = buffer.slice(CHUNK_SIZE);
           const key = `audio:${this.id}:${chunkIndex}`;
-          await this.stub.put(key, chunk);
+          await this.stub.casPut(key, 0, chunk);
           chunkIndex++;
           totalLength += chunk.length;
         }
       }
       if (buffer.length > 0) {
         const key = `audio:${this.id}:${chunkIndex}`;
-        await this.stub.put(key, buffer);
+        await this.stub.casPut(key, 0, buffer);
         chunkIndex++;
         totalLength += buffer.length;
       }

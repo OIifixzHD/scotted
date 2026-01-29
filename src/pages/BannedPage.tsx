@@ -53,9 +53,9 @@ export function BannedPage() {
           </div>
         </div>
         <div className="pt-4">
-          <Button 
-            onClick={logout} 
-            variant="outline" 
+          <Button
+            onClick={logout}
+            variant="outline"
             className="w-full border-white/10 hover:bg-white/5 hover:text-white"
           >
             <LogOut className="w-4 h-4 mr-2" />

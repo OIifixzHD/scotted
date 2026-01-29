@@ -62,7 +62,7 @@ export function SignUpPage() {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-teal-400 flex items-center justify-center shadow-glow mb-4">
             <Zap className="w-6 h-6 text-white fill-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Join Pulse</h1>
+          <h1 className="text-2xl font-bold text-white">Join Scotted</h1>
           <p className="text-muted-foreground">Start your journey today</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

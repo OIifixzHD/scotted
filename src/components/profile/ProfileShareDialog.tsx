@@ -36,8 +36,8 @@ export function ProfileShareDialog({ open, onOpenChange, profileId, profileName 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Check out ${profileName} on Pulse`,
-          text: `Follow ${profileName} on Pulse - The next gen video platform.`,
+          title: `Check out ${profileName} on Scotted`,
+          text: `Follow ${profileName} on Scotted - The next gen video platform.`,
           url: shareUrl,
         });
         onOpenChange(false);
@@ -48,7 +48,7 @@ export function ProfileShareDialog({ open, onOpenChange, profileId, profileName 
   };
   const openSocialShare = (platform: 'twitter' | 'facebook' | 'linkedin') => {
     let url = '';
-    const text = `Check out ${profileName} on Pulse!`;
+    const text = `Check out ${profileName} on Scotted!`;
     const encodedUrl = encodeURIComponent(shareUrl);
     const encodedText = encodeURIComponent(text);
     switch (platform) {

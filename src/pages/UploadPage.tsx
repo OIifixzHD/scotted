@@ -218,7 +218,7 @@ export function UploadPage() {
       });
       clearInterval(progressInterval);
       setUploadProgress(100);
-      toast.success('Pulse posted successfully!');
+      toast.success('Posted to Scotted successfully!');
       navigate(`/profile/${user.id}`);
     } catch (error) {
       console.error("Upload failed:", error);
@@ -234,7 +234,7 @@ export function UploadPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold font-display mb-2">Upload Pulse</h1>
+            <h1 className="text-3xl font-bold font-display mb-2">Upload to Scotted</h1>
             <p className="text-muted-foreground">Share your vibe with the world.</p>
           </div>
           <Tabs value={postType} onValueChange={(v: any) => setPostType(v)} className="w-full">
@@ -257,11 +257,11 @@ export function UploadPage() {
                         <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary animate-fade-in">
                             <Music2 className="w-4 h-4" />
                             <span className="text-sm font-medium">Using Sound: {soundName}</span>
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 ml-auto hover:bg-primary/20" 
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 ml-auto hover:bg-primary/20"
                                 onClick={handleClearSound}
                             >
                                 <X className="w-3 h-3" />
@@ -303,7 +303,7 @@ export function UploadPage() {
                                 </p>
                                 <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                                     <span>Any duration</span>
-                                    <span>•</span>
+                                    <span>���</span>
                                     <span>Max 100MB</span>
                                 </div>
                               </>
@@ -457,7 +457,7 @@ export function UploadPage() {
                         ) : (
                           <span className="flex items-center gap-2">
                             <Upload className="w-5 h-5" />
-                            Pulse It
+                            Post It
                           </span>
                         )}
                       </Button>

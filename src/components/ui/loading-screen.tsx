@@ -13,7 +13,7 @@ export function LoadingScreen() {
       </div>
       <div className="mt-8 space-y-2 text-center">
         <h2 className="text-2xl font-bold font-display text-white tracking-tight animate-fade-in">
-          Pulse
+          Scotted
         </h2>
         <p className="text-muted-foreground text-sm animate-pulse">
           Initializing...

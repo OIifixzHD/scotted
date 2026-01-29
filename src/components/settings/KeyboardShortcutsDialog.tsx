@@ -28,7 +28,7 @@ export function KeyboardShortcutsDialog({ open, onOpenChange }: KeyboardShortcut
             Keyboard Shortcuts
           </DialogTitle>
           <DialogDescription>
-            Navigate Pulse like a pro.
+            Navigate Scotted like a pro.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
