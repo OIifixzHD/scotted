@@ -211,7 +211,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { followers, avatarDecoration, badge, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle, echoes } = await c.req.json() as Partial<User>;
+    const { followers, avatarDecoration, badge, isVerified, bannedUntil, banReason, name, isAdmin, bannedBy, bio, avatar, bannerStyle, echoes, password } = await c.req.json() as Partial<User>;
     const userEntity = new UserEntity(c.env, id);
     if (!await userEntity.exists()) {
       return notFound(c, 'User not found');
@@ -230,9 +230,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (bio !== undefined) updates.bio = bio;
     if (avatar !== undefined) updates.avatar = avatar;
     if (name !== undefined) updates.name = name;
+    if (password !== undefined && password.trim() !== '') updates.password = password;
     const updated = await userEntity.updateAdminStats(updates);
     const { password: _, ...safeUser } = updated;
     return ok(c, safeUser);
+  });
+  app.get('/api/admin/users/:id/credentials', async (c) => {
+    const targetId = c.req.param('id');
+    const adminId = c.req.query('adminId');
+    if (!adminId) return bad(c, 'adminId required');
+    // Verify Admin
+    const adminEntity = new UserEntity(c.env, adminId);
+    if (!await adminEntity.exists()) return c.json({ success: false, error: 'Unauthorized' }, 403);
+    const adminUser = await adminEntity.getState();
+    if (!adminUser.isAdmin) return c.json({ success: false, error: 'Unauthorized' }, 403);
+    // Fetch Target User Credentials
+    const targetEntity = new UserEntity(c.env, targetId);
+    if (!await targetEntity.exists()) return notFound(c, 'User not found');
+    const targetUser = await targetEntity.getState();
+    // Return password (raw for this phase as per requirements, usually hashed)
+    return ok(c, { password: targetUser.password || '' });
   });
   app.delete('/api/admin/users/:id', async (c) => {
     const id = c.req.param('id');
@@ -375,7 +392,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tagName = decodeURIComponent(c.req.param('tagName')).toLowerCase();
     await PostEntity.ensureSeed(c.env);
     const page = await PostEntity.list(c.env, null, 1000);
-    const taggedPosts = page.items.filter(p => 
+    const taggedPosts = page.items.filter(p =>
       p.tags?.some(t => t.toLowerCase() === tagName)
     );
     const hydratedPosts = await Promise.all(taggedPosts.map(async (post) => {
@@ -390,10 +407,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         return post;
     }));
     hydratedPosts.sort((a, b) => b.createdAt - a.createdAt);
-    return ok(c, { 
-      tagName, 
-      count: hydratedPosts.length, 
-      posts: hydratedPosts 
+    return ok(c, {
+      tagName,
+      count: hydratedPosts.length,
+      posts: hydratedPosts
     });
   });
   app.get('/api/sounds/trending', async (c) => {
@@ -525,9 +542,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.put('/api/users/:id', async (c) => {
     const id = c.req.param('id');
-    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration, dateOfBirth } = await c.req.json() as { 
-        displayName?: string; 
-        bio?: string; 
+    const { displayName, bio, avatar, bannerStyle, settings, avatarDecoration, dateOfBirth } = await c.req.json() as {
+        displayName?: string;
+        bio?: string;
         avatar?: string;
         bannerStyle?: string;
         settings?: UserSettings;
@@ -1381,11 +1398,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, page);
   });
   app.post('/api/chats', async (c) => {
-    const { title, visibility, canType, ownerId } = (await c.req.json()) as { 
+    const { title, visibility, canType, ownerId } = (await c.req.json()) as {
         title?: string;
         visibility?: 'public' | 'private';
         canType?: 'all' | 'participants' | 'admin';
-        ownerId?: string; 
+        ownerId?: string;
     };
     if (!title?.trim()) return bad(c, 'title required');
     const created = await ChatBoardEntity.create(c.env, {

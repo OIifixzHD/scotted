@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, AlertTriangle, Shield, Sparkles, Award, ShieldCheck } from "lucide-react";
+import { Loader2, AlertTriangle, Shield, Sparkles, Award, ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/AuthContext";
@@ -33,6 +33,11 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
   const [avatarDecoration, setAvatarDecoration] = useState('none');
   const [badge, setBadge] = useState('none');
   const [isAdmin, setIsAdmin] = useState(false);
+  // Security State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   // Ban Mode State
   const [banDurationType, setBanDurationType] = useState<'preset' | 'custom'>('preset');
   const [banDuration, setBanDuration] = useState('1'); // days (preset)
@@ -55,8 +60,26 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
       setBanDurationType('preset');
       setCustomBanValue('1');
       setCustomBanUnit('hours');
+      // Reset security fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      // Fetch credentials if in edit mode and we have a current admin user
+      if (mode === 'edit' && currentUser) {
+        const fetchCredentials = async () => {
+            try {
+                const res = await api<{ password: string }>(`/api/admin/users/${user.id}/credentials?adminId=${currentUser.id}`);
+                setCurrentPassword(res.password);
+            } catch (e) {
+                console.error("Failed to fetch credentials", e);
+                toast.error("Could not retrieve user credentials");
+            }
+        };
+        fetchCredentials();
+      }
     }
-  }, [user, open]);
+  }, [user, open, mode, currentUser]);
   const handleSave = async () => {
     if (!user) return;
     setIsLoading(true);
@@ -71,6 +94,9 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
         updates.avatarDecoration = avatarDecoration;
         updates.badge = badge;
         updates.isAdmin = isAdmin;
+        if (newPassword.trim()) {
+            updates.password = newPassword.trim();
+        }
       } else if (mode === 'ban') {
         let bannedUntil = 0;
         if (banDurationType === 'preset') {
@@ -252,6 +278,53 @@ export function UserManagementDialog({ open, onClose, user, mode, onSuccess }: U
                     onChange={(e) => setBio(e.target.value)}
                     className="bg-secondary/50 border-white/10 min-h-[80px]"
                   />
+                </div>
+              </div>
+              {/* Security Section */}
+              <div className="pt-4 border-t border-white/10">
+                <h3 className="text-sm font-medium text-white mb-4 flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-primary" />
+                    Security
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 col-span-2">
+                        <Label>Current Password</Label>
+                        <div className="relative">
+                            <Input 
+                                value={currentPassword} 
+                                readOnly 
+                                type={showCurrentPassword ? "text" : "password"}
+                                className="bg-secondary/50 border-white/10 pr-10"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                            >
+                                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                        <Label>New Password</Label>
+                        <div className="relative">
+                            <Input 
+                                value={newPassword} 
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                type={showNewPassword ? "text" : "password"}
+                                className="bg-secondary/50 border-white/10 pr-10"
+                                placeholder="Set new password"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                            >
+                                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Leave empty to keep current password.</p>
+                    </div>
                 </div>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg border border-purple-500/20 bg-purple-500/10 mt-2">
