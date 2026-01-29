@@ -498,7 +498,7 @@ export function AdminPage() {
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Growth Chart */}
-              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <BarChart3 className="w-5 h-5 text-primary" />
                   <h3 className="text-lg font-bold">New Users (Last 7 Days)</h3>
@@ -525,7 +525,7 @@ export function AdminPage() {
                 </div>
               </div>
               {/* Activity Chart */}
-              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <BarChart3 className="w-5 h-5 text-teal-400" />
                   <h3 className="text-lg font-bold">Platform Activity</h3>
@@ -556,7 +556,7 @@ export function AdminPage() {
             {/* New Economy & Content Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Echoes Distribution */}
-              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <Sparkles className="w-5 h-5 text-yellow-400" />
                   <h3 className="text-lg font-bold">Echoes Wealth Distribution</h3>
@@ -583,7 +583,7 @@ export function AdminPage() {
                 </div>
               </div>
               {/* Content Mix */}
-              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 min-h-[350px] flex flex-col">
+              <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <PieChartIcon className="w-5 h-5 text-pink-400" />
                   <h3 className="text-lg font-bold">Content Mix</h3>
