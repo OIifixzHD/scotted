@@ -197,14 +197,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         }
     });
     // Echoes Distribution
-    const echoBuckets = { '0': 0, '1-100': 0, '101-1k': 0, '1k-5k': 0, '5k+': 0 };
+    // Buckets: 0, 1-1k, 1k-10k, 10k+
+    const echoBuckets = { '0': 0, '1-1k': 0, '1k-10k': 0, '10k+': 0 };
     users.forEach(u => {
-        const e = u.echoes || 0;
+        const e = Math.max(0, u.echoes || 0);
         if (e === 0) echoBuckets['0']++;
-        else if (e <= 100) echoBuckets['1-100']++;
-        else if (e <= 1000) echoBuckets['101-1k']++;
-        else if (e <= 5000) echoBuckets['1k-5k']++;
-        else echoBuckets['5k+']++;
+        else if (e <= 1000) echoBuckets['1-1k']++;
+        else if (e <= 10000) echoBuckets['1k-10k']++;
+        else echoBuckets['10k+']++;
     });
     const echoesDistribution: ChartDataPoint[] = Object.entries(echoBuckets).map(([name, value]) => ({ name, value }));
     // Content Types
