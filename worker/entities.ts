@@ -282,34 +282,14 @@ export class PostEntity extends IndexedEntity<Post> {
           const chunk = buffer.slice(0, CHUNK_SIZE);
           buffer = buffer.slice(CHUNK_SIZE);
           const key = `video:${this.id}:${chunkIndex}`;
-          let saved = false;
-          for(let attempt=0; attempt<3; attempt++) {
-              const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
-              const v = doc ? doc.v : 0;
-              const res = await this.stub.casPut(key, v, chunk);
-              if (res.ok) {
-                  saved = true;
-                  break;
-              }
-          }
-          if (!saved) throw new Error(`Failed to save chunk ${chunkIndex}`);
+          await this.stub.put(key, chunk);
           chunkIndex++;
           totalLength += chunk.length;
         }
       }
       if (buffer.length > 0) {
         const key = `video:${this.id}:${chunkIndex}`;
-        let saved = false;
-        for(let attempt=0; attempt<3; attempt++) {
-            const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
-            const v = doc ? doc.v : 0;
-            const res = await this.stub.casPut(key, v, buffer);
-            if (res.ok) {
-                saved = true;
-                break;
-            }
-        }
-        if (!saved) throw new Error(`Failed to save chunk ${chunkIndex}`);
+        await this.stub.put(key, buffer);
         chunkIndex++;
         totalLength += buffer.length;
       }
@@ -369,34 +349,14 @@ export class PostEntity extends IndexedEntity<Post> {
           const chunk = buffer.slice(0, CHUNK_SIZE);
           buffer = buffer.slice(CHUNK_SIZE);
           const key = `audio:${this.id}:${chunkIndex}`;
-          let saved = false;
-          for(let attempt=0; attempt<3; attempt++) {
-              const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
-              const v = doc ? doc.v : 0;
-              const res = await this.stub.casPut(key, v, chunk);
-              if (res.ok) {
-                  saved = true;
-                  break;
-              }
-          }
-          if (!saved) throw new Error(`Failed to save audio chunk ${chunkIndex}`);
+          await this.stub.put(key, chunk);
           chunkIndex++;
           totalLength += chunk.length;
         }
       }
       if (buffer.length > 0) {
         const key = `audio:${this.id}:${chunkIndex}`;
-        let saved = false;
-        for(let attempt=0; attempt<3; attempt++) {
-            const doc = (await this.stub.getDoc(key)) as Doc<unknown> | null;
-            const v = doc ? doc.v : 0;
-            const res = await this.stub.casPut(key, v, buffer);
-            if (res.ok) {
-                saved = true;
-                break;
-            }
-        }
-        if (!saved) throw new Error(`Failed to save audio chunk ${chunkIndex}`);
+        await this.stub.put(key, buffer);
         chunkIndex++;
         totalLength += buffer.length;
       }
