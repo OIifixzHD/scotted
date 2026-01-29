@@ -1,4 +1,4 @@
-# Pulse - Short Form Video Platform
+# Scotted - Short Form Video Platform
 
 [aureliabutton]
 
