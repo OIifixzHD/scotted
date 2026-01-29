@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone, Sparkles, PieChart as PieChartIcon } from "lucide-react";
+import { Loader2, Shield, RefreshCw, MoreHorizontal, CheckCircle2, Ban, Trash2, MessageSquare, Edit, FileText, User as UserIcon, BarChart3, Users, Film, Eye, Activity, ShieldCheck, Settings, Video, AlertTriangle, Megaphone, Sparkles, PieChart as PieChartIcon, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagementDialog } from '@/components/admin/UserManagementDialog';
 import { AdminPostTable } from '@/components/admin/AdminPostTable';
@@ -52,6 +52,7 @@ export function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartsReady, setChartsReady] = useState(false);
+  const [timeRange, setTimeRange] = useState('7d');
   // Dialog State
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -95,7 +96,7 @@ export function AdminPage() {
       const [usersRes, reportsRes, statsRes, postsRes, systemRes] = await Promise.all([
         api<{ items: User[] }>('/api/users?limit=100'),
         api<Report[]>('/api/admin/reports'),
-        api<AdminStats>('/api/admin/stats'),
+        api<AdminStats>(`/api/admin/stats?range=${timeRange}`),
         api<{ items: Post[] }>('/api/admin/posts'),
         api<SystemSettings>('/api/system')
       ]);
@@ -111,7 +112,7 @@ export function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [timeRange]);
   useEffect(() => {
     if (currentUser?.isAdmin || currentUser?.name === 'AdminUser001') {
       fetchData();
@@ -433,6 +434,23 @@ export function AdminPage() {
           </TabsContent>
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="mt-6 space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-lg font-semibold">Platform Overview</h2>
+                <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <Select value={timeRange} onValueChange={setTimeRange}>
+                        <SelectTrigger className="w-[180px] bg-secondary/50 border-white/10">
+                            <SelectValue placeholder="Select range" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="today">Today</SelectItem>
+                            <SelectItem value="7d">Last 7 Days</SelectItem>
+                            <SelectItem value="30d">Last 30 Days</SelectItem>
+                            <SelectItem value="all">All Time</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="bg-card/50 backdrop-blur-sm border-white/10">
@@ -501,9 +519,9 @@ export function AdminPage() {
               <div className="rounded-xl border border-white/10 bg-card/50 backdrop-blur-sm p-6 h-[350px] flex flex-col">
                 <div className="flex items-center gap-2 mb-6">
                   <BarChart3 className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-bold">New Users (Last 7 Days)</h3>
+                  <h3 className="text-lg font-bold">User Growth</h3>
                 </div>
-                <div className="flex-1 w-full min-h-[250px]">
+                <div className="w-full h-[250px]">
                   {chartsReady && stats?.userGrowth ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.userGrowth}>
@@ -530,7 +548,7 @@ export function AdminPage() {
                   <BarChart3 className="w-5 h-5 text-teal-400" />
                   <h3 className="text-lg font-bold">Platform Activity</h3>
                 </div>
-                <div className="flex-1 w-full min-h-[250px]">
+                <div className="w-full h-[250px]">
                   {chartsReady && stats?.activity ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={stats.activity}>
@@ -561,7 +579,7 @@ export function AdminPage() {
                   <Sparkles className="w-5 h-5 text-yellow-400" />
                   <h3 className="text-lg font-bold">Echoes Wealth Distribution</h3>
                 </div>
-                <div className="flex-1 w-full min-h-[250px]">
+                <div className="w-full h-[250px]">
                   {chartsReady && stats?.echoesDistribution ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.echoesDistribution}>
@@ -588,7 +606,7 @@ export function AdminPage() {
                   <PieChartIcon className="w-5 h-5 text-pink-400" />
                   <h3 className="text-lg font-bold">Content Mix</h3>
                 </div>
-                <div className="flex-1 w-full min-h-[250px]">
+                <div className="w-full h-[250px]">
                   {chartsReady && stats?.contentTypes ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>

@@ -101,7 +101,7 @@ export function SettingsPage() {
     updateSettings(newSettings);
   };
   const fetchBlockedUsers = useCallback(async () => {
-    if (!user) return;
+    if (!user?.id) return; // Guard against undefined user ID
     try {
       setLoadingBlocked(true);
       const res = await api<User[]>(`/api/users/blocked?userId=${user.id}`);
@@ -109,7 +109,11 @@ export function SettingsPage() {
         setBlockedUsers(res);
       }
     } catch (error) {
-      console.error(`Failed to fetch blocked users`, error);
+      // Gracefully handle error, likely 404 if user not fully initialized or network issue
+      console.warn(`Failed to fetch blocked users`, error);
+      if (isMounted.current) {
+        setBlockedUsers([]);
+      }
     } finally {
       if (isMounted.current) {
         setLoadingBlocked(false);

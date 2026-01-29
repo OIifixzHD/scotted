@@ -104,6 +104,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   // --- ADMIN ---
   app.get('/api/admin/stats', async (c) => {
+    const range = c.req.query('range') || '7d';
     await UserEntity.ensureSeed(c.env);
     await PostEntity.ensureSeed(c.env);
     const [usersPage, postsPage, notificationsPage] = await Promise.all([
@@ -121,44 +122,80 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const totalComments = posts.reduce((acc, p) => acc + (p.comments || 0), 0);
     const totalEngagement = totalLikes + totalComments;
     const totalEchoes = users.reduce((acc, u) => acc + (u.echoes || 0), 0);
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      days.push(d);
+    // Dynamic Bucketing Logic
+    const now = new Date();
+    let buckets: { label: string, start: number, end: number }[] = [];
+    if (range === 'today') {
+        // Last 24 hours (Hourly)
+        for (let i = 23; i >= 0; i--) {
+            const d = new Date(now);
+            d.setHours(d.getHours() - i);
+            d.setMinutes(0, 0, 0);
+            buckets.push({
+                label: d.toLocaleTimeString('en-US', { hour: 'numeric' }),
+                start: d.getTime(),
+                end: d.getTime() + 3600000
+            });
+        }
+    } else if (range === '30d') {
+        // Last 30 days (Daily)
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            buckets.push({
+                label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                start: d.getTime(),
+                end: d.getTime() + 86400000
+            });
+        }
+    } else if (range === 'all') {
+        // Last 12 months (Monthly)
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(now);
+            d.setMonth(d.getMonth() - i);
+            d.setDate(1);
+            d.setHours(0, 0, 0, 0);
+            const nextMonth = new Date(d);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            buckets.push({
+                label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+                start: d.getTime(),
+                end: nextMonth.getTime()
+            });
+        }
+    } else {
+        // Default 7d (Daily)
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+            buckets.push({
+                label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                start: d.getTime(),
+                end: d.getTime() + 86400000
+            });
+        }
     }
-    const userGrowth: ChartDataPoint[] = days.map(d => ({
-        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateStr: d.toDateString(),
-        users: 0
-    }));
-    const activity: ChartDataPoint[] = days.map(d => ({
-        name: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateStr: d.toDateString(),
-        likes: 0,
-        comments: 0
-    }));
+    const userGrowth: ChartDataPoint[] = buckets.map(b => ({ name: b.label, users: 0 }));
+    const activity: ChartDataPoint[] = buckets.map(b => ({ name: b.label, likes: 0, comments: 0 }));
     users.forEach(u => {
         if (u.createdAt) {
-            const d = new Date(u.createdAt).toDateString();
-            const point = userGrowth.find(p => p.dateStr === d);
-            if (point) {
-                (point.users as number)++;
+            const bucketIndex = buckets.findIndex(b => u.createdAt! >= b.start && u.createdAt! < b.end);
+            if (bucketIndex !== -1) {
+                (userGrowth[bucketIndex].users as number)++;
             }
         }
     });
     notifications.forEach(n => {
         if (n.createdAt) {
-            const d = new Date(n.createdAt).toDateString();
-            const point = activity.find(p => p.dateStr === d);
-            if (point) {
-                if (n.type === 'like') (point.likes as number)++;
-                if (n.type === 'comment') (point.comments as number)++;
+            const bucketIndex = buckets.findIndex(b => n.createdAt >= b.start && n.createdAt < b.end);
+            if (bucketIndex !== -1) {
+                if (n.type === 'like') (activity[bucketIndex].likes as number)++;
+                if (n.type === 'comment') (activity[bucketIndex].comments as number)++;
             }
         }
     });
-    userGrowth.forEach(p => delete p.dateStr);
-    activity.forEach(p => delete p.dateStr);
     // Echoes Distribution
     const echoBuckets = { '0': 0, '1-100': 0, '101-1k': 0, '1k-5k': 0, '5k+': 0 };
     users.forEach(u => {
